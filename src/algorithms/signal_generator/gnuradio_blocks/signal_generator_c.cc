@@ -108,7 +108,7 @@ void signal_generator_c::init()
             current_data_bits_.emplace_back(1, 0);
             ms_counter_.push_back(0);
             data_modulation_.push_back((GALILEO_E5A_I_SECONDARY_CODE.at(0) == '0' ? 1 : -1));
-            pilot_modulation_.push_back((Galileo_E5a_Q_SECONDARY_CODE[PRN_[sat]].at(0) == '0' ? 1 : -1));
+            pilot_modulation_.push_back((GALILEO_E5A_Q_SECONDARY_CODE[PRN_[sat]].at(0) == '0' ? 1 : -1));
 
             if (system_[sat] == "G")
                 {
@@ -396,7 +396,7 @@ int signal_generator_c::general_work(int noutput_items __attribute__((unused)),
                                     current_data_bit_int_[sat] = (uniform_dist(e1) % 2) == 0 ? 1 : -1;
                                 }
                             data_modulation_[sat] = current_data_bit_int_[sat] * (GALILEO_E5A_I_SECONDARY_CODE.at((ms_counter_[sat] + delay_sec_[sat]) % 20) == '0' ? 1 : -1);
-                            pilot_modulation_[sat] = (Galileo_E5a_Q_SECONDARY_CODE[PRN_[sat] - 1].at((ms_counter_[sat] + delay_sec_[sat]) % 100) == '0' ? 1 : -1);
+                            pilot_modulation_[sat] = (GALILEO_E5A_Q_SECONDARY_CODE[PRN_[sat] - 1].at((ms_counter_[sat] + delay_sec_[sat]) % 100) == '0' ? 1 : -1);
 
                             ms_counter_[sat] = ms_counter_[sat] + static_cast<int>(round(1e3 * GALILEO_E5A_CODE_PERIOD));
 

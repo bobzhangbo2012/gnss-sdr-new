@@ -67,7 +67,7 @@ const int32_t GPS_L5_HISTORY_DEEP = 5;
 //optimum parameters
 const uint32_t GPS_L5_OPT_ACQ_FS_HZ = 10000000;  //!< Sampling frequncy that maximizes the acquisition SNR while using a non-multiple of chip rate
 
-const int32_t GPS_L5i_INIT_REG[210] =
+const int32_t GPS_L5I_INIT_REG[210] =
     {266, 365, 804, 1138,
         1509, 1559, 1756, 2084,
         2170, 2303, 2527, 2687,
@@ -124,7 +124,7 @@ const int32_t GPS_L5i_INIT_REG[210] =
         5950, 5521, 1515};
 
 
-const int32_t GPS_L5q_INIT_REG[210] =
+const int32_t GPS_L5Q_INIT_REG[210] =
     {
         1701, 323, 5292, 2020,
         5429, 7136, 1041, 5947,
@@ -187,10 +187,10 @@ const int32_t GPS_L5_SAMPLES_PER_SYMBOL = 10;
 const int32_t GPS_L5_CNAV_DATA_PAGE_SYMBOLS = 600;
 const int32_t GPS_L5_CNAV_DATA_PAGE_DURATION_S = 6;
 const int32_t GPS_L5I_NH_CODE_LENGTH = 10;
-const int32_t GPS_L5i_NH_CODE[10] = {0, 0, 0, 0, 1, 1, 0, 1, 0, 1};
+const int32_t GPS_L5I_NH_CODE[10] = {0, 0, 0, 0, 1, 1, 0, 1, 0, 1};
 const std::string GPS_L5I_NH_CODE_STR = "0000110101";
 const int32_t GPS_L5Q_NH_CODE_LENGTH = 20;
-const int32_t GPS_L5q_NH_CODE[20] = {0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0};
+const int32_t GPS_L5Q_NH_CODE[20] = {0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0};
 const std::string GPS_L5Q_NH_CODE_STR = "00000100110101001110";
 
 #endif /* GNSS_SDR_GPS_L5_H_ */

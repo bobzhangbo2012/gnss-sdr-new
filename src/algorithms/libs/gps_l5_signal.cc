@@ -136,7 +136,7 @@ std::deque<bool> make_l5q_xb()
 
 void make_l5i(int32_t* _dest, int32_t prn)
 {
-    int32_t xb_offset = GPS_L5i_INIT_REG[prn];
+    int32_t xb_offset = GPS_L5I_INIT_REG[prn];
 
     std::deque<bool> xb = make_l5i_xb();
     std::deque<bool> xa = make_l5i_xa();
@@ -156,7 +156,7 @@ void make_l5i(int32_t* _dest, int32_t prn)
 
 void make_l5q(int32_t* _dest, int32_t prn)
 {
-    int32_t xb_offset = GPS_L5q_INIT_REG[prn];
+    int32_t xb_offset = GPS_L5Q_INIT_REG[prn];
 
     std::deque<bool> xb = make_l5q_xb();
     std::deque<bool> xa = make_l5q_xa();

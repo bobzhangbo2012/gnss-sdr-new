@@ -94,11 +94,11 @@ private:
     typedef std::pair<int32_t, std::vector<uint8_t>> msg_candiate_char_t;
 
     // helper class for sample alignment
-    class sample_aligner
+    class Sample_Aligner
     {
     public:
-        sample_aligner();
-        ~sample_aligner();
+        Sample_Aligner();
+        ~Sample_Aligner();
         void reset();
         /*
          * samples length must be a multiple of two
@@ -116,11 +116,11 @@ private:
     } d_sample_aligner;
 
     // helper class for symbol alignment and Viterbi decoding
-    class symbol_aligner_and_decoder
+    class Symbol_Aligner_And_Decoder
     {
     public:
-        symbol_aligner_and_decoder();
-        ~symbol_aligner_and_decoder();
+        Symbol_Aligner_And_Decoder();
+        ~Symbol_Aligner_And_Decoder();
         void reset();
         bool get_bits(const std::vector<double> &symbols, std::vector<int32_t> &bits);
 
@@ -133,7 +133,7 @@ private:
 
 
     // helper class for detecting the preamble and collect the corresponding message candidates
-    class frame_detector
+    class Frame_Detector
     {
     public:
         void reset();
@@ -145,7 +145,7 @@ private:
 
 
     // helper class for checking the CRC of the message candidates
-    class crc_verifier
+    class Crc_Verifier
     {
     public:
         void reset();

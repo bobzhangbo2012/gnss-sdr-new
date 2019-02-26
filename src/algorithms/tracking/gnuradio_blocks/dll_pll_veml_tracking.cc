@@ -554,7 +554,7 @@ void dll_pll_veml_tracking::start_tracking()
             galileo_e5_a_code_gen_complex_primary(aux_code, d_acquisition_gnss_synchro->PRN, const_cast<char *>(signal_type.c_str()));
             if (trk_parameters.track_pilot)
                 {
-                    d_secondary_code_string = const_cast<std::string *>(&Galileo_E5a_Q_SECONDARY_CODE[d_acquisition_gnss_synchro->PRN - 1]);
+                    d_secondary_code_string = const_cast<std::string *>(&GALILEO_E5A_Q_SECONDARY_CODE[d_acquisition_gnss_synchro->PRN - 1]);
                     for (uint32_t i = 0; i < d_code_length_chips; i++)
                         {
                             d_tracking_code[i] = aux_code[i].imag();

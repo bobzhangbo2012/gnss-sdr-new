@@ -846,7 +846,7 @@ private:
     class Queue_Reader
     {
     public:
-        Queue_Reader(boost::asio::io_service& io_context, std::shared_ptr<concurrent_queue<std::string> >& queue, int32_t port) : queue_(queue)
+        Queue_Reader(boost::asio::io_service& io_context, std::shared_ptr<Concurrent_Queue<std::string> >& queue, int32_t port) : queue_(queue)
         {
             boost::asio::ip::tcp::resolver resolver(io_context);
             std::string host("localhost");
@@ -877,7 +877,7 @@ private:
 
     private:
         std::shared_ptr<Tcp_Internal_Client> c;
-        std::shared_ptr<concurrent_queue<std::string> >& queue_;
+        std::shared_ptr<Concurrent_Queue<std::string> >& queue_;
     };
 
 
@@ -952,7 +952,7 @@ private:
     };
 
     boost::asio::io_service io_context;
-    std::shared_ptr<concurrent_queue<std::string> > rtcm_message_queue;
+    std::shared_ptr<Concurrent_Queue<std::string> > rtcm_message_queue;
     std::thread t;
     std::thread tq;
     std::list<Rtcm::Tcp_Server> servers;

@@ -50,7 +50,7 @@ Rtcm::Rtcm(uint16_t port)
     RTCM_port = port;
     preamble = std::bitset<8>("11010011");
     reserved_field = std::bitset<6>("000000");
-    rtcm_message_queue = std::make_shared<concurrent_queue<std::string> >();
+    rtcm_message_queue = std::make_shared<Concurrent_Queue<std::string> >();
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), RTCM_port);
     servers.emplace_back(io_context, endpoint);
     server_is_running = false;

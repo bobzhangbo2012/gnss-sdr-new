@@ -40,7 +40,7 @@
 
 using google::LogMessage;
 
-hybrid_ls_pvt::hybrid_ls_pvt(int nchannels, std::string dump_filename, bool flag_dump_to_file) : Ls_Pvt()
+Hybrid_Ls_Pvt::Hybrid_Ls_Pvt(int nchannels, std::string dump_filename, bool flag_dump_to_file) : Ls_Pvt()
 {
     // init empty ephemeris for all the available GNSS channels
     d_nchannels = nchannels;
@@ -69,7 +69,7 @@ hybrid_ls_pvt::hybrid_ls_pvt(int nchannels, std::string dump_filename, bool flag
 }
 
 
-hybrid_ls_pvt::~hybrid_ls_pvt()
+Hybrid_Ls_Pvt::~Hybrid_Ls_Pvt()
 {
     if (d_dump_file.is_open() == true)
         {
@@ -85,7 +85,7 @@ hybrid_ls_pvt::~hybrid_ls_pvt()
 }
 
 
-bool hybrid_ls_pvt::get_PVT(std::map<int, Gnss_Synchro> gnss_observables_map, double hybrid_current_time, bool flag_averaging)
+bool Hybrid_Ls_Pvt::get_PVT(std::map<int, Gnss_Synchro> gnss_observables_map, double hybrid_current_time, bool flag_averaging)
 {
     std::map<int, Gnss_Synchro>::iterator gnss_observables_iter;
     std::map<int, Galileo_Ephemeris>::iterator galileo_ephemeris_iter;

@@ -70,7 +70,7 @@ gps_l5_telemetry_decoder_cc::gps_l5_telemetry_decoder_cc(
     cnav_msg_decoder_init(&d_cnav_decoder);
     for (int32_t aux = 0; aux < GPS_L5I_NH_CODE_LENGTH; aux++)
         {
-            if (GPS_L5i_NH_CODE[aux] == 0)
+            if (GPS_L5I_NH_CODE[aux] == 0)
                 {
                     bits_NH[aux] = -1.0;
                 }
