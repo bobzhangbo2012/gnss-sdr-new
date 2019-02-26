@@ -66,7 +66,7 @@ extern "C"
         PXER_COMMENT /* A comment, may be part of */
     } pxer_chunk_type_e;
     ssize_t xer_next_token(int *stateContext,
-        const void *buffer, size_t size, pxer_chunk_type_e *_ch_type);
+        const void *buffer, size_t size, pxer_chunk_type_e *ch_type);
 
     /*
  * This function checks the buffer against the tag name is expected to occur.

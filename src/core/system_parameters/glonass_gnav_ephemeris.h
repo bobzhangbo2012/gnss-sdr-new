@@ -175,7 +175,7 @@ public:
      * \param[out] WN Week Number, not in mod(1024) format
      * \param[out] TOW Time of Week in seconds of week
      */
-    void glot_to_gpst(double tod_offset, double glot2utc_corr, double glot2gpst_corr, double* WN, double* TOW) const;
+    void glot_to_gpst(double tod_offset, double glot2utc_corr, double glot2gpst_corr, double* wn, double* tow) const;
 
     /*!
      * Default constructor

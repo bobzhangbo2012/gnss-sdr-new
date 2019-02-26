@@ -50,7 +50,7 @@ public:
     Gnss_Satellite();                                                   //!< Default Constructor.
     Gnss_Satellite(const std::string& system_, uint32_t PRN_);          //!< Concrete GNSS satellite Constructor.
     ~Gnss_Satellite();                                                  //!< Default Destructor.
-    void update_PRN(uint32_t PRN);                                      //!< Updates the PRN Number when information is decoded, only applies to GLONASS GNAV messages
+    void update_PRN(uint32_t PRN_);                                      //!< Updates the PRN Number when information is decoded, only applies to GLONASS GNAV messages
     uint32_t get_PRN() const;                                           //!< Gets satellite's PRN
     int32_t get_rf_link() const;                                        //!< Gets the satellite's rf link
     std::string get_system() const;                                     //!< Gets the satellite system {"GPS", "GLONASS", "SBAS", "Galileo", "Beidou"}
@@ -67,8 +67,8 @@ private:
     std::map<std::string, std::string> satelliteSystem;
     std::string block;
     int32_t rf_link;
-    void set_system(const std::string& system);  // Sets the satellite system {"GPS", "GLONASS", "SBAS", "Galileo", "Beidou"}.
-    void set_PRN(uint32_t PRN);                  // Sets satellite's PRN
+    void set_system(const std::string& system_);  // Sets the satellite system {"GPS", "GLONASS", "SBAS", "Galileo", "Beidou"}.
+    void set_PRN(uint32_t PRN_);                  // Sets satellite's PRN
     void set_block(const std::string& system_, uint32_t PRN_);
     std::set<std::string> system_set;  // = {"GPS", "GLONASS", "SBAS", "Galileo", "Compass"};
     void reset();

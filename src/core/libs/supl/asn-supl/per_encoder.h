@@ -23,7 +23,7 @@ extern "C"
  */
     asn_enc_rval_t uper_encode(struct asn_TYPE_descriptor_s *td,
         void *sptr,                          /* Structure to be encoded */
-        asn_app_consume_bytes_f *consume_bytes_cb, /* Data collector */
+        asn_app_consume_bytes_f *cb, /* Data collector */
         void *app_key                              /* Arbitrary callback argument */
     );
 

@@ -916,7 +916,7 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                         }
                     else
                         {
-                            rx_position_and_time(3) = pvt_sol.dtr[0] / GPS_C_m_s;  // the receiver clock offset is expressed in [meters], so we convert it into [s]
+                            rx_position_and_time(3) = pvt_sol.dtr[0] / GPS_C_M_S;  // the receiver clock offset is expressed in [meters], so we convert it into [s]
                         }
                     this->set_rx_pos(rx_position_and_time.rows(0, 2));  // save ECEF position for the next iteration
 

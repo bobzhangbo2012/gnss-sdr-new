@@ -63,8 +63,8 @@
 /*
  * See the definitions.
  */
-static int _fetch_present_idx(const void *struct_ptr, int pres_offset, int size);
-static void _set_present_idx(void *struct_ptr, int offset, int size, int pres);
+static int _fetch_present_idx(const void *struct_ptr, int pres_offset, int pres_size);
+static void _set_present_idx(void *struct_ptr, int pres_offset, int pres_size, int present);
 
 /*
  * Tags are canonically sorted in the tag to member table.

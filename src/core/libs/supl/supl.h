@@ -271,7 +271,7 @@ typedef struct supl_rrlp_s
 void supl_ulp_free(supl_ulp_t *pdu);
 int supl_ulp_encode(supl_ulp_t *pdu);
 int supl_ulp_decode(supl_ulp_t *pdu);
-int supl_decode_rrlp(supl_ulp_t *pdu, PDU_t **rrlp);
+int supl_decode_rrlp(supl_ulp_t *ulp_pdu, PDU_t **ret_rrlp);
 int supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t);
 
 int supl_server_connect(supl_ctx_t *ctx, char *server);

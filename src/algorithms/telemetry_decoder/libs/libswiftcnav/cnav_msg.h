@@ -112,7 +112,7 @@ void cnav_msg_decoder_init(cnav_msg_decoder_t *dec);
 bool cnav_msg_decoder_add_symbol(cnav_msg_decoder_t *dec,
     unsigned char symbol,
     cnav_msg_t *msg,
-    u32 *delay);
+    u32 *pdelay);
 
 /** \} */
 /** \} */

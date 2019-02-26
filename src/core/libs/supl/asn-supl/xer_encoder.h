@@ -28,7 +28,7 @@ extern "C"
     asn_enc_rval_t xer_encode(struct asn_TYPE_descriptor_s *td,
         void *sptr, /* Structure to be encoded */
         enum xer_encoder_flags_e xer_flags,
-        asn_app_consume_bytes_f *consume_bytes_cb,
+        asn_app_consume_bytes_f *cb,
         void *app_key /* Arbitrary callback argument */
     );
 

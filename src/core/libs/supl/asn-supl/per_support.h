@@ -56,10 +56,10 @@ extern "C"
  * This function returns -1 if the specified number of bits could not be
  * extracted due to EOD or other conditions.
  */
-    int32_t per_get_few_bits(asn_per_data_t *pd, int get_nbits);
+    int32_t per_get_few_bits(asn_per_data_t *pd, int nbits);
 
     /* Undo the immediately preceeding "get_few_bits" operation */
-    void per_get_undo(asn_per_data_t *pd, int get_nbits);
+    void per_get_undo(asn_per_data_t *pd, int nbits);
 
     /*
  * Extract a large number of bits from the specified PER data pointer.
@@ -67,7 +67,7 @@ extern "C"
  * extracted due to EOD or other conditions.
  */
     int per_get_many_bits(asn_per_data_t *pd, uint8_t *dst, int alright,
-        int get_nbits);
+        int nbits);
 
     /*
  * Get the length "n" from the Unaligned PER stream.
@@ -110,7 +110,7 @@ extern "C"
     int per_put_few_bits(asn_per_outp_t *po, uint32_t bits, int obits);
 
     /* Output a large number of bits */
-    int per_put_many_bits(asn_per_outp_t *po, const uint8_t *src, int put_nbits);
+    int per_put_many_bits(asn_per_outp_t *po, const uint8_t *src, int nbits);
 
     /*
  * Flush whole bytes (0 or more) through (outper) member.
@@ -128,7 +128,7 @@ extern "C"
  * This function returns the number of units which may be flushed
  * in the next units saving iteration.
  */
-    ssize_t uper_put_length(asn_per_outp_t *po, size_t whole_length);
+    ssize_t uper_put_length(asn_per_outp_t *po, size_t length);
 
     /*
  * Put the normally small length "n" to the Unaligned PER stream.

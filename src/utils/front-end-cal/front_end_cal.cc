@@ -358,7 +358,7 @@ double FrontEndCal::estimate_doppler_from_eph(unsigned int PRN, double TOW, doub
 
             //Doppler estimation
             arma::vec Doppler_Hz;
-            Doppler_Hz = (obs_to_sat_velocity / GPS_C_m_s) * GPS_L1_FREQ_HZ;
+            Doppler_Hz = (obs_to_sat_velocity / GPS_C_M_S) * GPS_L1_FREQ_HZ;
             double mean_Doppler_Hz;
             mean_Doppler_Hz = arma::mean(Doppler_Hz);
             return mean_Doppler_Hz;

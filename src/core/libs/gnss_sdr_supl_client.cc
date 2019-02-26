@@ -166,7 +166,7 @@ int gnss_sdr_supl_client::get_assistance(int i_mcc, int i_mns, int i_lac, int i_
     supl_set_gsm_cell(&ctx, mcc, mns, lac, ci);
 
     // PERFORM SUPL COMMUNICATION
-    char* cstr = new char[server_name.length() + 1];
+    auto  cstr = new char[server_name.length() + 1];
     strcpy(cstr, server_name.c_str());
 
     int err;

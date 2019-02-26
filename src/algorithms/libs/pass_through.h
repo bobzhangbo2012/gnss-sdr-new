@@ -52,8 +52,8 @@ class Pass_Through : public GNSSBlockInterface
 public:
     Pass_Through(ConfigurationInterface* configuration,
         const std::string& role,
-        unsigned int in_stream,
-        unsigned int out_stream);
+        unsigned int in_streams,
+        unsigned int out_streams);
 
     virtual ~Pass_Through();
 

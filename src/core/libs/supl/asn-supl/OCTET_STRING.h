@@ -48,7 +48,7 @@ extern "C"
  * current contents of the OCTET STRING.
  * Returns 0 if it was possible to perform operation, -1 otherwise.
  */
-    int OCTET_STRING_fromBuf(OCTET_STRING_t *s, const char *str, int len);
+    int OCTET_STRING_fromBuf(OCTET_STRING_t *st, const char *str, int len);
 
 /* Handy conversion from the C string into the OCTET STRING. */
 #define OCTET_STRING_fromString(s, str) OCTET_STRING_fromBuf(s, str, -1)

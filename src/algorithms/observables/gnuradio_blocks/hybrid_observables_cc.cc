@@ -184,13 +184,13 @@ int32_t hybrid_observables_cc::save_matfile()
         {
             return 1;
         }
-    auto **RX_time = new double *[d_nchannels_out];
-    auto **TOW_at_current_symbol_s = new double *[d_nchannels_out];
-    auto **Carrier_Doppler_hz = new double *[d_nchannels_out];
-    auto **Carrier_phase_cycles = new double *[d_nchannels_out];
-    auto **Pseudorange_m = new double *[d_nchannels_out];
-    auto **PRN = new double *[d_nchannels_out];
-    auto **Flag_valid_pseudorange = new double *[d_nchannels_out];
+    auto RX_time = new double *[d_nchannels_out];
+    auto TOW_at_current_symbol_s = new double *[d_nchannels_out];
+    auto Carrier_Doppler_hz = new double *[d_nchannels_out];
+    auto Carrier_phase_cycles = new double *[d_nchannels_out];
+    auto Pseudorange_m = new double *[d_nchannels_out];
+    auto PRN = new double *[d_nchannels_out];
+    auto Flag_valid_pseudorange = new double *[d_nchannels_out];
 
     for (uint32_t i = 0; i < d_nchannels_out; i++)
         {
@@ -482,9 +482,9 @@ void hybrid_observables_cc::compute_pranges(std::vector<Gnss_Synchro> &data)
         {
             if (it->Flag_valid_word)
                 {
-                    double traveltime_s = (static_cast<double>(T_rx_TOW_ms) - it->interp_TOW_ms + GPS_STARTOFFSET_ms) / 1000.0;
+                    double traveltime_s = (static_cast<double>(T_rx_TOW_ms) - it->interp_TOW_ms + GPS_STARTOFFSET_MS) / 1000.0;
                     //todo: check what happens during the week rollover (TOW rollover at 604800000s)
-                    it->RX_time = (static_cast<double>(T_rx_TOW_ms) + GPS_STARTOFFSET_ms) / 1000.0;
+                    it->RX_time = (static_cast<double>(T_rx_TOW_ms) + GPS_STARTOFFSET_MS) / 1000.0;
                     it->Pseudorange_m = traveltime_s * SPEED_OF_LIGHT;
                     it->Flag_valid_pseudorange = true;
                     // debug code

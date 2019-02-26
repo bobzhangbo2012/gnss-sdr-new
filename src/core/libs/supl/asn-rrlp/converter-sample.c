@@ -35,7 +35,7 @@ extern asn_TYPE_descriptor_t *asn_pdu_collection[];
  * Open file and parse its contens.
  */
 static void *data_decode_from_file(asn_TYPE_descriptor_t *pduType,
-	FILE *file, const char *name, ssize_t suggested_bufsize, int first_pdu);
+	FILE *file, const char *name, ssize_t suggested_bufsize, int on_first_pdu);
 static int write_out(const void *buffer, size_t size, void *key);
 static FILE *argument_to_file(char *av[], int idx);
 static char *argument_to_name(char *av[], int idx);

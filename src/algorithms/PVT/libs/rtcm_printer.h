@@ -112,7 +112,7 @@ public:
      * \param utc_model GLONASS GNAV Clock Information broadcast in string 5
      * \return true or false upon operation success
      */
-    bool Print_Rtcm_MT1020(const Glonass_Gnav_Ephemeris& glonass_gnav_eph, const Glonass_Gnav_Utc_Model& utc_model);
+    bool Print_Rtcm_MT1020(const Glonass_Gnav_Ephemeris& glonass_gnav_eph, const Glonass_Gnav_Utc_Model& glonass_gnav_utc_model);
 
     bool Print_Rtcm_MSM(uint32_t msm_number,
         const Gps_Ephemeris& gps_eph,
