@@ -46,7 +46,7 @@
 
 class sbas_l1_telemetry_decoder_cc;
 
-typedef boost::shared_ptr<sbas_l1_telemetry_decoder_cc> sbas_l1_telemetry_decoder_cc_sptr;
+using sbas_l1_telemetry_decoder_cc_sptr = boost::shared_ptr<sbas_l1_telemetry_decoder_cc>;
 
 sbas_l1_telemetry_decoder_cc_sptr
 sbas_l1_make_telemetry_decoder_cc(const Gnss_Satellite &satellite, bool dump);
@@ -76,9 +76,9 @@ private:
     void viterbi_decoder(double *page_part_symbols, int32_t *page_part_bits);
     void align_samples();
 
-    static const int32_t d_samples_per_symbol = 2;
-    static const int32_t d_symbols_per_bit = 2;
-    static const int32_t d_block_size_in_bits = 30;
+    static const int32_t D_SAMPLES_PER_SYMBOL = 2;
+    static const int32_t D_SYMBOLS_PER_BIT = 2;
+    static const int32_t D_BLOCK_SIZE_IN_BITS = 30;
 
     bool d_dump;
     Gnss_Satellite d_satellite;

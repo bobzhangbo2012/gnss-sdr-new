@@ -121,7 +121,7 @@ double rtl_tcp_dongle_info::clip_gain(int gain) const
         }
 
     // clip
-    if (gains.size() == 0)
+    if (gains.empty())
         {
             // no defined gains to clip to
             return gain;
@@ -138,10 +138,7 @@ double rtl_tcp_dongle_info::clip_gain(int gain) const
                         {
                             return g;
                         }
-                    else
-                        {
-                            return last_stop;
-                        }
+                    return last_stop;
                 }
             last_stop = g;
         }

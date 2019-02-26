@@ -8,7 +8,7 @@
 *
 * -------------------------------------------------------------------------
 *
-* Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)
+* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
 *
 * GNSS-SDR is a software defined Global Navigation
 * Satellite Systems receiver
@@ -32,7 +32,7 @@
 */
 
 #ifndef GNSS_SDR_VERSION
-#define GNSS_SDR_VERSION "0.0.9"
+#define GNSS_SDR_VERSION "0.0.10"
 #endif
 
 #ifndef GOOGLE_STRIP_LOG
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
 {
     const std::string intro_help(
         std::string("\nGNSS-SDR is an Open Source GNSS Software Defined Receiver\n") +
-        "Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)\n" +
+        "Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)\n" +
         "This program comes with ABSOLUTELY NO WARRANTY;\n" +
         "See COPYING file to see a copy of the General Public License\n \n");
 
@@ -132,16 +132,21 @@ int main(int argc, char** argv)
                 }
         }
 
-    std::unique_ptr<ControlThread> control_thread(new ControlThread());
-
-    // record startup time
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-
-    int return_code;
+    int return_code = 0;
     try
         {
+            std::unique_ptr<ControlThread> control_thread(new ControlThread());
+            // record startup time
+            start = std::chrono::system_clock::now();
             return_code = control_thread->run();
+        }
+    catch (const boost::thread_resource_error& e)
+        {
+            std::cout << "Failed to create boost thread." << std::endl;
+            google::ShutDownCommandLineFlags();
+            return 1;
         }
     catch (const boost::exception& e)
         {

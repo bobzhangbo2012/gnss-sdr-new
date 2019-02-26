@@ -84,7 +84,7 @@ public:
      * to efficiently exchange synchronization data between acquisition and
      *  tracking blocks
      */
-    void set_gnss_synchro(Gnss_Synchro* p_gnss_synchro) override;
+    void set_gnss_synchro(Gnss_Synchro* gnss_synchro) override;
 
     /*!
      * \brief Set acquisition channel unique ID

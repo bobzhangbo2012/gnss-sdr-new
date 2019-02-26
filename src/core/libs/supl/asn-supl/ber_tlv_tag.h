@@ -33,8 +33,8 @@ extern "C"
  * (i.e. "[PRIVATE 0]").
  * Return values correspond to their libc counterparts (if any).
  */
-    ssize_t ber_tlv_tag_snprint(ber_tlv_tag_t tag, char *buf, size_t buflen);
-    ssize_t ber_tlv_tag_fwrite(ber_tlv_tag_t tag, FILE *);
+    ssize_t ber_tlv_tag_snprint(ber_tlv_tag_t tag, char *buf, size_t size);
+    ssize_t ber_tlv_tag_fwrite(ber_tlv_tag_t tag, FILE * /*f*/);
     char *ber_tlv_tag_string(ber_tlv_tag_t tag);
 
 
@@ -45,7 +45,7 @@ extern "C"
  * 	-1:	Fatal error deciphering tag.
  *	>0:	Number of bytes used from bufptr. tag_r will contain the tag.
  */
-    ssize_t ber_fetch_tag(const void *bufptr, size_t size, ber_tlv_tag_t *tag_r);
+    ssize_t ber_fetch_tag(const void *ptr, size_t size, ber_tlv_tag_t *tag_r);
 
     /*
  * This function serializes the tag (T from TLV) in BER format.
@@ -53,7 +53,7 @@ extern "C"
  * it is a caller's responsibility to check the return value
  * against the supplied buffer's size.
  */
-    size_t ber_tlv_tag_serialize(ber_tlv_tag_t tag, void *bufptr, size_t size);
+    size_t ber_tlv_tag_serialize(ber_tlv_tag_t tag, void *bufp, size_t size);
 
 #ifdef __cplusplus
 }

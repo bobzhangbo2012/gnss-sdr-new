@@ -34,7 +34,7 @@ extern "C"
  */
     ssize_t ber_skip_length(
         struct asn_codec_ctx_s *opt_codec_ctx, /* optional context */
-        int _is_constructed, const void *bufptr, size_t size);
+        int _is_constructed, const void *ptr, size_t size);
 
     /*
  * This function serializes the length (L from TLV) in DER format.
@@ -42,7 +42,7 @@ extern "C"
  * it is a caller's responsibility to check the return value
  * against the supplied buffer's size.
  */
-    size_t der_tlv_length_serialize(ber_tlv_len_t len, void *bufptr, size_t size);
+    size_t der_tlv_length_serialize(ber_tlv_len_t len, void *bufp, size_t size);
 
 #ifdef __cplusplus
 }

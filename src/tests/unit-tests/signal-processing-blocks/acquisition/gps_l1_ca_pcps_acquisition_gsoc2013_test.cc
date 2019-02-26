@@ -35,6 +35,7 @@
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/top_block.h>
 #include <chrono>
+#include <utility>
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
@@ -60,7 +61,7 @@
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx;
 
-typedef boost::shared_ptr<GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx> GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx_sptr;
+using GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx_sptr = boost::shared_ptr<GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx>;
 
 GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx_make(concurrent_queue<int>& queue);
 
@@ -89,7 +90,7 @@ void GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx::msg_handler_events(pmt::pmt_t ms
 {
     try
         {
-            int64_t message = pmt::to_long(msg);
+            int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
             channel_internal_queue.push(rx_message);
         }
@@ -108,9 +109,7 @@ GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx::GpsL1CaPcpsAcquisitionGSoC2013Test_ms
     rx_message = 0;
 }
 
-GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx::~GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx()
-{
-}
+GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx::~GpsL1CaPcpsAcquisitionGSoC2013Test_msg_rx() = default;
 
 
 // ###########################################################
@@ -124,13 +123,11 @@ protected:
         stop = false;
         message = 0;
         gnss_synchro = Gnss_Synchro();
-        acquisition = 0;
+        acquisition = nullptr;
         init();
     }
 
-    ~GpsL1CaPcpsAcquisitionGSoC2013Test()
-    {
-    }
+    ~GpsL1CaPcpsAcquisitionGSoC2013Test() = default;
 
     void init();
     void config_1();
@@ -546,16 +543,10 @@ TEST_F(GpsL1CaPcpsAcquisitionGSoC2013Test, ValidationOfResults)
                 {
                     EXPECT_EQ(2, message) << "Acquisition failure. Expected message: 2=ACQ FAIL.";
                 }
-#ifdef OLD_BOOST
-            ASSERT_NO_THROW({
-                ch_thread.timed_join(boost::posix_time::seconds(1));
-            }) << "Failure while waiting the queue to stop";
-#endif
-#ifndef OLD_BOOST
+
             ASSERT_NO_THROW({
                 ch_thread.try_join_until(boost::chrono::steady_clock::now() + boost::chrono::milliseconds(50));
             }) << "Failure while waiting the queue to stop";
-#endif
         }
 
     delete acquisition;
@@ -642,16 +633,10 @@ TEST_F(GpsL1CaPcpsAcquisitionGSoC2013Test, ValidationOfResultsProbabilities)
                     std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << std::endl;
                     std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
                 }
-#ifdef OLD_BOOST
-            ASSERT_NO_THROW({
-                ch_thread.timed_join(boost::posix_time::seconds(1));
-            }) << "Failure while waiting the queue to stop";
-#endif
-#ifndef OLD_BOOST
+
             ASSERT_NO_THROW({
                 ch_thread.try_join_until(boost::chrono::steady_clock::now() + boost::chrono::milliseconds(50));
             }) << "Failure while waiting the queue to stop";
-#endif
         }
 
     delete acquisition;

@@ -18,7 +18,7 @@ extern "C"
  * The XER decoder of any ASN.1 type. May be invoked by the application.
  */
     asn_dec_rval_t xer_decode(struct asn_codec_ctx_s *opt_codec_ctx,
-        struct asn_TYPE_descriptor_s *type_descriptor,
+        struct asn_TYPE_descriptor_s *td,
         void **struct_ptr,  /* Pointer to a target structure's pointer */
         const void *buffer, /* Data to be decoded */
         size_t size         /* Size of data buffer */
@@ -66,7 +66,7 @@ extern "C"
         PXER_COMMENT /* A comment, may be part of */
     } pxer_chunk_type_e;
     ssize_t xer_next_token(int *stateContext,
-        const void *buffer, size_t size, pxer_chunk_type_e *_ch_type);
+        const void *buffer, size_t size, pxer_chunk_type_e *ch_type);
 
     /*
  * This function checks the buffer against the tag name is expected to occur.

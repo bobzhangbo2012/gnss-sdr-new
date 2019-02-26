@@ -55,10 +55,10 @@ extern "C"
  * -1/ERANGE: Value encoded is out of range for long representation
  * -1/ENOMEM: Memory allocation failed (in asn_long2INTEGER()).
  */
-    int asn_INTEGER2long(const INTEGER_t *i, long *l);
-    int asn_INTEGER2ulong(const INTEGER_t *i, unsigned long *l);
-    int asn_long2INTEGER(INTEGER_t *i, long l);
-    int asn_ulong2INTEGER(INTEGER_t *i, unsigned long l);
+    int asn_INTEGER2long(const INTEGER_t *iptr, long *lptr);
+    int asn_INTEGER2ulong(const INTEGER_t *iptr, unsigned long *lptr);
+    int asn_long2INTEGER(INTEGER_t *st, long value);
+    int asn_ulong2INTEGER(INTEGER_t *st, unsigned long value);
 
     /*
  * Convert the integer value into the corresponding enumeration map entry.

@@ -104,7 +104,10 @@ int PositionSystemTest::configure_generator()
     if (FLAGS_dynamic_position.empty())
         {
             p2 = std::string("-static_position=") + FLAGS_static_position + std::string(",") + std::to_string(std::min(FLAGS_duration * 10, 3000));
-            if (FLAGS_duration > 300) std::cout << "WARNING: Duration has been set to its maximum value of 300 s" << std::endl;
+            if (FLAGS_duration > 300)
+                {
+                    std::cout << "WARNING: Duration has been set to its maximum value of 300 s" << std::endl;
+                }
         }
     else
         {
@@ -126,7 +129,9 @@ int PositionSystemTest::generate_signal()
 
     int pid;
     if ((pid = fork()) == -1)
-        perror("fork error");
+        {
+            perror("fork error");
+        }
     else if (pid == 0)
         {
             execv(&generator_binary[0], parmList);
@@ -135,7 +140,10 @@ int PositionSystemTest::generate_signal()
         }
 
     wait_result = waitpid(pid, &child_status, 0);
-    if (wait_result == -1) perror("waitpid error");
+    if (wait_result == -1)
+        {
+            perror("waitpid error");
+        }
     return 0;
 }
 
@@ -305,12 +313,12 @@ int PositionSystemTest::configure_receiver()
             config->set_property("PVT.AR_GPS", "PPP-AR");
             config->set_property("PVT.elevation_mask", std::to_string(15));
 
-            config_f = 0;
+            config_f = nullptr;
         }
     else
         {
             config_f = std::make_shared<FileConfiguration>(FLAGS_config_file_ptest);
-            config = 0;
+            config = nullptr;
         }
     return 0;
 }
@@ -374,8 +382,8 @@ bool PositionSystemTest::save_mat_xy(std::vector<double>* x, std::vector<double>
             matvar_t* matvar;
             filename.append(".mat");
             std::cout << "save_mat_xy write " << filename << std::endl;
-            matfp = Mat_CreateVer(filename.c_str(), NULL, MAT_FT_MAT5);
-            if (reinterpret_cast<int64_t*>(matfp) != NULL)
+            matfp = Mat_CreateVer(filename.c_str(), nullptr, MAT_FT_MAT5);
+            if (reinterpret_cast<int64_t*>(matfp) != nullptr)
                 {
                     size_t dims[2] = {1, x->size()};
                     matvar = Mat_VarCreate("x", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, &x[0], 0);
@@ -409,8 +417,8 @@ bool PositionSystemTest::save_mat_x(std::vector<double>* x, std::string filename
             matvar_t* matvar;
             filename.append(".mat");
             std::cout << "save_mat_x write " << filename << std::endl;
-            matfp = Mat_CreateVer(filename.c_str(), NULL, MAT_FT_MAT5);
-            if (reinterpret_cast<int64_t*>(matfp) != NULL)
+            matfp = Mat_CreateVer(filename.c_str(), nullptr, MAT_FT_MAT5);
+            if (reinterpret_cast<int64_t*>(matfp) != nullptr)
                 {
                     size_t dims[2] = {1, x->size()};
                     matvar = Mat_VarCreate("x", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, &x[0], 0);

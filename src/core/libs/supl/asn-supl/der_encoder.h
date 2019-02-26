@@ -20,7 +20,7 @@ extern "C"
  */
     asn_enc_rval_t der_encode(struct asn_TYPE_descriptor_s *type_descriptor,
         void *struct_ptr, /* Structure to be encoded */
-        asn_app_consume_bytes_f *consume_bytes_cb,
+        asn_app_consume_bytes_f *consume_bytes,
         void *app_key /* Arbitrary callback argument */
     );
 
@@ -53,12 +53,12 @@ extern "C"
  * Write out leading TL[v] sequence according to the type definition.
  */
     ssize_t der_write_tags(
-        struct asn_TYPE_descriptor_s *type_descriptor,
+        struct asn_TYPE_descriptor_s *sd,
         size_t struct_length,
         int tag_mode,      /* {-1,0,1}: IMPLICIT, no, EXPLICIT */
         int last_tag_form, /* {0,!0}: prim, constructed */
         ber_tlv_tag_t tag,
-        asn_app_consume_bytes_f *consume_bytes_cb,
+        asn_app_consume_bytes_f *cb,
         void *app_key);
 
 #ifdef __cplusplus

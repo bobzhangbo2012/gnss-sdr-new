@@ -243,7 +243,7 @@ void supl_set_wcdma_cell(supl_ctx_t *ctx, int mcc, int mns, int uc);
 void supl_set_gsm_cell_known(supl_ctx_t *ctx, int mcc, int mns, int lac, int ci, double lat, double lon, int uncert);
 void supl_set_server(supl_ctx_t *ctx, char *server);
 void supl_set_fd(supl_ctx_t *ctx, int fd);
-void supl_request(supl_ctx_t *ctx, int flags);
+void supl_request(supl_ctx_t *ctx, int request);
 
 int supl_get_assist(supl_ctx_t *ctx, char *server, supl_assist_t *assist);
 void supl_set_debug(FILE *log, int flags);
@@ -271,7 +271,7 @@ typedef struct supl_rrlp_s
 void supl_ulp_free(supl_ulp_t *pdu);
 int supl_ulp_encode(supl_ulp_t *pdu);
 int supl_ulp_decode(supl_ulp_t *pdu);
-int supl_decode_rrlp(supl_ulp_t *pdu, PDU_t **rrlp);
+int supl_decode_rrlp(supl_ulp_t *ulp_pdu, PDU_t **ret_rrlp);
 int supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t);
 
 int supl_server_connect(supl_ctx_t *ctx, char *server);

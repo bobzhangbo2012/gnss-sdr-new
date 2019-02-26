@@ -57,7 +57,6 @@ extern "C"
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/serialization/map.hpp>
-#include <glog/logging.h>
 #include <fstream>
 #include <map>
 #include <string>
@@ -206,7 +205,7 @@ public:
     /*!
      * \brief Save Galileo almanac map to XML file
      */
-    bool save_gal_almanac_xml(const std::string& file_name, std::map<int, Galileo_Almanac> gal_almanac);
+    bool save_gal_almanac_xml(const std::string& file_name, std::map<int, Galileo_Almanac> gal_almanac_map);
 
     /*!
      * \brief Read GPS almanac map from XML file
@@ -257,7 +256,7 @@ public:
      * \brief Save ref time map to XML file
      */
     bool save_ref_time_xml(const std::string& file_name,
-        Agnss_Ref_Time& ref_time_map);
+        Agnss_Ref_Time& ref_time);
 
     /*!
      * \brief Read ref location from XML file

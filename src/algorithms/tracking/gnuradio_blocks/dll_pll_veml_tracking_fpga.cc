@@ -42,7 +42,6 @@
 #include "Galileo_E1.h"
 #include "Galileo_E5a.h"
 #include "MATH_CONSTANTS.h"
-#include "control_message_factory.h"
 #include "gnss_sdr_create_directory.h"
 #include "gps_l2c_signal.h"
 #include "gps_l5_signal.h"
@@ -55,6 +54,7 @@
 #include <volk_gnsssdr/volk_gnsssdr.h>
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <iostream>
 #include <sstream>
 
@@ -622,7 +622,14 @@ dll_pll_veml_tracking_fpga::~dll_pll_veml_tracking_fpga()
         }
     if (d_dump_mat)
         {
-            save_matfile();
+            try
+                {
+                    save_matfile();
+                }
+            catch (const std::exception &ex)
+                {
+                    LOG(WARNING) << "Error saving the .mat file: " << ex.what();
+                }
         }
     try
         {

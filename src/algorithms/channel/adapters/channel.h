@@ -80,7 +80,7 @@ public:
     inline Gnss_Signal get_signal() const override { return gnss_signal_; }
     void start_acquisition() override;                          //!< Start the State Machine
     void stop_channel() override;                               //!< Stop the State Machine
-    void set_signal(const Gnss_Signal& gnss_signal_) override;  //!< Sets the channel GNSS signal
+    void set_signal(const Gnss_Signal& gnss_signal) override;  //!< Sets the channel GNSS signal
 
     inline std::shared_ptr<AcquisitionInterface> acquisition() { return acq_; }
     inline std::shared_ptr<TrackingInterface> tracking() { return trk_; }

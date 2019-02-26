@@ -40,8 +40,8 @@
 
 
 // Physical constants
-const double GPS_C_m_s = SPEED_OF_LIGHT;                 //!< The speed of light, [m/s]
-const double GPS_C_m_ms = 299792.4580;                   //!< The speed of light, [m/ms]
+const double GPS_C_M_S = SPEED_OF_LIGHT;                 //!< The speed of light, [m/s]
+const double GPS_C_M_MS = 299792.4580;                   //!< The speed of light, [m/ms]
 const double GPS_PI = 3.1415926535898;                   //!< Pi as defined in IS-GPS-200E
 const double GPS_TWO_PI = 6.283185307179586;             //!< 2Pi as defined in IS-GPS-200E
 const double OMEGA_EARTH_DOT = DEFAULT_OMEGA_EARTH_DOT;  //!< Earth rotation rate, [rad/s]
@@ -72,7 +72,7 @@ const double MAX_TOA_DELAY_MS = 20;
 
 //#define NAVIGATION_SOLUTION_RATE_MS 1000 // this cannot go here
 //const double GPS_STARTOFFSET_ms = 68.802;  //[ms] Initial sign. travel time (this cannot go here)
-const double GPS_STARTOFFSET_ms = 60.0;
+const double GPS_STARTOFFSET_MS = 60.0;
 
 // OBSERVABLE HISTORY DEEP FOR INTERPOLATION
 const int32_t GPS_L1_CA_HISTORY_DEEP = 100;
@@ -118,7 +118,7 @@ const std::vector<std::pair<int32_t, int32_t>> T_GD({{197, 8}});
 const double T_GD_LSB = TWO_N31;
 const std::vector<std::pair<int32_t, int32_t>> IODC({{83, 2}, {211, 8}});
 const std::vector<std::pair<int32_t, int32_t>> T_OC({{219, 16}});
-const double T_OC_LSB = TWO_P4;
+const int32_t T_OC_LSB = static_cast<int32_t>(TWO_P4);
 const std::vector<std::pair<int32_t, int32_t>> A_F2({{241, 8}});
 const double A_F2_LSB = TWO_N55;
 const std::vector<std::pair<int32_t, int32_t>> A_F1({{249, 16}});
@@ -143,7 +143,7 @@ const double C_US_LSB = TWO_N29;
 const std::vector<std::pair<int32_t, int32_t>> SQRT_A({{227, 8}, {241, 24}});
 const double SQRT_A_LSB = TWO_N19;
 const std::vector<std::pair<int32_t, int32_t>> T_OE({{271, 16}});
-const double T_OE_LSB = TWO_P4;
+const int32_t T_OE_LSB = static_cast<int32_t>(TWO_P4);
 const std::vector<std::pair<int32_t, int32_t>> FIT_INTERVAL_FLAG({{271, 1}});
 const std::vector<std::pair<int32_t, int32_t>> AODO({{272, 5}});
 const int32_t AODO_LSB = 900;

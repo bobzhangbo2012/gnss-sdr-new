@@ -47,8 +47,8 @@ extern "C"
  * It will always be lesser than or equal to the specified _size.
  * The next invocation of this function must account the difference.
  */
-    ssize_t pxml_parse(int *_stateContext, const void *_buf, size_t _size,
-        pxml_callback_f *cb, void *_key);
+    ssize_t pxml_parse(int *stateContext, const void *xmlbuf, size_t size,
+        pxml_callback_f *cb, void *key);
 
 #ifdef __cplusplus
 }

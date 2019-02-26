@@ -50,7 +50,7 @@
 
 class galileo_telemetry_decoder_cc;
 
-typedef boost::shared_ptr<galileo_telemetry_decoder_cc> galileo_telemetry_decoder_cc_sptr;
+using galileo_telemetry_decoder_cc_sptr = boost::shared_ptr<galileo_telemetry_decoder_cc>;
 
 galileo_telemetry_decoder_cc_sptr galileo_make_telemetry_decoder_cc(const Gnss_Satellite &satellite, int frame_type, bool dump);
 
@@ -80,7 +80,7 @@ private:
 
     void deinterleaver(int32_t rows, int32_t cols, const double *in, double *out);
 
-    void decode_INAV_word(double *symbols, int32_t frame_length);
+    void decode_INAV_word(double *page_part_symbols, int32_t frame_length);
     void decode_FNAV_word(double *page_symbols, int32_t frame_length);
 
     int d_frame_type;

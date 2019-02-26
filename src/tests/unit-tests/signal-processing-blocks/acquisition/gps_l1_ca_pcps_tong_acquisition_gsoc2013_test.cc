@@ -36,6 +36,7 @@
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/top_block.h>
 #include <chrono>
+#include <utility>
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
@@ -58,7 +59,7 @@
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx;
 
-typedef boost::shared_ptr<GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx> GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr;
+using GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr = boost::shared_ptr<GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx>;
 
 GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_make(concurrent_queue<int>& queue);
 
@@ -87,7 +88,7 @@ void GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_events(pmt::pmt_
 {
     try
         {
-            int64_t message = pmt::to_long(msg);
+            int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
             channel_internal_queue.push(rx_message);
         }
@@ -106,9 +107,7 @@ GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::GpsL1CaPcpsTongAcquisitionGSoC201
     rx_message = 0;
 }
 
-GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::~GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx()
-{
-}
+GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::~GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx() = default;
 
 
 // ###########################################################
@@ -124,9 +123,7 @@ protected:
         gnss_synchro = Gnss_Synchro();
     }
 
-    ~GpsL1CaPcpsTongAcquisitionGSoC2013Test()
-    {
-    }
+    ~GpsL1CaPcpsTongAcquisitionGSoC2013Test() = default;
 
     void init();
     void config_1();

@@ -40,8 +40,8 @@
 
 
 // Physical constants
-const double GPS_L5_C_m_s = 299792458.0;                //!< The speed of light, [m/s]
-const double GPS_L5_C_m_ms = 299792.4580;               //!< The speed of light, [m/ms]
+const double GPS_L5_C_M_S = 299792458.0;                //!< The speed of light, [m/s]
+const double GPS_L5_C_M_MS = 299792.4580;               //!< The speed of light, [m/ms]
 const double GPS_L5_PI = 3.1415926535898;               //!< Pi as defined in IS-GPS-200E
 const double GPS_L5_TWO_PI = 6.283185307179586;         //!< 2Pi as defined in IS-GPS-200E
 const double GPS_L5_OMEGA_EARTH_DOT = 7.2921151467e-5;  //!< Earth rotation rate, [rad/s]
@@ -51,16 +51,16 @@ const double GPS_L5_F = -4.442807633e-10;               //!< Constant, [s/(m)^(1
 // carrier and code frequencies
 const double GPS_L5_FREQ_HZ = FREQ5;  //!< L5 [Hz]
 
-const double GPS_L5i_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
-const int32_t GPS_L5i_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i  code length [chips]
-const double GPS_L5i_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
-const int32_t GPS_L5i_PERIOD_MS = 1;              //!< GPS L5 code period [ms]
-const double GPS_L5i_SYMBOL_PERIOD = 0.01;        //!< GPS L5 symbol period [seconds]
-const int32_t GPS_L5i_SYMBOL_PERIOD_MS = 10;      //!< GPS L5 symbol period [ms]
+const double GPS_L5I_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
+const int32_t GPS_L5I_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i  code length [chips]
+const double GPS_L5I_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
+const int32_t GPS_L5I_PERIOD_MS = 1;              //!< GPS L5 code period [ms]
+const double GPS_L5I_SYMBOL_PERIOD = 0.01;        //!< GPS L5 symbol period [seconds]
+const int32_t GPS_L5I_SYMBOL_PERIOD_MS = 10;      //!< GPS L5 symbol period [ms]
 
-const double GPS_L5q_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
-const int32_t GPS_L5q_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i code length [chips]
-const double GPS_L5q_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
+const double GPS_L5Q_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
+const int32_t GPS_L5Q_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i code length [chips]
+const double GPS_L5Q_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
 
 const int32_t GPS_L5_HISTORY_DEEP = 5;
 
@@ -186,11 +186,11 @@ const int32_t GPS_L5_SYMBOLS_PER_BIT = 2;
 const int32_t GPS_L5_SAMPLES_PER_SYMBOL = 10;
 const int32_t GPS_L5_CNAV_DATA_PAGE_SYMBOLS = 600;
 const int32_t GPS_L5_CNAV_DATA_PAGE_DURATION_S = 6;
-const int32_t GPS_L5i_NH_CODE_LENGTH = 10;
+const int32_t GPS_L5I_NH_CODE_LENGTH = 10;
 const int32_t GPS_L5i_NH_CODE[10] = {0, 0, 0, 0, 1, 1, 0, 1, 0, 1};
-const std::string GPS_L5i_NH_CODE_STR = "0000110101";
-const int32_t GPS_L5q_NH_CODE_LENGTH = 20;
+const std::string GPS_L5I_NH_CODE_STR = "0000110101";
+const int32_t GPS_L5Q_NH_CODE_LENGTH = 20;
 const int32_t GPS_L5q_NH_CODE[20] = {0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0};
-const std::string GPS_L5q_NH_CODE_STR = "00000100110101001110";
+const std::string GPS_L5Q_NH_CODE_STR = "00000100110101001110";
 
 #endif /* GNSS_SDR_GPS_L5_H_ */

@@ -35,6 +35,7 @@
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/top_block.h>
 #include <chrono>
+#include <utility>
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
@@ -60,7 +61,7 @@
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx;
 
-typedef boost::shared_ptr<GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx> GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_sptr;
+using GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_sptr = boost::shared_ptr<GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx>;
 
 GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_sptr GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_make(concurrent_queue<int>& queue);
 
@@ -89,7 +90,7 @@ void GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx::msg_handler_events(pmt::pmt_
 {
     try
         {
-            int64_t message = pmt::to_long(msg);
+            int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
             channel_internal_queue.push(rx_message);
         }
@@ -109,9 +110,7 @@ GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx::GlonassL1CaPcpsAcquisitionGSoC201
 }
 
 
-GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx::~GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx()
-{
-}
+GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx::~GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx() = default;
 
 
 // ###########################################################
@@ -125,13 +124,11 @@ protected:
         stop = false;
         message = 0;
         gnss_synchro = Gnss_Synchro();
-        acquisition = 0;
+        acquisition = nullptr;
         init();
     }
 
-    ~GlonassL1CaPcpsAcquisitionGSoC2017Test()
-    {
-    }
+    ~GlonassL1CaPcpsAcquisitionGSoC2017Test() = default;
 
     void init();
     void config_1();
@@ -370,12 +367,12 @@ void GlonassL1CaPcpsAcquisitionGSoC2017Test::wait_message()
         {
             acquisition->reset();
 
-            gettimeofday(&tv, NULL);
+            gettimeofday(&tv, nullptr);
             begin = tv.tv_sec * 1e6 + tv.tv_usec;
 
             channel_internal_queue.wait_and_pop(message);
 
-            gettimeofday(&tv, NULL);
+            gettimeofday(&tv, nullptr);
             end = tv.tv_sec * 1e6 + tv.tv_usec;
 
             mean_acq_time_us += (end - begin);
@@ -553,16 +550,10 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResults)
                 {
                     EXPECT_EQ(2, message) << "Acquisition failure. Expected message: 2=ACQ FAIL.";
                 }
-#ifdef OLD_BOOST
-            ASSERT_NO_THROW({
-                ch_thread.timed_join(boost::posix_time::seconds(1));
-            }) << "Failure while waiting the queue to stop.";
-#endif
-#ifndef OLD_BOOST
+
             ASSERT_NO_THROW({
                 ch_thread.try_join_until(boost::chrono::steady_clock::now() + boost::chrono::milliseconds(50));
             }) << "Failure while waiting the queue to stop";
-#endif
         }
 
     delete acquisition;
@@ -649,18 +640,11 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResultsProbabilities)
                     std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << std::endl;
                     std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
                 }
-#ifdef OLD_BOOST
-            ASSERT_NO_THROW({
-                ch_thread.timed_join(boost::posix_time::seconds(1));
-            }) << "Failure while waiting the queue to stop"
-               << std::endl;
-#endif
-#ifndef OLD_BOOST
+
             ASSERT_NO_THROW({
                 ch_thread.try_join_until(boost::chrono::steady_clock::now() + boost::chrono::milliseconds(50));
             }) << "Failure while waiting the queue to stop"
                << std::endl;
-#endif
         }
 
     delete acquisition;

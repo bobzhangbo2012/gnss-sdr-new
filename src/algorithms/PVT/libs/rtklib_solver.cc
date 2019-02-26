@@ -52,6 +52,7 @@
  * -----------------------------------------------------------------------*/
 
 #include "rtklib_solver.h"
+#include "Beidou_B1I.h"
 #include "GLONASS_L1_L2_CA.h"
 #include "GPS_L1_CA.h"
 #include "Galileo_E1.h"
@@ -59,6 +60,7 @@
 #include "rtklib_solution.h"
 #include <glog/logging.h>
 #include <matio.h>
+#include <exception>
 #include <utility>
 
 
@@ -74,7 +76,10 @@ rtklib_solver::rtklib_solver(int nchannels, std::string dump_filename, bool flag
     count_valid_position = 0;
     this->set_averaging_flag(false);
     rtk_ = rtk;
-    for (double &i : dop_) i = 0.0;
+    for (double &i : dop_)
+        {
+            i = 0.0;
+        }
     pvt_sol = {{0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, '0', '0', '0', 0, 0, 0};
     ssat_t ssat0 = {0, 0, {0.0}, {0.0}, {0.0}, {'0'}, {'0'}, {'0'}, {'0'}, {'0'}, {}, {}, {}, {}, 0.0, 0.0, 0.0, 0.0, {{{0, 0}}, {{0, 0}}}, {{}, {}}};
     for (auto &i : pvt_ssat)
@@ -88,16 +93,45 @@ rtklib_solver::rtklib_solver(int nchannels, std::string dump_filename, bool flag
                 {
                     try
                         {
-                            d_dump_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+                            d_dump_file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
                             d_dump_file.open(d_dump_filename.c_str(), std::ios::out | std::ios::binary);
                             LOG(INFO) << "PVT lib dump enabled Log file: " << d_dump_filename.c_str();
                         }
-                    catch (const std::ifstream::failure &e)
+                    catch (const std::ofstream::failure &e)
                         {
                             LOG(WARNING) << "Exception opening RTKLIB dump file " << e.what();
                         }
                 }
         }
+    // PVT MONITOR
+    monitor_pvt.TOW_at_current_symbol_ms = 0U;
+    monitor_pvt.week = 0U;
+    monitor_pvt.RX_time = 0.0;
+    monitor_pvt.user_clk_offset = 0.0;
+    monitor_pvt.pos_x = 0.0;
+    monitor_pvt.pos_y = 0.0;
+    monitor_pvt.pos_z = 0.0;
+    monitor_pvt.vel_x = 0.0;
+    monitor_pvt.vel_y = 0.0;
+    monitor_pvt.vel_z = 0.0;
+    monitor_pvt.cov_xx = 0.0;
+    monitor_pvt.cov_yy = 0.0;
+    monitor_pvt.cov_zz = 0.0;
+    monitor_pvt.cov_xy = 0.0;
+    monitor_pvt.cov_yz = 0.0;
+    monitor_pvt.cov_zx = 0.0;
+    monitor_pvt.latitude = 0.0;
+    monitor_pvt.longitude = 0.0;
+    monitor_pvt.height = 0.0;
+    monitor_pvt.valid_sats = 0;
+    monitor_pvt.solution_status = 0;
+    monitor_pvt.solution_type = 0;
+    monitor_pvt.AR_ratio_factor = 0.0;
+    monitor_pvt.AR_ratio_threshold = 0.0;
+    monitor_pvt.gdop = 0.0;
+    monitor_pvt.pdop = 0.0;
+    monitor_pvt.hdop = 0.0;
+    monitor_pvt.vdop = 0.0;
 }
 
 bool rtklib_solver::save_matfile()
@@ -396,6 +430,7 @@ bool rtklib_solver::save_matfile()
     return true;
 }
 
+
 rtklib_solver::~rtklib_solver()
 {
     if (d_dump_file.is_open() == true)
@@ -411,7 +446,14 @@ rtklib_solver::~rtklib_solver()
         }
     if (d_flag_dump_mat_enabled)
         {
-            save_matfile();
+            try
+                {
+                    save_matfile();
+                }
+            catch (const std::exception &ex)
+                {
+                    LOG(WARNING) << "Exception in destructor saving the PVT .mat dump file " << ex.what();
+                }
         }
 }
 
@@ -439,6 +481,10 @@ double rtklib_solver::get_vdop() const
     return dop_[3];
 }
 
+Monitor_Pvt rtklib_solver::get_monitor_pvt() const
+{
+    return monitor_pvt;
+}
 
 bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_map, bool flag_averaging)
 {
@@ -447,6 +493,8 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
     std::map<int, Gps_Ephemeris>::const_iterator gps_ephemeris_iter;
     std::map<int, Gps_CNAV_Ephemeris>::const_iterator gps_cnav_ephemeris_iter;
     std::map<int, Glonass_Gnav_Ephemeris>::const_iterator glonass_gnav_ephemeris_iter;
+    std::map<int, Beidou_Dnav_Ephemeris>::const_iterator beidou_ephemeris_iter;
+
     const Glonass_Gnav_Utc_Model gnav_utc = this->glonass_gnav_utc_model;
 
     this->set_averaging_flag(flag_averaging);
@@ -489,7 +537,10 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                     }
                 }
         }
-    if (band1 == true and band2 == true) gps_dual_band = true;
+    if (band1 == true and band2 == true)
+        {
+            gps_dual_band = true;
+        }
 
     for (gnss_observables_iter = gnss_observables_map.cbegin();
          gnss_observables_iter != gnss_observables_map.cend();
@@ -756,6 +807,34 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                             }
                         break;
                     }
+                case 'C':
+                    {
+                        // BEIDOU B1I
+                        //  - find the ephemeris for the current BEIDOU SV observation. The SV PRN ID is the map key
+                        std::string sig_(gnss_observables_iter->second.Signal);
+                        if (sig_ == "B1")
+                            {
+                                beidou_ephemeris_iter = beidou_dnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
+                                if (beidou_ephemeris_iter != beidou_dnav_ephemeris_map.cend())
+                                    {
+                                        // convert ephemeris from GNSS-SDR class to RTKLIB structure
+                                        eph_data[valid_obs] = eph_to_rtklib(beidou_ephemeris_iter->second);
+                                        // convert observation from GNSS-SDR class to RTKLIB structure
+                                        obsd_t newobs = {{0, 0}, '0', '0', {}, {}, {}, {}, {}, {}};
+                                        obs_data[valid_obs + glo_valid_obs] = insert_obs_to_rtklib(newobs,
+                                            gnss_observables_iter->second,
+                                            beidou_ephemeris_iter->second.i_BEIDOU_week + 1356,
+                                            0);
+                                        valid_obs++;
+                                    }
+                                else  // the ephemeris are not available for this SV
+                                    {
+                                        DLOG(INFO) << "No ephemeris data for SV " << gnss_observables_iter->first;
+                                    }
+                            }
+                        break;
+                    }
+
                 default:
                     DLOG(INFO) << "Hybrid observables: Unknown GNSS";
                     break;
@@ -820,7 +899,10 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                                 }
                         }
 
-                    if (index_aux > 0) dops(index_aux, azel.data(), 0.0, dop_.data());
+                    if (index_aux > 0)
+                        {
+                            dops(index_aux, azel.data(), 0.0, dop_.data());
+                        }
                     this->set_valid_position(true);
                     arma::vec rx_position_and_time(4);
                     rx_position_and_time(0) = pvt_sol.rr[0];  // [m]
@@ -834,7 +916,7 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                         }
                     else
                         {
-                            rx_position_and_time(3) = pvt_sol.dtr[0] / GPS_C_m_s;  // the receiver clock offset is expressed in [meters], so we convert it into [s]
+                            rx_position_and_time(3) = pvt_sol.dtr[0] / GPS_C_M_S;  // the receiver clock offset is expressed in [meters], so we convert it into [s]
                         }
                     this->set_rx_pos(rx_position_and_time.rows(0, 2));  // save ECEF position for the next iteration
 
@@ -849,7 +931,10 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                     if (ground_speed_ms >= 1.0)
                         {
                             new_cog = atan2(enuv[0], enuv[1]) * R2D;
-                            if (new_cog < 0.0) new_cog += 360.0;
+                            if (new_cog < 0.0)
+                                {
+                                    new_cog += 360.0;
+                                }
                             this->set_course_over_ground(new_cog);
                         }
 
@@ -867,7 +952,7 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                     gtime_t rtklib_time = gpst2time(adjgpsweek(nav_data.eph[0].week), gnss_observables_map.begin()->second.RX_time);
                     gtime_t rtklib_utc_time = gpst2utc(rtklib_time);
                     p_time = boost::posix_time::from_time_t(rtklib_utc_time.time);
-                    p_time += boost::posix_time::microseconds(static_cast<long>(round(rtklib_utc_time.sec * 1e6)));
+                    p_time += boost::posix_time::microseconds(static_cast<long>(round(rtklib_utc_time.sec * 1e6)));  // NOLINT(google-runtime-int)
                     this->set_position_UTC_time(p_time);
                     cart2geo(static_cast<double>(rx_position_and_time(0)), static_cast<double>(rx_position_and_time(1)), static_cast<double>(rx_position_and_time(2)), 4);
 
@@ -875,6 +960,58 @@ bool rtklib_solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                                << " is Lat = " << this->get_latitude() << " [deg], Long = " << this->get_longitude()
                                << " [deg], Height= " << this->get_height() << " [m]"
                                << " RX time offset= " << this->get_time_offset_s() << " [s]";
+
+                    // PVT MONITOR
+
+                    // TOW
+                    monitor_pvt.TOW_at_current_symbol_ms = gnss_observables_map.begin()->second.TOW_at_current_symbol_ms;
+                    // WEEK
+                    monitor_pvt.week = adjgpsweek(nav_data.eph[0].week);
+                    // PVT GPS time
+                    monitor_pvt.RX_time = gnss_observables_map.begin()->second.RX_time;
+                    // User clock offset [s]
+                    monitor_pvt.user_clk_offset = rx_position_and_time(3);
+
+                    // ECEF POS X,Y,X [m] + ECEF VEL X,Y,X [m/s] (6 x double)
+                    monitor_pvt.pos_x = pvt_sol.rr[0];
+                    monitor_pvt.pos_y = pvt_sol.rr[1];
+                    monitor_pvt.pos_z = pvt_sol.rr[2];
+                    monitor_pvt.vel_x = pvt_sol.rr[3];
+                    monitor_pvt.vel_y = pvt_sol.rr[4];
+                    monitor_pvt.vel_z = pvt_sol.rr[5];
+
+                    // position variance/covariance (m^2) {c_xx,c_yy,c_zz,c_xy,c_yz,c_zx} (6 x double)
+                    monitor_pvt.cov_xx = pvt_sol.qr[0];
+                    monitor_pvt.cov_yy = pvt_sol.qr[1];
+                    monitor_pvt.cov_zz = pvt_sol.qr[2];
+                    monitor_pvt.cov_xy = pvt_sol.qr[3];
+                    monitor_pvt.cov_yz = pvt_sol.qr[4];
+                    monitor_pvt.cov_zx = pvt_sol.qr[5];
+
+                    // GEO user position Latitude [deg]
+                    monitor_pvt.latitude = get_latitude();
+                    // GEO user position Longitude [deg]
+                    monitor_pvt.longitude = get_longitude();
+                    // GEO user position Height [m]
+                    monitor_pvt.height = get_height();
+
+                    // NUMBER OF VALID SATS
+                    monitor_pvt.valid_sats = pvt_sol.ns;
+                    // RTKLIB solution status
+                    monitor_pvt.solution_status = pvt_sol.stat;
+                    // RTKLIB solution type (0:xyz-ecef,1:enu-baseline)
+                    monitor_pvt.solution_type = pvt_sol.type;
+                    // AR ratio factor for validation
+                    monitor_pvt.AR_ratio_factor = pvt_sol.ratio;
+                    // AR ratio threshold for validation
+                    monitor_pvt.AR_ratio_threshold = pvt_sol.thres;
+
+                    // GDOP / PDOP/ HDOP/ VDOP
+                    monitor_pvt.gdop = dop_[0];
+                    monitor_pvt.pdop = dop_[1];
+                    monitor_pvt.hdop = dop_[2];
+                    monitor_pvt.vdop = dop_[3];
+
 
                     // ######## LOG FILE #########
                     if (d_flag_dump_enabled == true)

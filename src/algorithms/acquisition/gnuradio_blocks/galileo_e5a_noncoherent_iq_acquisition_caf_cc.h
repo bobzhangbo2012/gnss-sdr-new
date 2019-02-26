@@ -47,7 +47,7 @@
 
 class galileo_e5a_noncoherentIQ_acquisition_caf_cc;
 
-typedef boost::shared_ptr<galileo_e5a_noncoherentIQ_acquisition_caf_cc> galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr;
+using galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr = boost::shared_ptr<galileo_e5a_noncoherentIQ_acquisition_caf_cc>;
 
 galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr
 galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(unsigned int sampled_ms,
@@ -183,7 +183,7 @@ public:
       * \brief Sets local code for PCPS acquisition algorithm.
       * \param code - Pointer to the PRN code.
       */
-    void set_local_code(std::complex<float>* code, std::complex<float>* codeQ);
+    void set_local_code(std::complex<float>* codeI, std::complex<float>* codeQ);
 
     /*!
       * \brief Starts acquisition algorithm, turning from standby mode to

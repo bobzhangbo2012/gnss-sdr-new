@@ -39,7 +39,7 @@
 class observables_dump_reader
 {
 public:
-    observables_dump_reader(int n_channels);
+    observables_dump_reader(int n_channels_);
     ~observables_dump_reader();
     bool read_binary_obs();
     bool restart();

@@ -47,7 +47,7 @@
 
 class dll_pll_veml_tracking;
 
-typedef boost::shared_ptr<dll_pll_veml_tracking> dll_pll_veml_tracking_sptr;
+using dll_pll_veml_tracking_sptr = boost::shared_ptr<dll_pll_veml_tracking>;
 
 dll_pll_veml_tracking_sptr dll_pll_veml_make_tracking(const Dll_Pll_Conf &conf_);
 
@@ -107,7 +107,8 @@ private:
     std::string *d_secondary_code_string;
     std::string signal_pretty_name;
 
-    int32_t *d_gps_l1ca_preambles_symbols;
+    int32_t *d_preambles_symbols;
+    int32_t d_preamble_length_symbols;
     boost::circular_buffer<float> d_symbol_history;
 
     //tracking state machine

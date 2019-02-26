@@ -152,7 +152,7 @@ rtl_tcp_signal_source_c::rtl_tcp_signal_source_c(const std::string &address,
 }
 
 
-rtl_tcp_signal_source_c::~rtl_tcp_signal_source_c()
+rtl_tcp_signal_source_c::~rtl_tcp_signal_source_c()  // NOLINT(modernize-use-equals-default)
 {
     mutex_.unlock();
     io_service_.stop();
@@ -333,7 +333,7 @@ int rtl_tcp_signal_source_c::work(int noutput_items,
     gr_vector_const_void_star & /*input_items*/,
     gr_vector_void_star &output_items)
 {
-    gr_complex *out = reinterpret_cast<gr_complex *>(output_items[0]);
+    auto *out = reinterpret_cast<gr_complex *>(output_items[0]);
     int i = 0;
     if (io_service_.stopped())
         {
