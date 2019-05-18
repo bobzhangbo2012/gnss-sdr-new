@@ -12,7 +12,7 @@ In the L1 band:
  - &#128752; GPS L1 C/A (centered at 1575.42 MHz) :white_check_mark:
  - &#128752; Galileo E1b/c (centered at 1575.42 MHz) :white_check_mark:
  - &#128752; BeiDou B1I (centered at 1561.098 MHz) :white_check_mark:
- - &#128752; GPS-Like L1 C/A (centered at 1575.42MHz) :white_check_mark;
+ - &#128752; GPS-Like L1 C/A (centered at 1575.42MHz) :white_check_mark:
  - &#128752; BeiDou-Like B1I (centered at 1561.098 MHz) :white_check_mark:
 
 In the L2 band:
