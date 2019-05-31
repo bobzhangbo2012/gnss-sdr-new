@@ -16,6 +16,7 @@
 # along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
 #
 
+#set(CMAKE_CXX_FLAGS “${CMAKE_CXX_FLAGS} -D_FORCE_INLINES”)
 ################################################################################
 # Project setup
 ################################################################################
@@ -24,6 +25,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 cmake_minimum_required(VERSION 2.8.12)
+
 project(gnss-sdr CXX C)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
