@@ -1688,8 +1688,10 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             // take into account that the RINEX obs with the RX time (integer ms) CAN NOT be corrected to keep the coherence in obs time
                             //        it->second.Pseudorange_m = it->second.Pseudorange_m - d_pvt_solver->get_time_offset_s() * GPS_C_m_s;
                             //    }
+                            // TODO: 调整定位与否与输出的关系：不管定位是否成功，但跟踪到的卫星信息必须输出
+                            bool flag_is_valid_position = d_pvt_solver->get_PVT(gnss_observables_map, false);
 
-                            if (d_pvt_solver->get_PVT(gnss_observables_map, false))
+                            if (flag_is_valid_position)
                                 {
                                     double Rx_clock_offset_s = d_pvt_solver->get_time_offset_s();
                                     if (fabs(Rx_clock_offset_s) > 0.001)
@@ -1704,6 +1706,56 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                             //save_gnss_synchro_map_xml("./gnss_synchro_map.xml");
                                             //getchar(); //stop the execution
                                             //end debug
+
+                                            // 将first_fix代码提前
+                                            if (first_fix == true)
+                                                {
+                                                    if (d_show_local_time_zone)
+                                                        {
+                                                            boost::posix_time::ptime time_first_solution = d_pvt_solver->get_position_UTC_time() + d_utc_diff_time;
+                                                            std::cout << "First position fix at " << time_first_solution << d_local_time_str;
+                                                        }
+                                                    else
+                                                        {
+                                                            std::cout << "First position fix at " << d_pvt_solver->get_position_UTC_time() << " UTC";
+                                                        }
+                                                    std::cout << " is Lat = " << d_pvt_solver->get_latitude() << " [deg], Long = " << d_pvt_solver->get_longitude()
+                                                              << " [deg], Height= " << d_pvt_solver->get_height() << " [m]" << std::endl;
+                                                    ttff_msgbuf ttff;
+                                                    ttff.mtype = 1;
+                                                    end = std::chrono::system_clock::now();
+                                                    std::chrono::duration<double> elapsed_seconds = end - start;
+                                                    ttff.ttff = elapsed_seconds.count();
+                                                    send_sys_v_ttff_msg(ttff);
+                                                    first_fix = false;
+                                                }
+                                                
+                                            if (d_kml_output_enabled)
+                                                {
+                                                    d_kml_dump->print_position(d_pvt_solver, false);
+                                                }
+                                            if (d_gpx_output_enabled)
+                                                {
+                                                    d_gpx_dump->print_position(d_pvt_solver, false);
+                                                }
+                                            if (d_geojson_output_enabled)
+                                                {
+                                                    d_geojson_printer->print_position(d_pvt_solver, false);
+                                                }
+                                            if (d_nmea_output_file_enabled)
+                                                {
+                                                    d_nmea_printer->Print_Nmea_Line(d_pvt_solver, false);
+                                                }
+                                        }
+                                }
+
+                                if(1)
+                                {
+                                        // 将fix与存储代码分离，不fix依然能够存储RTCM和RINEX
+
+                                        if(1)
+                                        {
+
                                             if (d_display_rate_ms != 0)
                                                 {
                                                     if (current_RX_time_ms % d_display_rate_ms == 0)
@@ -1760,43 +1812,43 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                         }
                                                 }
 
-                                            if (first_fix == true)
-                                                {
-                                                    if (d_show_local_time_zone)
-                                                        {
-                                                            boost::posix_time::ptime time_first_solution = d_pvt_solver->get_position_UTC_time() + d_utc_diff_time;
-                                                            std::cout << "First position fix at " << time_first_solution << d_local_time_str;
-                                                        }
-                                                    else
-                                                        {
-                                                            std::cout << "First position fix at " << d_pvt_solver->get_position_UTC_time() << " UTC";
-                                                        }
-                                                    std::cout << " is Lat = " << d_pvt_solver->get_latitude() << " [deg], Long = " << d_pvt_solver->get_longitude()
-                                                              << " [deg], Height= " << d_pvt_solver->get_height() << " [m]" << std::endl;
-                                                    ttff_msgbuf ttff;
-                                                    ttff.mtype = 1;
-                                                    end = std::chrono::system_clock::now();
-                                                    std::chrono::duration<double> elapsed_seconds = end - start;
-                                                    ttff.ttff = elapsed_seconds.count();
-                                                    send_sys_v_ttff_msg(ttff);
-                                                    first_fix = false;
-                                                }
-                                            if (d_kml_output_enabled)
-                                                {
-                                                    d_kml_dump->print_position(d_pvt_solver, false);
-                                                }
-                                            if (d_gpx_output_enabled)
-                                                {
-                                                    d_gpx_dump->print_position(d_pvt_solver, false);
-                                                }
-                                            if (d_geojson_output_enabled)
-                                                {
-                                                    d_geojson_printer->print_position(d_pvt_solver, false);
-                                                }
-                                            if (d_nmea_output_file_enabled)
-                                                {
-                                                    d_nmea_printer->Print_Nmea_Line(d_pvt_solver, false);
-                                                }
+                                            // if (first_fix == true)
+                                            //     {
+                                            //         if (d_show_local_time_zone)
+                                            //             {
+                                            //                 boost::posix_time::ptime time_first_solution = d_pvt_solver->get_position_UTC_time() + d_utc_diff_time;
+                                            //                 std::cout << "First position fix at " << time_first_solution << d_local_time_str;
+                                            //             }
+                                            //         else
+                                            //             {
+                                            //                 std::cout << "First position fix at " << d_pvt_solver->get_position_UTC_time() << " UTC";
+                                            //             }
+                                            //         std::cout << " is Lat = " << d_pvt_solver->get_latitude() << " [deg], Long = " << d_pvt_solver->get_longitude()
+                                            //                   << " [deg], Height= " << d_pvt_solver->get_height() << " [m]" << std::endl;
+                                            //         ttff_msgbuf ttff;
+                                            //         ttff.mtype = 1;
+                                            //         end = std::chrono::system_clock::now();
+                                            //         std::chrono::duration<double> elapsed_seconds = end - start;
+                                            //         ttff.ttff = elapsed_seconds.count();
+                                            //         send_sys_v_ttff_msg(ttff);
+                                            //         first_fix = false;
+                                            //     }
+                                            // if (d_kml_output_enabled)
+                                            //     {
+                                            //         d_kml_dump->print_position(d_pvt_solver, false);
+                                            //     }
+                                            // if (d_gpx_output_enabled)
+                                            //     {
+                                            //         d_gpx_dump->print_position(d_pvt_solver, false);
+                                            //     }
+                                            // if (d_geojson_output_enabled)
+                                            //     {
+                                            //         d_geojson_printer->print_position(d_pvt_solver, false);
+                                            //     }
+                                            // if (d_nmea_output_file_enabled)
+                                            //     {
+                                            //         d_nmea_printer->Print_Nmea_Line(d_pvt_solver, false);
+                                            //     }
 
                                             /*
                                              *   TYPE  |  RECEIVER
