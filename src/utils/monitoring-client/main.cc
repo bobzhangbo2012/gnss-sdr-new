@@ -1,4 +1,5 @@
 #include "gnss_synchro_udp_source.h"
+// #include "monitor_pvt_udp_source.h"
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <chrono>
@@ -24,8 +25,11 @@ int main(int argc, char* argv[])
             printw("Listening on port %d UDP...\n", port);
             refresh();  // Update the screen.
 
+            udp_source.print_variable_names_column();
+
             while (true)
                 {
+                    udp_source.print_values_column();
                     udp_source.print_table();
                 }
         }

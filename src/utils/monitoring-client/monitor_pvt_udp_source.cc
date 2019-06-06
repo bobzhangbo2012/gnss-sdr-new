@@ -1,74 +1,47 @@
-#include "gnss_synchro_udp_source.h"
-#include <boost/archive/binary_iarchive.hpp>
-#include "gnss_synchro.pb.h"
-#include <sstream>
-#include <ncurses.h>
+/*!
+ * \file monitor_pvt_udp_source.cc
+ * \brief Implementation of a class that recovers serialized Monitor_Pvt
+ * objects from a udp socket
+ * \author Álvaro Cebrián Juan, 2019. acebrianjuan(at)gmail.com
+ *
+ * -------------------------------------------------------------------------
+ *
+ * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ *
+ * GNSS-SDR is a software defined Global Navigation
+ *          Satellite Systems receiver
+ *
+ * This file is part of GNSS-SDR.
+ *
+ * GNSS-SDR is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * GNSS-SDR is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * -------------------------------------------------------------------------
+ */
 
-Gnss_Synchro_Udp_Source::Gnss_Synchro_Udp_Source(const unsigned short port) :
-    socket{io_service},
-    endpoint{boost::asio::ip::udp::v4(), port}
+#include "monitor_pvt_udp_source.h"
+#include <boost/archive/binary_iarchive.hpp>
+#include <ncurses.h>
+#include <sstream>
+
+Monitor_Pvt_Udp_Source::Monitor_Pvt_Udp_Source(const unsigned short& port) : socket{io_service},
+                                                                             endpoint{boost::asio::ip::udp::v4(), port}
 {
     socket.open(endpoint.protocol(), error);  // Open socket.
     socket.bind(endpoint, error);             // Bind the socket to the given local endpoint.
 }
 
-bool Gnss_Synchro_Udp_Source::read_gnss_synchro(gnss_sdr::Observables& stocks)
-{
-    char buff[1500];  // Buffer for storing the received data.
-
-    // This call will block until one or more bytes of data has been received.
-    int bytes = socket.receive(boost::asio::buffer(buff));
-
-    std::string data(&buff[0], bytes);
-    // Deserialize a stock of Gnss_Synchro objects from the binary string.
-    return stocks.ParseFromString(data);
-}
-
-void Gnss_Synchro_Udp_Source::populate_channels(gnss_sdr::Observables& stocks)
-{
-    for (std::size_t i = 0; i < stocks.observable_size(); i++)
-        {
-            gnss_sdr::GnssSynchro ch = stocks.observable(i);
-            if (ch.fs() != 0)  // Channel is valid.
-                {
-                    channels[ch.channel_id()] = ch;
-                }
-        }
-}
-
-bool Gnss_Synchro_Udp_Source::print_table()
-{
-    if (read_gnss_synchro(stocks))
-        {
-            populate_channels(stocks);
-
-            clear();  // Clear the screen.
-
-            // Print table header.
-            attron(A_REVERSE);
-            printw("%3s%6s%14s%17s\n", "CH", "PRN", "CN0 [dB-Hz]", "Doppler [Hz]");
-            attroff(A_REVERSE);
-
-            // Print table contents.
-            for (auto const& ch : channels)
-                {
-                    int channel_id = ch.first;      // Key
-                    gnss_sdr::GnssSynchro data = ch.second;  // Value
-
-                    printw("%3d%6d%14f%17f\n", channel_id, data.prn(), data.cn0_db_hz(), data.carrier_doppler_hz());
-                }
-            refresh();  // Update the screen.
-        }
-    else
-        {
-            return false;
-        }
-
-    return true;
-}
-
-// #########################################
-bool Gnss_Synchro_Udp_Source::read_monitor_pvt(Monitor_Pvt& monitor_pvt)
+bool Monitor_Pvt_Udp_Source::read_monitor_pvt(Monitor_Pvt& monitor_pvt)
 {
     char buff[1500];  // Buffer for storing the received data.
 
@@ -91,7 +64,7 @@ bool Gnss_Synchro_Udp_Source::read_monitor_pvt(Monitor_Pvt& monitor_pvt)
     return true;
 }
 
-void Gnss_Synchro_Udp_Source::print_variable_names_column()
+void Monitor_Pvt_Udp_Source::print_variable_names_column()
 {
     clear();  // Clear the screen.
 
@@ -151,7 +124,7 @@ void Gnss_Synchro_Udp_Source::print_variable_names_column()
     refresh();  // Update the screen.
 }
 
-void Gnss_Synchro_Udp_Source::print_values_column()
+void Monitor_Pvt_Udp_Source::print_values_column()
 {
     if (read_monitor_pvt(monitor_pvt))
         {
