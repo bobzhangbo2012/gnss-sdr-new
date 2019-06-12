@@ -3,6 +3,7 @@
 
 #include <boost/asio.hpp>
 #include "monitor_pvt.h"
+#include "monitor_pvt.pb.h"
 #include "gnss_synchro.pb.h"  // This file is created automatically
                               // by the Protocol Buffers compiler
 

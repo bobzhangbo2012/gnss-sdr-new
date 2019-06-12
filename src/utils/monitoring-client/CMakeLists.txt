@@ -21,7 +21,9 @@ find_package(Curses REQUIRED)
 # endif()
 
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_SOURCE_DIR}/gnss_synchro.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_SOURCE_DIR}/gnss_synchro.proto ${CMAKE_CURRENT_SOURCE_DIR}/monitor_pvt.proto)
+
+# protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${CMAKE_CURRENT_SOURCE_DIR}/monitor_pvt.proto)
 
 
 set(MONITORING_CLIENT_SOURCES gnss_synchro_udp_source.cc)
