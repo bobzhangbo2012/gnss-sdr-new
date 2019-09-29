@@ -36,13 +36,13 @@ end
 
 samplingFreq = 25000000;     %[Hz]
 coherent_integration_time_ms = 1; %[ms]
-channels = 1;   % Number of channels
+channels = 8;   % Number of channels
 first_channel = 0;  % Number of the first channel
 
-path = '/home/dmiralles/Documents/gnss-sdr/';  %% CHANGE THIS PATH
+path = '/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';  %% CHANGE THIS PATH
 
 for N=1:1:channels
-    tracking_log_path = [path 'epl_tracking_ch_' num2str(N+first_channel-1) '.dat']; %% CHANGE track_ch_ BY YOUR dump_filename
+    tracking_log_path = [path 'tracking_ch_' num2str(N+first_channel-1) '.dat']; %% CHANGE track_ch_ BY YOUR dump_filename
     GNSS_tracking(N) = dll_pll_veml_read_tracking_dump(tracking_log_path);
 end
 
@@ -73,10 +73,14 @@ for N=1:1:channels
     trackResults(N).PRN = GNSS_tracking(N).PRN.';
     trackResults(N).CNo = GNSS_tracking(N).CN0_SNV_dB_Hz.';
 
-    % Use original MATLAB tracking plot function
-    settings.numberOfChannels = channels;
-    settings.msToProcess = length(GNSS_tracking(N).E) * coherent_integration_time_ms;
-    plotVEMLTracking(N, trackResults, settings)
+    if isempty(trackResults(N).PRN)
+        disp("chenel " + N + " is unTracked!" );
+    else
+        % Use original MATLAB tracking plot function
+        settings.numberOfChannels = channels;
+        settings.msToProcess = length(GNSS_tracking(N).E) * coherent_integration_time_ms;
+        plotVEMLTracking(N, trackResults, settings)
+    end
 end
 
 

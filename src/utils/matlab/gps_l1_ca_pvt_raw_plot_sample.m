@@ -28,6 +28,6 @@
 
 samplingFreq       = 64e6/16;     %[Hz]
 channels=4;
-path='/home/javier/workspace/gnss-sdr-ref/trunk/install/';
+path='/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';
 pvt_raw_log_path=[path 'PVT_raw.dat'];
 GNSS_PVT_raw= gps_l1_ca_read_pvt_raw_dump(channels,pvt_raw_log_path);

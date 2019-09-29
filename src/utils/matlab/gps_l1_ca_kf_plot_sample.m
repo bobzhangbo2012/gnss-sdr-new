@@ -34,16 +34,16 @@ if ~exist('dll_pll_veml_read_tracking_dump.m', 'file')
 end
 
 
-samplingFreq = 6625000;     %[Hz]
+samplingFreq = 25000000;  %6625000;     %[Hz]
 channels = 8;
 first_channel = 0;
 code_period = 0.001;
 
-path    = '/archive/';  %% CHANGE THIS PATH
+path    = '/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';  %% CHANGE THIS PATH
 figpath = [path];
 
 for N=1:1:channels
-    tracking_log_path = [path 'epl_tracking_ch_' num2str(N+first_channel-1) '.dat']; %% CHANGE epl_tracking_ch_ BY YOUR dump_filename
+    tracking_log_path = [path 'tracking_ch_' num2str(N+first_channel-1) '.dat']; %% CHANGE epl_tracking_ch_ BY YOUR dump_filename
     GNSS_tracking(N) = gps_l1_ca_kf_read_tracking_dump(tracking_log_path);
 end
 
@@ -83,11 +83,13 @@ for N=1:1:channels
     settings.msToProcess = length(GNSS_tracking(N).E);
     settings.codePeriod  = code_period;
     settings.timeStartInSeconds = 20;
-    
-    %plotTracking(N, trackResults, settings)
-    plotKalman(N, kalmanResults, settings)
-    
-    saveas(gcf, [figpath 'epl_tracking_ch_' num2str(N) '_PRN_' num2str(trackResults(N).PRN(end)) '.png'], 'png')
+    if isempty(trackResults(N).PRN)
+        disp("chenel " + N + " is unTracked!" );
+    else
+        %plotTracking(N, trackResults, settings)
+        plotKalman(N, kalmanResults, settings)    
+        saveas(gcf, [figpath 'epl_tracking_ch_' num2str(N) '_PRN_' num2str(trackResults(N).PRN(end)) '.png'], 'png')
+    end
 end
 
 

@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     google::SetUsageMessage(intro_help);
     google::SetVersionString(gnss_sdr_version);
     google::ParseCommandLineFlags(&argc, &argv, true);
-    std::cout << "GNSS-SDR-PLs" << "---version = 2019.06.03---" << " ... Please wait." << std::endl;
+    std::cout << "GNSS-SDR-PLs" << "---version = 2019.09.11---" << " ... Please wait." << std::endl;
     std::cout << "Initializing GNSS-SDR v" << gnss_sdr_version << " ... Please wait." << std::endl;
 
 #if CUDA_GPU_ACCEL
