@@ -16,3 +16,4 @@ cmake-build-debug/
 .pydevproject
 .vscode
 build-*
+work_log/data_*
