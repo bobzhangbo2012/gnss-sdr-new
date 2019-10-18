@@ -186,7 +186,7 @@
     </param>
     <param>
       <key>file</key>
-      <value>/media/zhangbo/FastWork/data/signal_source_D20.dat</value>
+      <value>/media/zhangbo/FastWork/data/GNURadio_407_1019_02.dat</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -2663,7 +2663,7 @@
     </param>
     <param>
       <key>clock_source0</key>
-      <value></value>
+      <value>gpsdo</value>
     </param>
     <param>
       <key>sd_spec0</key>
@@ -2671,7 +2671,7 @@
     </param>
     <param>
       <key>time_source0</key>
-      <value></value>
+      <value>gpsdo</value>
     </param>
     <param>
       <key>clock_source1</key>

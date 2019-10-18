@@ -7,6 +7,7 @@ for n=1:1:length(GNSS_tracking)
     plotnames{n}=['SV ' num2str(round(mean(GNSS_tracking(n).PRN)))];
 end
 legend(plotnames);
+saveas(gcf, [figpath 'Carrier lock test output for all the channels' '.tif'], 'tif')
 
 figure;
 hold on;
@@ -16,3 +17,4 @@ for n=1:1:length(GNSS_tracking)
     plotnames{n}=['SV ' num2str(round(mean(GNSS_tracking(n).PRN)))];
 end
 legend(plotnames);
+saveas(gcf, [figpath 'Carrier CN0 output for all the channels' '.tif'], 'tif')

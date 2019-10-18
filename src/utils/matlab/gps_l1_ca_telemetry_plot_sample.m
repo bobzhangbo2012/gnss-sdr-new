@@ -29,7 +29,7 @@
 close all;
 clear;
 samplingFreq       = 25000000;     %[Hz]
-channels=[0:7];
+channels=[0:6];
 path='/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';
 addpath('libs/');
 clear PRN_absolute_sample_start;

@@ -3,7 +3,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Top Block
-# Generated: Sat Sep 28 03:21:41 2019
+# Generated: Sat Oct 19 02:03:07 2019
 ##################################################
 
 if __name__ == '__main__':
@@ -71,12 +71,14 @@ class top_block(gr.top_block, Qt.QWidget):
         		channels=range(1),
         	),
         )
+        self.uhd_usrp_source_0.set_clock_source("gpsdo", 0)
+        self.uhd_usrp_source_0.set_time_source("gpsdo", 0)
         self.uhd_usrp_source_0.set_samp_rate(samp_rate)
         self.uhd_usrp_source_0.set_center_freq(freq, 0)
         self.uhd_usrp_source_0.set_gain(72, 0)
         self.uhd_usrp_source_0.set_antenna("RX2", 0)
         self.uhd_usrp_source_0.set_bandwidth(bandwidth, 0)
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_int*1, "/media/zhangbo/FastWork/data/signal_source_DG1.dat", False)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_int*1, "/media/zhangbo/FastWork/data/GNURadio_407_1019_02.dat", False)
         self.blocks_file_sink_0.set_unbuffered(False)
 
         ##################################################

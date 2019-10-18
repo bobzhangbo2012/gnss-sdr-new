@@ -30,6 +30,7 @@ addpath('./libs');
 samplingFreq       = 25000000;     %[Hz]
 channels=8;
 path='/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';
+figpath = [path];
 observables_log_path=[path 'observables.dat'];
 GNSS_observables= read_hybrid_observables_dump(channels,observables_log_path);
 
@@ -51,18 +52,21 @@ plot(GNSS_observables.RX_time(obs_idx,min_tow_idx+1:end),GNSS_observables.Pseudo
 grid on;
 xlabel('TOW [s]')
 ylabel('Pseudorange [m]');
+saveas(gcf, [figpath 'Pseudorange' '.tif'], 'tif')
 
 figure;
 plot(GNSS_observables.RX_time(obs_idx,min_tow_idx+1:end),GNSS_observables.Carrier_phase_hz(:,min_tow_idx+1:end)');
 xlabel('TOW [s]')
 ylabel('Accumulated Carrier Phase [cycles]');
 grid on;
+saveas(gcf, [figpath 'Accumulated Carrier Phase' '.tif'], 'tif')
 
 figure;
 plot(GNSS_observables.RX_time(obs_idx,min_tow_idx+1:end),GNSS_observables.Carrier_Doppler_hz(:,min_tow_idx+1:end)');
 xlabel('TOW [s]');
 ylabel('Doppler Frequency [Hz]');
 grid on;
+saveas(gcf, [figpath 'Doppler Frequency' '.tif'], 'tif')
 
 %% Deprecated Code
 % %read true obs from simulator (optional)
