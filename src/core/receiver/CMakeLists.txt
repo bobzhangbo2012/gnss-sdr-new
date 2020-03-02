@@ -145,11 +145,13 @@ target_link_libraries(core_receiver
         channel_libs
         core_libs
         core_monitor
+        signal_generator_adapters
     PRIVATE
         Boost::chrono
         Gflags::gflags
         Glog::glog
         signal_source_adapters
+        signal_generator_adapters
         data_type_adapters
         input_filter_adapters
         conditioner_adapters

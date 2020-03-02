@@ -60,7 +60,7 @@ public:
     inline std::string role() override { return role_; }
 
     //! Returns "Signal Source"
-    inline std::string implementation() override { return "Signal Source"; }
+    inline std::string implementation() override { return "Gen_Signal_Source"; } //=Signal Source
     inline size_t item_size() override { return 0; }
 
     inline GNSSBlockInterface *signal_generator() const { return signal_generator_; }

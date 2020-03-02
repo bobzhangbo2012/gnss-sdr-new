@@ -30,9 +30,9 @@
 %path = '/home/dmiralles/Documents/gnss-sdr/';
 path = '/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';
 file = 'acq_dump';
-sat = 11;
-channel = 5;
-execution = 1;
+sat = 2;
+channel = 0;
+execution = 2;
 % Signal:
 %     1 GPS  L1
 %     2 GPS  L2M

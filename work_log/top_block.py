@@ -3,7 +3,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Top Block
-# Generated: Sun Nov 24 21:08:21 2019
+# Generated: Thu Dec 12 19:26:33 2019
 ##################################################
 
 if __name__ == '__main__':
@@ -78,7 +78,7 @@ class top_block(gr.top_block, Qt.QWidget):
         self.uhd_usrp_source_0.set_gain(72, 0)
         self.uhd_usrp_source_0.set_antenna("RX2", 0)
         self.uhd_usrp_source_0.set_bandwidth(bandwidth, 0)
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_int*1, "/media/zhangbo/FastWork/data/GNU1124_Rover3.dat", False)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_int*1, "/media/zhangbo/FastWork/data/1212_C7_test.dat", False)
         self.blocks_file_sink_0.set_unbuffered(False)
 
         ##################################################

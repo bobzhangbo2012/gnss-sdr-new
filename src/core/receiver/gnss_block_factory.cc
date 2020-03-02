@@ -117,6 +117,9 @@
 #include <exception>  // for exception
 #include <utility>    // for move
 
+#include "gen_signal_source.h"
+#include "signal_generator.h"
+
 #if RAW_UDP
 #include "custom_udp_signal_source.h"
 #endif
@@ -1268,6 +1271,36 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                     exit(1);
                 }
         }
+    else if (implementation == "GNSSSignalGenerator")
+        {
+            try
+                {
+                    std::unique_ptr<GNSSBlockInterface> block_(new SignalGenerator(configuration.get(), role, in_streams,
+                        out_streams, queue));
+                    block = std::move(block_);
+                }
+
+            catch (const std::exception& e)
+                {
+                    std::cout << "GNSS-SDR program ended." << std::endl;
+                    exit(1);
+                }
+        }
+    // else if (implementation == "Gen_Signal_Source")
+    //     {
+    //         try
+    //             {
+    //                 std::unique_ptr<GNSSBlockInterface> block_(new GenSignalSource(configuration.get(), role, in_streams,
+    //                     out_streams, queue));
+    //                 block = std::move(block_);
+    //             }
+
+    //         catch (const std::exception& e)
+    //             {
+    //                 std::cout << "GNSS-SDR program ended." << std::endl;
+    //                 exit(1);
+    //             }
+    //     }
 #if RAW_UDP
     else if (implementation == "Custom_UDP_Signal_Source")
         {
