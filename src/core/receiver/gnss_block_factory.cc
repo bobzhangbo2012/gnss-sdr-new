@@ -119,6 +119,7 @@
 
 #include "gen_signal_source.h"
 #include "signal_generator.h"
+#include "uhd_signal_sink.h"
 
 #if RAW_UDP
 #include "custom_udp_signal_source.h"
@@ -202,6 +203,27 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetSignalSource(
         }
     std::string implementation = configuration->property(role + ".implementation", default_implementation);
     LOG(INFO) << "Getting SignalSource with implementation " << implementation;
+    return GetBlock(configuration, role, implementation, 0, 1, queue);
+}
+// TODO: ADD 
+std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetSignalSink(
+    const std::shared_ptr<ConfigurationInterface>& configuration, const gr::msg_queue::sptr queue, int ID)  // NOLINT(performance-unnecessary-value-param)
+{
+    std::string default_implementation = "UHD_Signal_Sink";
+    std::string role = "SignalSink";  //backwards compatibility for old conf files
+    try
+        {
+            if (ID != -1)
+                {
+                    role = "SignalSink" + std::to_string(ID);
+                }
+        }
+    catch (const std::exception& e)
+        {
+            LOG(WARNING) << e.what();
+        }
+    std::string implementation = configuration->property(role + ".implementation", default_implementation);
+    LOG(INFO) << "Getting SignalSink with implementation " << implementation;
     return GetBlock(configuration, role, implementation, 0, 1, queue);
 }
 
@@ -1271,6 +1293,7 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                     exit(1);
                 }
         }
+        // TODO: ADD GNSSSignalGenerator
     else if (implementation == "GNSSSignalGenerator")
         {
             try
@@ -1421,6 +1444,13 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
     else if (implementation == "UHD_Signal_Source")
         {
             std::unique_ptr<GNSSBlockInterface> block_(new UhdSignalSource(configuration.get(), role, in_streams,
+                out_streams, queue));
+            block = std::move(block_);
+        }
+    // TODO: ADD UHD_Signal_Sink
+    else if (implementation == "UHD_Signal_Sink")
+        {
+            std::unique_ptr<GNSSBlockInterface> block_(new UhdSignalSink(configuration.get(), role, in_streams,
                 out_streams, queue));
             block = std::move(block_);
         }

@@ -61,6 +61,9 @@ public:
     std::unique_ptr<GNSSBlockInterface> GetSignalSource(const std::shared_ptr<ConfigurationInterface>& configuration,
         const gr::msg_queue::sptr queue, int ID = -1);  // NOLINT(performance-unnecessary-value-param)
 
+    std::unique_ptr<GNSSBlockInterface> GetSignalSink(const std::shared_ptr<ConfigurationInterface>& configuration,
+        const gr::msg_queue::sptr queue, int ID = -1);  // NOLINT(performance-unnecessary-value-param)
+
     std::unique_ptr<GNSSBlockInterface> GetSignalConditioner(const std::shared_ptr<ConfigurationInterface>& configuration, int ID = -1);
 
     std::unique_ptr<std::vector<std::unique_ptr<GNSSBlockInterface>>> GetChannels(const std::shared_ptr<ConfigurationInterface>& configuration,
