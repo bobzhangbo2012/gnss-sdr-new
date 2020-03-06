@@ -18,6 +18,8 @@
 close all;
 clear all;
 
+addpath('./libs')
+addpath('./libs/geoFunctions')
 % True position of the antenna in UTM system (if known). Otherwise enter
 % all NaN's and mean position will be used as a reference .
 settings.truePosition.E     = nan;
@@ -26,7 +28,7 @@ settings.truePosition.U     = nan;
 
 settings.navSolPeriod=100; %[ms]
 
-filename='/home/javier/workspace/gnss-sdr/trunk/install/PVT.dat';
+filename='/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/PVT.dat';
 
 navSolutions = gps_l1_ca_pvt_read_pvt_dump (filename);
 

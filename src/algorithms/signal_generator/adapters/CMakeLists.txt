@@ -12,6 +12,9 @@ set(SIGNAL_GENERATOR_ADAPTER_HEADERS signal_generator.h)
 
 source_group(Headers FILES ${SIGNAL_GENERATOR_ADAPTER_HEADERS})
 
+list(SORT SIGNAL_GENERATOR_ADAPTER_SOURCES)
+list(SORT SIGNAL_GENERATOR_ADAPTER_HEADERS)
+
 add_library(signal_generator_adapters
     ${SIGNAL_GENERATOR_ADAPTER_SOURCES}
     ${SIGNAL_GENERATOR_ADAPTER_HEADERS}
@@ -21,16 +24,18 @@ target_link_libraries(signal_generator_adapters
     PUBLIC
         Gnuradio::blocks
         signal_generator_gr_blocks
+        algorithms_libs
     PRIVATE
         Gflags::gflags
         Glog::glog
-        algorithms_libs
+        # algorithms_libs
 )
 
 target_include_directories(signal_generator_adapters
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/core/interfaces
         ${CMAKE_SOURCE_DIR}/src/core/receiver
+        ${CMAKE_SOURCE_DIR}/src/algorithms/libs
 )
 
 if(ENABLE_CLANG_TIDY)

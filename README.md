@@ -262,7 +262,7 @@ do for you as well:
 $ pybombs install gnss-sdr
 ```
 
-By default, PyBOMBS installs the ‘next’ branch of GNSS-SDR development, which is
+By default, PyBOMBS installs the 'next' branch of GNSS-SDR development, which is
 the most recent version of the source code. This behaviour can be modified by
 altering the corresponding recipe at
 `$HOME/.pybombs/recipes/gr-recipes/gnss-sdr.lwr`

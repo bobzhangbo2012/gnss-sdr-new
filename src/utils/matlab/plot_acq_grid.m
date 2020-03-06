@@ -16,11 +16,12 @@
 %
 
 %% Configuration
-path = '/home/dmiralles/Documents/gnss-sdr/';
-file = 'bds_acq';
-sat = 6;
+%path = '/home/dmiralles/Documents/gnss-sdr/';
+path = '/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';
+file = 'acq_dump';
+sat = 2;
 channel = 0;
-execution = 4;
+execution = 2;
 % Signal:
 %     1 GPS  L1
 %     2 GPS  L2M
@@ -33,7 +34,7 @@ execution = 4;
 %     9 BDS. B3
 %    10 BDS. B2a
 
-signal_type = 8;
+signal_type = 1;
 
 %%% True for light grid representation
 lite_view = true;
@@ -86,6 +87,8 @@ switch(signal_type)
         system = 'C';
         signal = '5C';
 end
+
+
 filename = [path file '_' system '_' signal '_ch_' num2str(channel) '_' num2str(execution) '_sat_' num2str(sat) '.mat'];
 load(filename);
 [n_fft, n_dop_bins] = size(acq_grid);
@@ -93,7 +96,7 @@ load(filename);
 freq = (0 : n_dop_bins - 1) * double(doppler_step) - double(doppler_max);
 delay = (0 : n_fft - 1) / n_fft * n_chips;
 
-
+figpath = [path];
 %% Plot data
 %--- Acquisition grid (3D)
 figure(1)
@@ -110,6 +113,7 @@ xlabel('Doppler shift (Hz)')
 xlim([min(freq) max(freq)])
 ylabel('Code delay (chips)')
 zlabel('Test Statistics')
+saveas(gcf, [filename '_3D.tif'], 'tif')
 
 %--- Acquisition grid (2D)
 figure(2)
@@ -126,3 +130,4 @@ xlim([min(delay) max(delay)])
 xlabel('Code delay (chips)')
 ylabel('Test statistics')
 title(['Doppler wipe-off = ' num2str((f_max - 1) * doppler_step - doppler_max) ' Hz'])
+saveas(gcf, [filename '_2D.tif'], 'tif')

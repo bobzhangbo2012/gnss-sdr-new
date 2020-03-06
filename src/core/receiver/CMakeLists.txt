@@ -126,9 +126,14 @@ target_link_libraries(core_receiver
     PUBLIC
         core_libs
         Gnuradio::runtime
+        core_monitor
+        signal_generator_adapters
+        signal_sink_adapters
     PRIVATE
         core_monitor
         signal_source_adapters
+        signal_generator_adapters
+        signal_sink_adapters
         data_type_adapters
         input_filter_adapters
         conditioner_adapters

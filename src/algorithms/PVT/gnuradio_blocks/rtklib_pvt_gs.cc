@@ -529,6 +529,8 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                                     boost::archive::xml_oarchive xml(ofs);
                                     xml << boost::serialization::make_nvp("GNSS-SDR_ephemeris_map", d_internal_pvt_solver->gps_ephemeris_map);
                                     LOG(INFO) << "Saved GPS L1 CA Ephemeris map data";
+                                    std::cout << "Saved GPS L1 CA Ephemeris map data"<<std::endl;
+                                    // TODO:LOG(INFO):Saved GPS L1 CA Ephemeris map data!
                                 }
                             catch (const boost::archive::archive_exception& e)
                                 {
@@ -542,6 +544,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                     else
                         {
                             LOG(INFO) << "Failed to save GPS L1 CA Ephemeris, map is empty";
+                            std::cout << "Failed to save GPS L1 CA Ephemeris, map is empty"<<std::endl;
                         }
 
                     // save Galileo E1 ephemeris to XML file
@@ -1047,6 +1050,12 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                << gps_eph->satelliteBlock[gps_eph->i_satellite_PRN] << ")"
                                << "inserted with Toe=" << gps_eph->d_Toe << " and GPS Week="
                                << gps_eph->i_GPS_week;
+                    std::cout  << TEXT_BOLD_BLUE
+                               << "Ephemeris record has arrived from SAT ID "
+                               << gps_eph->i_satellite_PRN << " (Block "
+                               << gps_eph->satelliteBlock[gps_eph->i_satellite_PRN] << ")"
+                               << "inserted with Toe=" << gps_eph->d_Toe << " and GPS Week="
+                               << gps_eph->i_GPS_week << TEXT_RESET<< std::endl;
                     // update/insert new ephemeris record to the global ephemeris map
                     if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
                         {
@@ -2027,9 +2036,10 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             if (store_valid_observable)
                                 {
                                     // store valid observables in a map.
-                                    gnss_observables_map.insert(std::pair<int, Gnss_Synchro>(i, in[i][epoch]));
+                                    // gnss_observables_map.insert(std::pair<int, Gnss_Synchro>(i, in[i][epoch]));
                                 }
-
+                            // TODO:避开检测数据有效性
+                            gnss_observables_map.insert(std::pair<int, Gnss_Synchro>(i, in[i][epoch]));
                             if (b_rtcm_enabled)
                                 {
                                     try
@@ -2080,7 +2090,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             channel_initialized.at(i) = false;  // the current channel is not reporting valid observable
                         }
                 }
-
+            
             // ############ 2 COMPUTE THE PVT ################################
             bool flag_pvt_valid = false;
             if (gnss_observables_map.empty() == false)
@@ -2791,6 +2801,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                                                     rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
                                                                                     rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_utc_model, d_user_pvt_solver->gps_iono, gps_ephemeris_iter->second);
                                                                                     b_rinex_header_updated = true;
+                                                                                    std::cout << TEXT_BOLD_RED << "b_rinex_header_updated"<< TEXT_RESET << std::endl;
                                                                                 }
                                                                         }
                                                                     break;

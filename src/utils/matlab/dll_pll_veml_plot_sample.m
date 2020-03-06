@@ -23,13 +23,13 @@ if ~exist('dll_pll_veml_read_tracking_dump.m', 'file')
     addpath('./libs')
 end
 
-samplingFreq = 2048000;     %[Hz]
-plot_last_outputs=0;
-
-channels = 8;   % Number of channels
+samplingFreq = 37500000;     %[Hz]
+coherent_integration_time_ms = 1; %[ms]
+channels = 1;   % Number of channels
 first_channel = 0;  % Number of the first channel
 
-path = '/Users/javier/git/gnss-sdr/build/test_postpro_24h_casa/';  %% CHANGE THIS PATH
+path = '/home/zhangbo/workspace/gnss-sdr-PLs/work_log/data/';  %% CHANGE THIS PATH
+figpath = [path];
 
 for N=1:1:channels
     tracking_log_path = [path 'tracking_ch_' num2str(N+first_channel-1) '.dat']; %% CHANGE track_ch_ BY YOUR dump_filename
@@ -72,6 +72,15 @@ for N=1:1:channels
     % Use original MATLAB tracking plot function
     settings.numberOfChannels = channels;
     plotVEMLTracking(N, trackResults, settings)
+    if isempty(trackResults(N).PRN)
+        disp("chenel " + N + " is unTracked!" );
+    else
+        % Use original MATLAB tracking plot function
+        settings.numberOfChannels = channels;
+        settings.msToProcess = length(GNSS_tracking(N).E) * coherent_integration_time_ms;
+        plotVEMLTracking(N, trackResults, settings)
+        saveas(gcf, [figpath 'tracking_ch_' num2str(N) '_PRN_' num2str(trackResults(N).PRN(end)) '.tif'], 'tif')
+    end
 end
 
 %Doppler plot (optional)

@@ -44,6 +44,7 @@
 #include <matio.h>
 #include <exception>
 #include <utility>
+#include "display.h"
 #include <vector>
 
 #if HAS_STD_FILESYSTEM
@@ -415,6 +416,30 @@ bool Rtklib_Solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
 
     this->set_averaging_flag(flag_averaging);
 
+    // TODO: +++ADD: List gps_ephemeris_map & gnss_observables_map
+            // std::map<int, Gps_Ephemeris>::const_iterator gps_ephemeris_iter;
+            // std::for_each(gnss_observables_map.begin(), gnss_observables_map.end(), std::cout<< first << second.PRN);
+            std::cout << "+++gps_ephemeris_map++ "<<gps_ephemeris_map.empty()  << "   PRN = [ ";
+            for (gps_ephemeris_iter = gps_ephemeris_map.cbegin();
+                 gps_ephemeris_iter != gps_ephemeris_map.cend();
+                 ++gps_ephemeris_iter)
+                {
+                   std::cout << gps_ephemeris_iter->second.i_satellite_PRN << ", ";
+                }
+            std::cout << " ] " << std::endl;
+
+            // std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
+            // std::for_each(gnss_observables_map.begin(), gnss_observables_map.end(), std::cout<< first << second.PRN);
+
+            std::cout << gnss_observables_map.empty()  << "   PRN = [ ";
+            for (gnss_observables_iter = gnss_observables_map.cbegin();
+                 gnss_observables_iter != gnss_observables_map.cend();
+                 ++gnss_observables_iter)
+                {
+                   std::cout << gnss_observables_iter->second.PRN << ", ";
+                }
+            std::cout << " ] " << std::endl;
+
     // ********************************************************************************
     // ****** PREPARE THE DATA (SV EPHEMERIS AND OBSERVATIONS) ************************
     // ********************************************************************************
@@ -542,7 +567,7 @@ bool Rtklib_Solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                         if (sig_ == "1C")
                             {
                                 gps_ephemeris_iter = gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                if (gps_ephemeris_iter != gps_ephemeris_map.cend())
+                                if (1)//(gps_ephemeris_iter != gps_ephemeris_map.cend())
                                     {
                                         // convert ephemeris from GNSS-SDR class to RTKLIB structure
                                         eph_data[valid_obs] = eph_to_rtklib(gps_ephemeris_iter->second, d_pre_2009_file);
@@ -558,6 +583,7 @@ bool Rtklib_Solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                                 else  // the ephemeris are not available for this SV
                                     {
                                         DLOG(INFO) << "No ephemeris data for SV " << gnss_observables_iter->first;
+                                        // std::cout << TEXT_BOLD_BLUE<< "No ephemeris data for SV " << gnss_observables_iter->first << TEXT_RESET << std::endl;
                                     }
                             }
                         // GPS L2 (todo: solve NAV/CNAV clash)
@@ -607,6 +633,7 @@ bool Rtklib_Solver::get_PVT(const std::map<int, Gnss_Synchro> &gnss_observables_
                                 else  // the ephemeris are not available for this SV
                                     {
                                         DLOG(INFO) << "No ephemeris data for SV " << gnss_observables_iter->second.PRN;
+                                        // std::cout << TEXT_BOLD_BLUE<< "No ephemeris data for SV " << gnss_observables_iter->second.PRN << TEXT_RESET << std::endl;
                                     }
                             }
                         // GPS L5

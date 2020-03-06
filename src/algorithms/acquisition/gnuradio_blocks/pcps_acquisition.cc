@@ -676,7 +676,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
                             volk_32f_x2_add_32f(d_magnitude_grid[doppler_index].data(), d_magnitude_grid[doppler_index].data(), d_tmp_buffer.data(), effective_fft_size);
                         }
                     // Record results to file if required
-                    if (d_dump and d_channel == d_dump_channel)
+                    if (d_dump and (d_channel == d_dump_channel or d_dump_channel == 999))
                         {
                             memcpy(grid_.colptr(doppler_index), d_magnitude_grid[doppler_index].data(), sizeof(float) * effective_fft_size);
                         }
@@ -734,7 +734,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
                             volk_32f_x2_add_32f(d_magnitude_grid[doppler_index].data(), d_magnitude_grid[doppler_index].data(), d_tmp_buffer.data(), effective_fft_size);
                         }
                     // Record results to file if required
-                    if (d_dump and d_channel == d_dump_channel)
+                    if (d_dump and (d_channel == d_dump_channel or d_dump_channel == 999))
                         {
                             memcpy(narrow_grid_.colptr(doppler_index), d_magnitude_grid[doppler_index].data(), sizeof(float) * effective_fft_size);
                         }
@@ -862,7 +862,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
     if ((d_num_noncoherent_integrations_counter == acq_parameters.max_dwells) or (d_positive_acq == 1))
         {
             // Record results to file if required
-            if (d_dump and d_channel == d_dump_channel)
+            if (d_dump and (d_channel == d_dump_channel or d_dump_channel == 999))
                 {
                     pcps_acquisition::dump_results(effective_fft_size);
                 }

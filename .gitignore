@@ -19,3 +19,7 @@ cmake-build-debug/
 .vscode/
 .vs/
 Testing/
+.vscode
+build-*
+work_log/data_*
+work_log/data/
