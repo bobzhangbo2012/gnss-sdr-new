@@ -22,6 +22,8 @@ add_library(signal_generator_adapters
 
 target_link_libraries(signal_generator_adapters
     PUBLIC
+        Boost::boost
+        Gnuradio::runtime
         Gnuradio::blocks
         signal_generator_gr_blocks
         algorithms_libs
