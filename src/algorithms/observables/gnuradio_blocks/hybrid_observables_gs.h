@@ -14,18 +14,7 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -34,13 +23,17 @@
 #ifndef GNSS_SDR_HYBRID_OBSERVABLES_GS_H
 #define GNSS_SDR_HYBRID_OBSERVABLES_GS_H
 
-#include <boost/circular_buffer.hpp>  // for boost::curcular_buffer
+#include "obs_conf.h"
+#include <boost/circular_buffer.hpp>  // for boost::circular_buffer
 #include <boost/shared_ptr.hpp>       // for boost::shared_ptr
 #include <gnuradio/block.h>           // for block
 #include <gnuradio/types.h>           // for gr_vector_int
 #include <cstdint>                    // for int32_t
-#include <fstream>                    // for string, ofstream
-#include <vector>                     // for vector
+#include <fstream>                    // for std::ofstream
+#include <map>                        // for std::map
+#include <memory>                     // for std:shared_ptr
+#include <string>                     // for std::string
+#include <vector>                     // for std::vector
 
 class Gnss_Synchro;
 class hybrid_observables_gs;
@@ -50,8 +43,7 @@ class Gnss_circular_deque;
 
 using hybrid_observables_gs_sptr = boost::shared_ptr<hybrid_observables_gs>;
 
-hybrid_observables_gs_sptr
-hybrid_observables_gs_make(unsigned int nchannels_in, unsigned int nchannels_out, bool dump, bool dump_mat, std::string dump_filename);
+hybrid_observables_gs_sptr hybrid_observables_gs_make(const Obs_Conf& conf_);
 
 /*!
  * \brief This class implements a block that computes observables
@@ -60,38 +52,57 @@ class hybrid_observables_gs : public gr::block
 {
 public:
     ~hybrid_observables_gs();
+    void forecast(int noutput_items, gr_vector_int& ninput_items_required);
     int general_work(int noutput_items, gr_vector_int& ninput_items,
         gr_vector_const_void_star& input_items, gr_vector_void_star& output_items);
-    void forecast(int noutput_items, gr_vector_int& ninput_items_required);
 
 private:
-    friend hybrid_observables_gs_sptr
-    hybrid_observables_gs_make(uint32_t nchannels_in, uint32_t nchannels_out, bool dump, bool dump_mat, std::string dump_filename);
-    hybrid_observables_gs(uint32_t nchannels_in, uint32_t nchannels_out, bool dump, bool dump_mat, std::string dump_filename);
-    void msg_handler_pvt_to_observables(const pmt::pmt_t& msg);
-    bool interpolate_data(Gnss_Synchro& out, const uint32_t& ch, const double& ti);
-    bool interp_trk_obs(Gnss_Synchro& interpolated_obs, const uint32_t& ch, const uint64_t& rx_clock);
-    double compute_T_rx_s(const Gnss_Synchro& a);
-    void compute_pranges(std::vector<Gnss_Synchro>& data);
-    void update_TOW(const std::vector<Gnss_Synchro>& data);
-    int32_t save_matfile();
+    friend hybrid_observables_gs_sptr hybrid_observables_gs_make(const Obs_Conf& conf_);
 
-    //time history
-    boost::circular_buffer<uint64_t> d_Rx_clock_buffer;
-    //Tracking observable history
-    Gnss_circular_deque<Gnss_Synchro>* d_gnss_synchro_history;
-    //rx time follow GPST
-    bool T_rx_TOW_set;
-    uint32_t T_rx_TOW_ms;
-    uint32_t T_rx_remnant_to_20ms;
-    uint32_t T_rx_step_ms;
-    double T_rx_offset_ms;
+    explicit hybrid_observables_gs(const Obs_Conf& conf_);
+
+    Obs_Conf d_conf;
+
+    enum StringValue
+    {
+        evGPS_1C,
+        evGPS_2S,
+        evGPS_L5,
+        evSBAS_1C,
+        evGAL_1B,
+        evGAL_5X,
+        evGLO_1G,
+        evGLO_2G,
+        evBDS_B1,
+        evBDS_B2,
+        evBDS_B3
+    };
+
+    std::map<std::string, StringValue> mapStringValues_;
+    std::vector<bool> d_channel_last_pll_lock;
+    std::vector<double> d_channel_last_pseudorange_smooth;
+    std::vector<double> d_channel_last_carrier_phase_rads;
+    double d_smooth_filter_M;
+    void smooth_pseudoranges(std::vector<Gnss_Synchro>& data);
+
+    bool T_rx_TOW_set;  // rx time follow GPST
     bool d_dump;
     bool d_dump_mat;
+    uint32_t T_rx_TOW_ms;
+    uint32_t T_rx_step_ms;
+    uint32_t T_status_report_timer_ms;
     uint32_t d_nchannels_in;
     uint32_t d_nchannels_out;
     std::string d_dump_filename;
     std::ofstream d_dump_file;
+    boost::circular_buffer<uint64_t> d_Rx_clock_buffer;                         // time history
+    std::shared_ptr<Gnss_circular_deque<Gnss_Synchro>> d_gnss_synchro_history;  // Tracking observable history
+    void msg_handler_pvt_to_observables(const pmt::pmt_t& msg);
+    double compute_T_rx_s(const Gnss_Synchro& a);
+    bool interp_trk_obs(Gnss_Synchro& interpolated_obs, const uint32_t& ch, const uint64_t& rx_clock);
+    void update_TOW(const std::vector<Gnss_Synchro>& data);
+    void compute_pranges(std::vector<Gnss_Synchro>& data);
+    int32_t save_matfile();
 };
 
-#endif
+#endif  // GNSS_SDR_HYBRID_OBSERVABLES_GS_H

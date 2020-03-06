@@ -1,19 +1,10 @@
-/* Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)
+/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
+ *
+ * GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #if HAVE_CONFIG_H
@@ -37,12 +28,12 @@ void print_malloc()
     // You don't want to change the volk_malloc code, so just copy the if/else
     // structure from there and give an explanation for the implementations
     std::cout << "Used malloc implementation: ";
-#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || HAVE_POSIX_MEMALIGN
+#if HAVE_POSIX_MEMALIGN
     std::cout << "posix_memalign" << std::endl;
-#elif _MSC_VER >= 1400
-    std::cout << "aligned_malloc" << std::endl;
+#elif defined(_MSC_VER)
+    std::cout << "_aligned_malloc" << std::endl;
 #else
-    std::cout << "No standard handler available, using own implementation." << std::endl;
+    std::cout << "C11 aligned_alloc." << std::endl;
 #endif
 }
 

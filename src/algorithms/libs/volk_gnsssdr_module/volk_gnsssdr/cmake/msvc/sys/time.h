@@ -1,17 +1,19 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: Carles Fernandez-Prades <carles.fernandez(at)cttc.es>
 #ifndef _MSC_VER  // [
 #error "Use this header only with Microsoft Visual C++ compilers!"
 #endif  // _MSC_VER ]
 
-#ifndef _MSC_SYS_TIME_H_
-#define _MSC_SYS_TIME_H_
+#ifndef _MSC_SYS_TIME_H
+#define _MSC_SYS_TIME_H
 
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 
-//http://social.msdn.microsoft.com/Forums/en/vcgeneral/thread/430449b3-f6dd-4e18-84de-eebd26a8d668
+// https://social.msdn.microsoft.com/Forums/vstudio/en-US/430449b3-f6dd-4e18-84de-eebd26a8d668/gettimeofday?forum=vcgeneral
 #include < time.h >
-#include <windows.h>  //I've omitted this line.
+#include <windows.h>  // I've omitted this line.
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
 #define DELTA_EPOCH_IN_MICROSECS 11644473600000000Ui64
 #else
@@ -51,7 +53,7 @@ static inline int gettimeofday(struct timeval *tv, struct timezone *tz)
             tmpres <<= 32;
             tmpres |= ft.dwLowDateTime;
 
-            /*converting file time to unix epoch*/
+            /* converting file time to unix epoch*/
             tmpres -= DELTA_EPOCH_IN_MICROSECS;
             tv->tv_sec = (long)(tmpres / 1000000UL);
             tv->tv_usec = (long)(tmpres % 1000000UL);

@@ -25,28 +25,7 @@
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  *----------------------------------------------------------------------------*/
@@ -59,7 +38,9 @@
 /* adjust hourly rollover of rtcm 2 time -------------------------------------*/
 void adjhour(rtcm_t *rtcm, double zcnt)
 {
-    double tow, hour, sec;
+    double tow;
+    double hour;
+    double sec;
     int week;
 
     /* if no time, get cpu time */
@@ -85,7 +66,8 @@ void adjhour(rtcm_t *rtcm, double zcnt)
 /* get observation data index ------------------------------------------------*/
 int obsindex(obs_t *obs, gtime_t time, int sat)
 {
-    int i, j;
+    int i;
+    int j;
 
     for (i = 0; i < obs->n; i++)
         {
@@ -116,8 +98,14 @@ int obsindex(obs_t *obs, gtime_t time, int sat)
 /* decode type 1/9: differential gps correction/partial correction set -------*/
 int decode_type1(rtcm_t *rtcm)
 {
-    int i = 48, fact, udre, prn, sat, iod;
-    double prc, rrc;
+    int i = 48;
+    int fact;
+    int udre;
+    int prn;
+    int sat;
+    int iod;
+    double prc;
+    double rrc;
 
     trace(4, "decode_type1: len=%d\n", rtcm->len);
 
@@ -183,10 +171,13 @@ int decode_type3(rtcm_t *rtcm)
 
 
 /* decode type 14: gps time of week ------------------------------------------*/
-int decode_type14(rtcm_t *rtcm)
+int decode_type14(rtcm_t *rtcm, bool pre_2009_file)
 {
     double zcnt;
-    int i = 48, week, hour, leaps;
+    int i = 48;
+    int week;
+    int hour;
+    int leaps;
 
     trace(4, "decode_type14: len=%d\n", rtcm->len);
 
@@ -204,7 +195,7 @@ int decode_type14(rtcm_t *rtcm)
             trace(2, "rtcm2 14 length error: len=%d\n", rtcm->len);
             return -1;
         }
-    week = adjgpsweek(week);
+    week = adjgpsweek(week, pre_2009_file);
     rtcm->time = gpst2time(week, hour * 3600.0 + zcnt * 0.6);
     rtcm->nav.leaps = leaps;
     return 6;
@@ -214,7 +205,8 @@ int decode_type14(rtcm_t *rtcm)
 /* decode type 16: gps special message ---------------------------------------*/
 int decode_type16(rtcm_t *rtcm)
 {
-    int i = 48, n = 0;
+    int i = 48;
+    int n = 0;
 
     trace(4, "decode_type16: len=%d\n", rtcm->len);
 
@@ -231,13 +223,17 @@ int decode_type16(rtcm_t *rtcm)
 
 
 /* decode type 17: gps ephemerides -------------------------------------------*/
-int decode_type17(rtcm_t *rtcm)
+int decode_type17(rtcm_t *rtcm, bool pre_2009_file)
 {
     eph_t eph = {0, -1, -1, 0, 0, 0, 0, 0, {0, 0.0}, {0, 0.0}, {0, 0.0},
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, {0.0}, {0.0}, 0.0, 0.0};
-    double toc, sqrtA;
-    int i = 48, week, prn, sat;
+    double toc;
+    double sqrtA;
+    int i = 48;
+    int week;
+    int prn;
+    int sat;
 
     trace(4, "decode_type17: len=%d\n", rtcm->len);
 
@@ -312,7 +308,7 @@ int decode_type17(rtcm_t *rtcm)
         }
     sat = satno(SYS_GPS, prn);
     eph.sat = sat;
-    eph.week = adjgpsweek(week);
+    eph.week = adjgpsweek(week, pre_2009_file);
     eph.toe = gpst2time(eph.week, eph.toes);
     eph.toc = gpst2time(eph.week, toc);
     eph.ttr = rtcm->time;
@@ -327,8 +323,18 @@ int decode_type17(rtcm_t *rtcm)
 int decode_type18(rtcm_t *rtcm)
 {
     gtime_t time;
-    double usec, cp, tt;
-    int i = 48, index, freq, sync = 1, code, sys, prn, sat, loss;
+    double usec;
+    double cp;
+    double tt;
+    int i = 48;
+    int index;
+    int freq;
+    int sync = 1;
+    int code;
+    int sys;
+    int prn;
+    int sat;
+    int loss;
 
     trace(4, "decode_type18: len=%d\n", rtcm->len);
 
@@ -403,8 +409,17 @@ int decode_type18(rtcm_t *rtcm)
 int decode_type19(rtcm_t *rtcm)
 {
     gtime_t time;
-    double usec, pr, tt;
-    int i = 48, index, freq, sync = 1, code, sys, prn, sat;
+    double usec;
+    double pr;
+    double tt;
+    int i = 48;
+    int index;
+    int freq;
+    int sync = 1;
+    int code;
+    int sys;
+    int prn;
+    int sat;
 
     trace(4, "decode_type19: len=%d\n", rtcm->len);
 
@@ -474,8 +489,11 @@ int decode_type19(rtcm_t *rtcm)
 /* decode type 22: extended reference station parameter ----------------------*/
 int decode_type22(rtcm_t *rtcm)
 {
-    double del[2][3] = {{0}}, hgt = 0.0;
-    int i = 48, j, noh;
+    double del[2][3] = {{0}};
+    double hgt = 0.0;
+    int i = 48;
+    int j;
+    int noh;
 
     trace(4, "decode_type22: len=%d\n", rtcm->len);
 
@@ -579,7 +597,11 @@ int decode_type59(rtcm_t *rtcm __attribute((unused)))
 int decode_rtcm2(rtcm_t *rtcm)
 {
     double zcnt;
-    int staid, seqno, stah, ret = 0, type = getbitu(rtcm->buff, 8, 6);
+    int staid;
+    int seqno;
+    int stah;
+    int ret = 0;
+    int type = getbitu(rtcm->buff, 8, 6);
 
     trace(3, "decode_rtcm2: type=%2d len=%3d\n", type, rtcm->len);
 
@@ -601,7 +623,7 @@ int decode_rtcm2(rtcm_t *rtcm)
 
     if (rtcm->outtype)
         {
-            sprintf(rtcm->msgtype, "RTCM %2d (%4d) zcnt=%7.1f staid=%3d seqno=%d",
+            std::snprintf(rtcm->msgtype, sizeof(rtcm->msgtype), "RTCM %2d (%4d) zcnt=%7.1f staid=%3d seqno=%d",
                 type, rtcm->len, zcnt, staid, seqno);
         }
     if (type == 3 || type == 22 || type == 23 || type == 24)

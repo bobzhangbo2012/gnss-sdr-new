@@ -1,6 +1,8 @@
 .\" Manpage for volk_gnsssdr_profile
+.\" SPDX-License-Identifier: GPL-3.0-or-later
+.\" SPDX-FileCopyrightText: Carles Fernandez-Prades <carles.fernandez(at)cttc.es>
 .\" Contact carles.fernandez@cttc.es to correct errors or typos.
-.TH volk_gnsssdr_profile 1 "12 Dec 2018" "0.0.10" "volk_gnsssdr_profile man page"
+.TH volk_gnsssdr_profile 1 "29 Jul 2019" "0.0.11" "volk_gnsssdr_profile man page"
 .SH NAME
 \fBvolk_gnsssdr_profile\fR \- Profiler application for libvolk_gnsssdr functions.
 .SH SYNOPSIS
@@ -36,7 +38,7 @@ Processors providing SIMD instruction sets compute with multiple processing elem
 \.TP
 Check https://gnss\-sdr.org for more information.
 .SH HISTORY
-This library was originally developed by Andres Cecilia Luque in the framework of the Summer of Code in Space program (SOCIS 2014) by the European Space Agency (ESA), and then integrated into \fBgnss-sdr\fR. This software is based on the VOLK library http://libvolk.org/
+This library was originally developed by Andres Cecilia Luque in the framework of the Summer of Code in Space program (SOCIS 2014) by the European Space Agency (ESA), and then integrated into \fBgnss-sdr\fR. This software is based on the VOLK library https://www.libvolk.org/
 .SH BUGS
 No known bugs.
 .SH AUTHOR

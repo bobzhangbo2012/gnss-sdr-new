@@ -13,25 +13,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -43,7 +32,7 @@
 #include "gnss_synchro.h"
 #include "tcp_communication.h"
 #include <gnuradio/block.h>
-#include <volk/volk.h>
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
 #include <fstream>
 #include <map>
 #include <string>
@@ -122,7 +111,7 @@ private:
     float d_early_late_spc_chips;
     float d_very_early_late_spc_chips;
 
-    gr_complex *d_ca_code;
+    volk_gnsssdr::vector<gr_complex> d_ca_code;
 
     gr_complex *d_Very_Early;
     gr_complex *d_Early;
@@ -140,8 +129,8 @@ private:
     float d_acq_carrier_doppler_hz;
 
     // correlator
-    float *d_local_code_shift_chips;
-    gr_complex *d_correlator_outs;
+    volk_gnsssdr::vector<float> d_local_code_shift_chips;
+    volk_gnsssdr::vector<gr_complex> d_correlator_outs;
     Cpu_Multicorrelator multicorrelator_cpu;
 
     // tracking vars
@@ -156,17 +145,17 @@ private:
     float d_control_id;
     Tcp_Communication d_tcp_com;
 
-    //PRN period in samples
+    // PRN period in samples
     int32_t d_current_prn_length_samples;
     int32_t d_next_prn_length_samples;
 
-    //processing samples counters
+    // processing samples counters
     uint64_t d_sample_counter;
     uint64_t d_acq_sample_stamp;
 
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
-    gr_complex *d_Prompt_buffer;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     float d_carrier_lock_test;
     float d_CN0_SNV_dB_Hz;
     float d_carrier_lock_threshold;
@@ -184,4 +173,4 @@ private:
     std::string sys;
 };
 
-#endif  //GNSS_SDR_GALILEO_E1_TCP_CONNECTOR_TRACKING_CC_H
+#endif  // GNSS_SDR_GALILEO_E1_TCP_CONNECTOR_TRACKING_CC_H

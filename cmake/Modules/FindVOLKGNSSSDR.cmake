@@ -1,19 +1,10 @@
-# Copyright (C) 2011-2019 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 #
 # Provides the following imported target:
@@ -24,40 +15,74 @@
 ########################################################################
 # Find VOLK (Vector-Optimized Library of Kernels) GNSS-SDR library
 ########################################################################
+if(NOT COMMAND feature_summary)
+    include(FeatureSummary)
+endif()
 
-include(FindPkgConfig)
-pkg_check_modules(PC_VOLK_GNSSSDR volk_gnsssdr)
+pkg_check_modules(PC_VOLK_GNSSSDR QUIET volk_gnsssdr)
+
+if(NOT VOLKGNSSSDR_ROOT)
+    set(VOLKGNSSSDR_ROOT_USER_PROVIDED /usr/local)
+else()
+    set(VOLKGNSSSDR_ROOT_USER_PROVIDED ${VOLKGNSSSDR_ROOT})
+endif()
+if(DEFINED ENV{VOLKGNSSSDR_ROOT})
+    set(VOLKGNSSSDR_ROOT_USER_PROVIDED
+        ${VOLKGNSSSDR_ROOT_USER_PROVIDED}
+        $ENV{VOLKGNSSSDR_ROOT}
+    )
+endif()
+if(DEFINED ENV{VOLK_GNSSSDR_DIR})
+    set(VOLKGNSSSDR_ROOT_USER_PROVIDED
+        ${VOLKGNSSSDR_ROOT_USER_PROVIDED}
+        $ENV{VOLK_GNSSSDR_DIR}
+    )
+endif()
+if(GNURADIO_INSTALL_PREFIX)
+    set(VOLKGNSSSDR_ROOT_USER_PROVIDED
+        ${VOLKGNSSSDR_ROOT_USER_PROVIDED}
+        ${GNURADIO_INSTALL_PREFIX}
+    )
+endif()
 
 find_path(VOLK_GNSSSDR_INCLUDE_DIRS
     NAMES volk_gnsssdr/volk_gnsssdr.h
-    HINTS $ENV{VOLK_GNSSSDR_DIR}/include
-          ${PC_VOLK_GNSSSDR_INCLUDEDIR}
-    PATHS /usr/local/include
+    HINTS ${PC_VOLK_GNSSSDR_INCLUDEDIR}
+    PATHS ${VOLKGNSSSDR_ROOT_USER_PROVIDED}/include
           /usr/include
-          ${GNURADIO_INSTALL_PREFIX}/include
-          ${VOLKGNSSSDR_ROOT}/include
-          $ENV{VOLKGNSSSDR_ROOT}/include
+          /usr/local/include
+          /opt/local/include
 )
 
 find_library(VOLK_GNSSSDR_LIBRARIES
     NAMES volk_gnsssdr
-    HINTS $ENV{VOLK_GNSSSDR_DIR}/lib
-          ${PC_VOLK_GNSSSDR_LIBDIR}
-    PATHS /usr/local/lib
-          /usr/local/lib64
+    HINTS ${PC_VOLK_GNSSSDR_LIBDIR}
+    PATHS ${VOLKGNSSSDR_ROOT_USER_PROVIDED}/lib
+          ${VOLKGNSSSDR_ROOT_USER_PROVIDED}/lib64
           /usr/lib
           /usr/lib64
-          ${GNURADIO_INSTALL_PREFIX}/lib
-          ${VOLKGNSSSDR_ROOT}/lib
-          $ENV{VOLKGNSSSDR_ROOT}/lib
-          ${VOLKGNSSSDR_ROOT}/lib64
-          $ENV{VOLKGNSSSDR_ROOT}/lib64
+          /usr/local/lib
+          /usr/local/lib64
+          /opt/local/lib
 )
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(VOLKGNSSSDR DEFAULT_MSG VOLK_GNSSSDR_LIBRARIES VOLK_GNSSSDR_INCLUDE_DIRS)
 mark_as_advanced(VOLK_GNSSSDR_LIBRARIES VOLK_GNSSSDR_INCLUDE_DIRS)
 
+if(PC_VOLK_GNSSSDR_VERSION)
+    set(VOLKGNSSSDR_VERSION ${PC_VOLK_GNSSSDR_VERSION})
+endif()
+
+if(VOLKGNSSSDR_FOUND AND VOLKGNSSSDR_VERSION)
+    set_package_properties(VOLKGNSSSDR PROPERTIES
+        DESCRIPTION "Vector-Optimized Library of Kernels for GNSS-SDR (found: v${VOLKGNSSSDR_VERSION})."
+    )
+else()
+    set_package_properties(VOLKGNSSSDR PROPERTIES
+        DESCRIPTION "Vector-Optimized Library of Kernels for GNSS-SDR."
+    )
+endif()
 
 if(VOLKGNSSSDR_FOUND AND NOT TARGET Volkgnsssdr::volkgnsssdr)
     add_library(Volkgnsssdr::volkgnsssdr SHARED IMPORTED)

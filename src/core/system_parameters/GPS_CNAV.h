@@ -5,32 +5,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GPS_CNAV_H_
-#define GNSS_SDR_GPS_CNAV_H_
+#ifndef GNSS_SDR_GPS_CNAV_H
+#define GNSS_SDR_GPS_CNAV_H
 
 #include "MATH_CONSTANTS.h"
 #include <cstdint>
@@ -39,7 +28,7 @@
 
 
 // CNAV GPS NAVIGATION MESSAGE STRUCTURE
-// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200E Appendix III)
+// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200K Appendix III)
 
 #define GPS_CNAV_PREAMBLE      \
     {                          \
@@ -58,7 +47,6 @@ const int32_t CNAV_TOW_LSB = 6;
 const std::vector<std::pair<int32_t, int32_t> > CNAV_ALERT_FLAG({{38, 1}});
 
 // MESSAGE TYPE 10 (Ephemeris 1)
-
 const std::vector<std::pair<int32_t, int32_t> > CNAV_WN({{39, 13}});
 const std::vector<std::pair<int32_t, int32_t> > CNAV_HEALTH({{52, 3}});
 const std::vector<std::pair<int32_t, int32_t> > CNAV_TOP1({{55, 11}});
@@ -77,7 +65,7 @@ const double CNAV_A_DOT_LSB = TWO_N21;
 const std::vector<std::pair<int32_t, int32_t> > CNAV_DELTA_N0({{133, 17}});
 const double CNAV_DELTA_N0_LSB = TWO_N44 * PI;  // semi-circles to radians
 const std::vector<std::pair<int32_t, int32_t> > CNAV_DELTA_N0_DOT({{150, 23}});
-const double CNAV_DELTA_N0_DOT_LSB = TWO_N57 * PI;  //semi-circles to radians
+const double CNAV_DELTA_N0_DOT_LSB = TWO_N57 * PI;  // semi-circles to radians
 const std::vector<std::pair<int32_t, int32_t> > CNAV_M0({{173, 33}});
 const double CNAV_M0_LSB = TWO_N32 * PI;  // semi-circles to radians
 const std::vector<std::pair<int32_t, int32_t> > CNAV_E_ECCENTRICITY({{206, 33}});
@@ -88,7 +76,6 @@ const std::vector<std::pair<int32_t, int32_t> > CNAV_INTEGRITY_FLAG({{272, 1}});
 const std::vector<std::pair<int32_t, int32_t> > CNAV_L2_PHASING_FLAG({{273, 1}});
 
 // MESSAGE TYPE 11 (Ephemeris 2)
-
 const std::vector<std::pair<int32_t, int32_t> > CNAV_TOE2({{39, 11}});
 const int32_t CNAV_TOE2_LSB = 300;
 const std::vector<std::pair<int32_t, int32_t> > CNAV_OMEGA0({{50, 33}});
@@ -114,7 +101,6 @@ const double CNAV_CUC_LSB = TWO_N30;
 
 
 // MESSAGE TYPE 30 (CLOCK, IONO, GRUP DELAY)
-
 const std::vector<std::pair<int32_t, int32_t> > CNAV_TOP2({{39, 11}});
 const int32_t CNAV_TOP2_LSB = 300;
 const std::vector<std::pair<int32_t, int32_t> > CNAV_URA_NED0({{50, 5}});
@@ -159,7 +145,6 @@ const std::vector<std::pair<int32_t, int32_t> > CNAV_WNOP({{257, 8}});
 
 
 // MESSAGE TYPE 33 (CLOCK and UTC)
-
 const std::vector<std::pair<int32_t, int32_t> > CNAV_A0({{128, 16}});
 const double CNAV_A0_LSB = TWO_N35;
 const std::vector<std::pair<int32_t, int32_t> > CNAV_A1({{144, 13}});
@@ -183,4 +168,4 @@ const int32_t CNAV_DELTA_TLSF_LSB = 1;
 // TODO: Add more frames (Almanac, etc...)
 
 
-#endif /* GNSS_SDR_GPS_CNAV_H_ */
+#endif  // GNSS_SDR_GPS_CNAV_H

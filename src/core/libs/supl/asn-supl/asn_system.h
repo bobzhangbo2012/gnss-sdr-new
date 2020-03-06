@@ -1,25 +1,24 @@
 /*-
- * Copyright (c) 2003, 2004, 2007 Lev Walkin <vlm@lionet.info>.
- * All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
 /*
  * Miscellaneous system-dependent types.
  */
-#ifndef _ASN_SYSTEM_H_
-#define _ASN_SYSTEM_H_
+#ifndef _ASN_SYSTEM_H
+#define _ASN_SYSTEM_H
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
+#include <limits.h>    /* For LONG_MAX */
+#include <stdarg.h>    /* For va_start */
+#include <stddef.h>    /* for offsetof and ptrdiff_t */
 #include <stdio.h>     /* For snprintf(3) */
 #include <stdlib.h>    /* For *alloc(3) */
 #include <string.h>    /* For memcpy(3) */
 #include <sys/types.h> /* For size_t */
-#include <limits.h>    /* For LONG_MAX */
-#include <stdarg.h>    /* For va_start */
-#include <stddef.h>    /* for offsetof and ptrdiff_t */
 
 #ifdef WIN32
 
@@ -28,7 +27,9 @@
 #define vsnprintf _vsnprintf
 
 /* To avoid linking with ws2_32.lib, here's the definition of ntohl() */
-#define sys_ntohl(l) ((((l) << 24) & 0xff000000) | (((l) << 16) & 0xff0000) | (((l) << 8) & 0xff00) | ((l)&0xff))
+#define sys_ntohl(l)                                         \
+    ((((l) << 24) & 0xff000000) | (((l) << 16) & 0xff0000) | \
+        (((l) << 8) & 0xff00) | ((l)&0xff))
 
 #ifdef _MSC_VER /* MSVS.Net */
 #ifndef __cplusplus
@@ -44,8 +45,8 @@ typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 #endif /* ASSUMESTDTYPES */
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include <float.h>
+#include <windows.h>
 #define isnan _isnan
 #define finite _finite
 #define copysign _copysign
@@ -116,8 +117,12 @@ typedef unsigned int uint32_t;
 
 #ifndef MIN /* Suitable for comparing primitive types (integers) */
 #if defined(__GNUC__)
-#define MIN(a, b) ({ __typeof a _a = a; __typeof b _b = b;	\
-	((_a)<(_b)?(_a):(_b)); })
+#define MIN(a, b)                    \
+    ({                               \
+        __typeof a _a = a;           \
+        __typeof b _b = b;           \
+        ((_a) < (_b) ? (_a) : (_b)); \
+    })
 #else                                     /* !__GNUC__ */
 #define MIN(a, b) ((a) < (b) ? (a) : (b)) /* Unsafe variant */
 #endif                                    /* __GNUC__ */

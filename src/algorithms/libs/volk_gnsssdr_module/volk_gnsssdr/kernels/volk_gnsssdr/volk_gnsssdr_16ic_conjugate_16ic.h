@@ -10,25 +10,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -199,35 +188,5 @@ static inline void volk_gnsssdr_16ic_conjugate_16ic_u_avx2(lv_16sc_t* cVector, c
         }
 }
 #endif /* LV_HAVE_AVX2 */
-
-//
-//
-//#ifdef LV_HAVE_NEONV7
-//#include <arm_neon.h>
-//
-//static inline void volk_gnsssdr_16ic_conjugate_16ic_neon(lv_16sc_t* cVector, const lv_16sc_t* aVector, unsigned int num_points)
-//{
-//    const unsigned int sse_iters = num_points / 4;
-//    unsigned int i;
-//    lv_16sc_t* c = cVector;
-//    const lv_16sc_t* a = aVector;
-//    int16x4x2_t a_val;
-//
-//    for (i = 0; i < sse_iters; ++i)
-//        {
-//            a_val = vld2_s16((const int16_t*)a);
-//            __VOLK_GNSSSDR_PREFETCH(a + 4);
-//            a_val.val[1] = vneg_s16(a_val.val[1]);
-//            vst2_s16((int16_t*)c, a_val);
-//            a += 4;
-//            c += 4;
-//        }
-//
-//    for (i = sse_iters * 4; i < num_points; ++i)
-//        {
-//            *c++ = lv_conj(*a++);
-//        }
-//}
-//#endif /* LV_HAVE_NEONV7 */
 
 #endif /* INCLUDED_volk_gnsssdr_16ic_conjugate_16ic_H */

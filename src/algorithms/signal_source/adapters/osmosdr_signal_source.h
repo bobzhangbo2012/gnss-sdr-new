@@ -2,42 +2,33 @@
  * \file osmosdr_signal_source.h
  * \brief Signal source wrapper for OsmoSDR-compatible front-ends, such as
  * HackRF or Realtek's RTL2832U-based USB dongle DVB-T receivers
- * (see http://sdr.osmocom.org/trac/wiki/rtl-sdr for more information)
+ * (see https://osmocom.org/projects/rtl-sdr/wiki for more information)
  * \author Javier Arribas, 2012. jarribas(at)cttc.es
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H_
-#define GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H_
+#ifndef GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H
+#define GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H
 
+#include "concurrent_queue.h"
 #include "gnss_block_interface.h"
 #include <boost/shared_ptr.hpp>
 #include <gnuradio/blocks/file_sink.h>
-#include <gnuradio/msg_queue.h>
+#include <pmt/pmt.h>
 #include <cstdint>
+#include <memory>
 #include <osmosdr/source.h>
 #include <stdexcept>
 #include <string>
@@ -47,16 +38,16 @@ class ConfigurationInterface;
 /*!
  * \brief This class reads samples OsmoSDR-compatible front-ends, such as
  * HackRF or Realtek's RTL2832U-based USB dongle DVB-T receivers
- * (see http://sdr.osmocom.org/trac/wiki/rtl-sdr)
+ * (see https://osmocom.org/projects/rtl-sdr/wiki)
  */
 class OsmosdrSignalSource : public GNSSBlockInterface
 {
 public:
     OsmosdrSignalSource(ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
-        unsigned int out_stream, boost::shared_ptr<gr::msg_queue> queue);
+        unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);
 
-    virtual ~OsmosdrSignalSource();
+    ~OsmosdrSignalSource() = default;
 
     inline std::string role() override
     {
@@ -110,7 +101,7 @@ private:
 
     boost::shared_ptr<gr::block> valve_;
     gr::blocks::file_sink::sptr file_sink_;
-    boost::shared_ptr<gr::msg_queue> queue_;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
 };
 
-#endif /*GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H_*/
+#endif  // GNSS_SDR_OSMOSDR_SIGNAL_SOURCE_H

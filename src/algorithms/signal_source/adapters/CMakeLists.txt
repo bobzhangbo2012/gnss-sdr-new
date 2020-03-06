@@ -1,51 +1,20 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 
 # Optional drivers
+set(OPT_DRIVER_SOURCES "")
+set(OPT_DRIVER_HEADERS "")
 
 if(ENABLE_RAW_UDP AND PCAP_FOUND)
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} custom_udp_signal_source.cc)
     set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} custom_udp_signal_source.h)
-endif()
-
-
-if(ENABLE_PLUTOSDR OR ENABLE_FMCOMMS2)
-    if(NOT GRIIO_FOUND)
-        message(STATUS "gnuradio-iio not found, its installation is required.")
-        message(STATUS "Please build and install the following projects:")
-        message(STATUS " * libiio from https://github.com/analogdevicesinc/libiio")
-        message(STATUS " * libad9361-iio from https://github.com/analogdevicesinc/libad9361-iio")
-        message(STATUS " * gnuradio-iio from https://github.com/analogdevicesinc/gr-iio")
-        message(FATAL_ERROR "gnuradio-iio is required for building gnss-sdr with -DENABLE_PLUTOSDR=ON or -DENABLE_FMCOMMS2=ON.")
-    endif()
-endif()
-
-
-if(ENABLE_AD9361)
-    if(NOT LIBIIO_FOUND)
-        message(STATUS "libiio not found, its installation is required.")
-        message(STATUS "Please build and install the following projects:")
-        message(STATUS " * libiio from https://github.com/analogdevicesinc/libiio")
-        message(STATUS " * libad9361-iio from https://github.com/analogdevicesinc/libad9361-iio")
-        message(STATUS " * gnuradio-iio from https://github.com/analogdevicesinc/gr-iio")
-        message(FATAL_ERROR "libiio is required for building gnss-sdr with -DENABLE_AD9361=ON.")
-    endif()
 endif()
 
 
@@ -81,7 +50,7 @@ if(ENABLE_GN3S)
     # GN3S (USB dongle)
     ##############################################
     if(NOT GRGN3S_FOUND)
-        message(" gr-gn3s not found, install it from https://github.com/gnss-sdr/gr-gn3s ")
+        message(" gr-gn3s not found, install it from https://github.com/gnss-sdr/gr-gn3s")
         message(FATAL_ERROR "gr-gn3s required for building gnss-sdr with this option enabled")
     endif()
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} gn3s_signal_source.cc)
@@ -100,11 +69,9 @@ if(ENABLE_ARRAY)
     # DBFCTTC GNSS EXPERIMENTAL ARRAY PROTOTYPE
     ##############################################
     if(NOT GRDBFCTTC_FOUND)
-        message(" gr-dbfcttc not found, install it from https://github.com/gnss-sdr/gr-dbfcttc ")
+        message(" gr-dbfcttc not found, install it from https://github.com/gnss-sdr/gr-dbfcttc")
         message(FATAL_ERROR "gr-dbfcttc required for building gnss-sdr with this option enabled")
     endif()
-    set(OPT_LIBRARIES ${OPT_LIBRARIES} ${GR_DBFCTTC_LIBRARIES})
-    set(OPT_DRIVER_INCLUDE_DIRS ${OPT_DRIVER_INCLUDE_DIRS} ${GR_DBFCTTC_INCLUDE_DIRS})
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} raw_array_signal_source.cc)
     set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} raw_array_signal_source.h)
 endif()
@@ -112,7 +79,7 @@ endif()
 
 if(ENABLE_OSMOSDR)
     ################################################################################
-    # OsmoSDR - http://sdr.osmocom.org/trac/
+    # OsmoSDR - https://osmocom.org/projects/gr-osmosdr/
     ################################################################################
     if(GROSMOSDR_FOUND)
         set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} osmosdr_signal_source.cc)
@@ -129,6 +96,7 @@ endif()
 
 set(SIGNAL_SOURCE_ADAPTER_SOURCES
     file_signal_source.cc
+    multichannel_file_signal_source.cc
     gen_signal_source.cc
     nsr_file_signal_source.cc
     spir_file_signal_source.cc
@@ -142,6 +110,7 @@ set(SIGNAL_SOURCE_ADAPTER_SOURCES
 
 set(SIGNAL_SOURCE_ADAPTER_HEADERS
     file_signal_source.h
+    multichannel_file_signal_source.h
     gen_signal_source.h
     nsr_file_signal_source.h
     spir_file_signal_source.h
@@ -170,7 +139,7 @@ target_include_directories(signal_source_adapters
 
 target_link_libraries(signal_source_adapters
     PUBLIC
-        Boost::boost
+        Boost::headers
         Gnuradio::runtime
         Gnuradio::blocks
         signal_source_gr_blocks
@@ -213,6 +182,16 @@ if(ENABLE_AD9361 AND LIBIIO_FOUND)
     )
 endif()
 
+if(ENABLE_AD9361 OR ENABLE_FMCOMMS2 OR ENABLE_PLUTOSDR)
+    if(LIBAD9361_VERSION)
+        if(LIBAD9361_VERSION VERSION_GREATER 0.1)
+            target_compile_definitions(signal_source_adapters
+                PRIVATE -DLIBAD9361_VERSION_GREATER_THAN_01=1
+            )
+        endif()
+    endif()
+endif()
+
 if(ENABLE_FLEXIBAND AND TELEORBIT_FOUND)
     target_link_libraries(signal_source_adapters
         PRIVATE
@@ -234,9 +213,31 @@ if(ENABLE_ARRAY AND GRDBFCTTC_FOUND)
     )
 endif()
 
-target_compile_definitions(signal_source_adapters
-    PRIVATE -DGNSSSDR_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}"
-)
+if(ENABLE_PLUTOSDR OR ENABLE_FMCOMMS2)
+    if(GR_IIO_INCLUDE_HAS_GNURADIO)
+        target_compile_definitions(signal_source_adapters
+            PUBLIC -DGRIIO_INCLUDE_HAS_GNURADIO=1
+        )
+    endif()
+    if(GNURADIO_API_IIO)
+        target_compile_definitions(signal_source_adapters
+            PUBLIC -DGNURADIO_API_IIO=1
+        )
+    endif()
+    target_link_libraries(signal_source_adapters
+        PUBLIC
+            Gnuradio::iio
+            Boost::chrono
+        PRIVATE
+            Iio::iio
+    )
+    if(NOT GNURADIO_API_IIO)
+        target_link_libraries(signal_source_adapters
+            PRIVATE
+                Gnuradio::analog
+        )
+    endif()
+endif()
 
 if(ENABLE_CLANG_TIDY)
     if(CLANG_TIDY_EXE)
@@ -247,6 +248,11 @@ if(ENABLE_CLANG_TIDY)
     endif()
 endif()
 
-set_property(TARGET signal_source_adapters APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+target_compile_definitions(signal_source_adapters
+    PRIVATE -DGNSSSDR_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}"
+)
+
+set_property(TARGET signal_source_adapters
+    APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )

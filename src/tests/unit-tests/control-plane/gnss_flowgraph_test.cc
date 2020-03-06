@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -33,6 +22,7 @@
 #include "acquisition_interface.h"
 #include "channel.h"
 #include "channel_interface.h"
+#include "concurrent_queue.h"
 #include "file_configuration.h"
 #include "file_signal_source.h"
 #include "gnss_block_interface.h"
@@ -40,7 +30,6 @@
 #include "in_memory_configuration.h"
 #include "pass_through.h"
 #include "tracking_interface.h"
-#include <gnuradio/msg_queue.h>
 #include <gtest/gtest.h>
 
 
@@ -68,7 +57,7 @@ TEST(GNSSFlowgraph /*unused*/, InstantiateConnectStartStopOldNotation /*unused*/
     config->set_property("Observables.implementation", "Hybrid_Observables");
     config->set_property("PVT.implementation", "RTKLIB_PVT");
 
-    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, gr::msg_queue::make(0));
+    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, std::make_shared<Concurrent_Queue<pmt::pmt_t>>());
 
     EXPECT_NO_THROW(flowgraph->connect());
     EXPECT_TRUE(flowgraph->connected());
@@ -103,7 +92,7 @@ TEST(GNSSFlowgraph /*unused*/, InstantiateConnectStartStop /*unused*/)
     config->set_property("Observables.implementation", "Hybrid_Observables");
     config->set_property("PVT.implementation", "RTKLIB_PVT");
 
-    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, gr::msg_queue::make(0));
+    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, std::make_shared<Concurrent_Queue<pmt::pmt_t>>());
 
     EXPECT_NO_THROW(flowgraph->connect());
     EXPECT_TRUE(flowgraph->connected());
@@ -137,7 +126,7 @@ TEST(GNSSFlowgraph /*unused*/, InstantiateConnectStartStopGalileoE1B /*unused*/)
     config->set_property("Observables.implementation", "Hybrid_Observables");
     config->set_property("PVT.implementation", "RTKLIB_PVT");
 
-    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, gr::msg_queue::make(0));
+    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, std::make_shared<Concurrent_Queue<pmt::pmt_t>>());
 
     EXPECT_NO_THROW(flowgraph->connect());
     EXPECT_TRUE(flowgraph->connected());
@@ -253,7 +242,7 @@ TEST(GNSSFlowgraph /*unused*/, InstantiateConnectStartStopHybrid /*unused*/)
     config->set_property("Observables.implementation", "Hybrid_Observables");
     config->set_property("PVT.implementation", "RTKLIB_PVT");
 
-    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, gr::msg_queue::make(0));
+    std::shared_ptr<GNSSFlowgraph> flowgraph = std::make_shared<GNSSFlowgraph>(config, std::make_shared<Concurrent_Queue<pmt::pmt_t>>());
 
     EXPECT_NO_THROW(flowgraph->connect());
     EXPECT_TRUE(flowgraph->connected());

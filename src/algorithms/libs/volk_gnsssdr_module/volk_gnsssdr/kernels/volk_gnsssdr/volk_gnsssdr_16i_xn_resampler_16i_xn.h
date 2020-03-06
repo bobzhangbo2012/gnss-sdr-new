@@ -11,25 +11,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -84,7 +73,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_generic(int16_t** result
                 {
                     // resample code for current tap
                     local_code_chip_index = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index < 0) local_code_chip_index += (int)code_length_chips * (abs(local_code_chip_index) / code_length_chips + 1);
                     local_code_chip_index = local_code_chip_index % code_length_chips;
                     result[current_correlator_tap][n] = local_code[local_code_chip_index];
@@ -150,7 +139,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_a_sse4_1(int16_t** resul
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -217,7 +206,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_u_sse4_1(int16_t** resul
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -288,7 +277,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_a_sse3(int16_t** result,
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -359,7 +348,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_u_sse3(int16_t** result,
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -437,7 +426,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_a_avx(int16_t** result, 
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -515,7 +504,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_u_avx(int16_t** result, 
                 {
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
@@ -568,7 +557,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_neon(int16_t** result, c
                     aux = vmulq_f32(code_phase_step_chips_reg, indexn);
                     aux = vaddq_f32(aux, aux2);
 
-                    //floor
+                    // floor
                     i = vcvtq_s32_f32(aux);
                     fi = vcvtq_f32_s32(i);
                     igx = vcgtq_f32(fi, aux);
@@ -600,7 +589,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_neon(int16_t** result, c
                     __VOLK_GNSSSDR_PREFETCH_LOCALITY(&_result[current_correlator_tap][n], 1, 0);
                     // resample code for current tap
                     local_code_chip_index_ = (int)floor(code_phase_step_chips * (float)n + shifts_chips[current_correlator_tap] - rem_code_phase_chips);
-                    //Take into account that in multitap correlators, the shifts can be negative!
+                    // Take into account that in multitap correlators, the shifts can be negative!
                     if (local_code_chip_index_ < 0) local_code_chip_index_ += (int)code_length_chips * (abs(local_code_chip_index_) / code_length_chips + 1);
                     local_code_chip_index_ = local_code_chip_index_ % code_length_chips;
                     _result[current_correlator_tap][n] = local_code[local_code_chip_index_];

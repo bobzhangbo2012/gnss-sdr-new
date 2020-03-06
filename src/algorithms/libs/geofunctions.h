@@ -6,31 +6,24 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GEOFUNCTIONS_H
 #define GNSS_SDR_GEOFUNCTIONS_H
+
+#if ARMA_NO_BOUND_CHECKING
+#define ARMA_NO_DEBUG 1
+#endif
 
 #include <armadillo>
 
@@ -79,7 +72,7 @@ int topocent(double *Az, double *El, double *D, const arma::vec &x, const arma::
  */
 int togeod(double *dphi, double *dlambda, double *h, double a, double finv, double X, double Y, double Z);
 
-arma::mat Gravity_ECEF(const arma::vec &r_eb_e);  //!< Calculates acceleration due to gravity resolved about ECEF-frame
+arma::vec Gravity_ECEF(const arma::vec &r_eb_e);  //!< Calculates acceleration due to gravity resolved about ECEF-frame
 
 /*!
  * \brief Conversion of Cartesian coordinates (X,Y,Z) to geographical
@@ -181,4 +174,4 @@ double clsin(const arma::colvec &ar, int degree, double argument);
  */
 void clksin(const arma::colvec &ar, int degree, double arg_real, double arg_imag, double *re, double *im);
 
-#endif
+#endif  // GNSS_SDR_GEOFUNCTIONS_H

@@ -1,27 +1,33 @@
-# Copyright (C) 2011-2018 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+if(GNSSSIMULATOR_ROOT)
+    set(GNSSSIMULATOR_ROOT_USER_DEFINED ${GNSSSIMULATOR_ROOT})
+else()
+    set(GNSSSIMULATOR_ROOT_USER_DEFINED /usr/local/bin)
+endif()
+if(DEFINED ENV{GNSSSIMULATOR_ROOT})
+    set(GNSSSIMULATOR_ROOT_USER_DEFINED
+        ${GNSSSIMULATOR_ROOT_USER_DEFINED}
+        $ENV{GNSSSIMULATOR}
+    )
+endif()
+set(GNSSSIMULATOR_ROOT_USER_DEFINED
+    ${GNSSSIMULATOR_ROOT_USER_DEFINED}
+    ${CMAKE_INSTALL_PREFIX}
+)
 
 find_program(SW_GENERATOR_BIN gnss_sim
-    PATHS /usr/bin
-          /usr/local/bin
-          /opt/local/bin
-          ${CMAKE_INSTALL_PREFIX}/bin
-          ${GNSSSIMULATOR_ROOT}/bin
-          $ENV{GNSSSIMULATOR_ROOT}/bin
+    PATHS
+        ${GNSSSIMULATOR_ROOT_USER_DEFINED}
+        /usr
+        /usr/local
+        /opt/local
     PATH_SUFFIXES bin
 )
 

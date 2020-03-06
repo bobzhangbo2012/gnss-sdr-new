@@ -5,36 +5,26 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GPS_L1_CA_H_
-#define GNSS_SDR_GPS_L1_CA_H_
+#ifndef GNSS_SDR_GPS_L1_CA_H
+#define GNSS_SDR_GPS_L1_CA_H
 
 #include "MATH_CONSTANTS.h"
 #include "gnss_frequencies.h"
 #include <cstdint>
+#include <string>
 #include <utility>  // std::pair
 #include <vector>
 
@@ -42,8 +32,8 @@
 // Physical constants
 const double GPS_C_M_S = SPEED_OF_LIGHT;                 //!< The speed of light, [m/s]
 const double GPS_C_M_MS = 299792.4580;                   //!< The speed of light, [m/ms]
-const double GPS_PI = 3.1415926535898;                   //!< Pi as defined in IS-GPS-200E
-const double GPS_TWO_PI = 6.283185307179586;             //!< 2Pi as defined in IS-GPS-200E
+const double GPS_PI = 3.1415926535898;                   //!< Pi as defined in IS-GPS-200K
+const double GPS_TWO_PI = 6.283185307179586;             //!< 2Pi as defined in IS-GPS-200K
 const double OMEGA_EARTH_DOT = DEFAULT_OMEGA_EARTH_DOT;  //!< Earth rotation rate, [rad/s]
 const double GM = 3.986005e14;                           //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
 const double F = -4.442807633e-10;                       //!< Constant, [s/(m)^(1/2)]
@@ -51,14 +41,15 @@ const double F = -4.442807633e-10;                       //!< Constant, [s/(m)^(
 
 // carrier and code frequencies
 const double GPS_L1_FREQ_HZ = FREQ1;                //!< L1 [Hz]
-const double GPS_L1_CA_CODE_RATE_HZ = 1.023e6;      //!< GPS L1 C/A code rate [chips/s]
+const double GPS_L1_CA_CODE_RATE_CPS = 1.023e6;     //!< GPS L1 C/A code rate [chips/s]
 const double GPS_L1_CA_CODE_LENGTH_CHIPS = 1023.0;  //!< GPS L1 C/A code length [chips]
-const double GPS_L1_CA_CODE_PERIOD = 0.001;         //!< GPS L1 C/A code period [seconds]
+const double GPS_L1_CA_CODE_PERIOD_S = 0.001;       //!< GPS L1 C/A code period [seconds]
 const uint32_t GPS_L1_CA_CODE_PERIOD_MS = 1U;       //!< GPS L1 C/A code period [ms]
-const double GPS_L1_CA_CHIP_PERIOD = 9.7752e-07;    //!< GPS L1 C/A chip period [seconds]
+const uint32_t GPS_L1_CA_BIT_PERIOD_MS = 20U;       //!< GPS L1 C/A bit period [ms]
+const double GPS_L1_CA_CHIP_PERIOD_S = 9.7752e-07;  //!< GPS L1 C/A chip period [seconds]
 
-//optimum parameters
-const uint32_t GPS_L1_CA_OPT_ACQ_FS_HZ = 2000000;  //!< Sampling frequncy that maximizes the acquisition SNR while using a non-multiple of chip rate
+// optimum parameters
+const uint32_t GPS_L1_CA_OPT_ACQ_FS_SPS = 2000000;  //!< Sampling frequency that maximizes the acquisition SNR while using a non-multiple of chip rate
 
 /*!
  * \brief Maximum Time-Of-Arrival (TOA) difference between satellites for a receiver operated on Earth surface is 20 ms
@@ -70,9 +61,7 @@ const uint32_t GPS_L1_CA_OPT_ACQ_FS_HZ = 2000000;  //!< Sampling frequncy that m
  */
 const double MAX_TOA_DELAY_MS = 20;
 
-//#define NAVIGATION_SOLUTION_RATE_MS 1000 // this cannot go here
-//const double GPS_STARTOFFSET_ms = 68.802;  //[ms] Initial sign. travel time (this cannot go here)
-const double GPS_STARTOFFSET_MS = 60.0;
+const double GPS_STARTOFFSET_MS = 68.802;  // [ms] Initial signal travel time (only for old ls_pvt implementation)
 
 // OBSERVABLE HISTORY DEEP FOR INTERPOLATION
 const int32_t GPS_L1_CA_HISTORY_DEEP = 100;
@@ -84,6 +73,7 @@ const int32_t GPS_L1_CA_HISTORY_DEEP = 100;
         1, 0, 0, 0, 1, 0, 1, 1 \
     }
 const std::string GPS_CA_PREAMBLE = {"10001011"};
+const std::string GPS_CA_PREAMBLE_SYMBOLS_STR = {"1111111111111111111100000000000000000000000000000000000000000000000000000000000011111111111111111111000000000000000000001111111111111111111111111111111111111111"};
 const int32_t GPS_CA_PREAMBLE_LENGTH_BITS = 8;
 const int32_t GPS_CA_PREAMBLE_LENGTH_SYMBOLS = 160;
 const double GPS_CA_PREAMBLE_DURATION_S = 0.160;
@@ -99,7 +89,7 @@ const int32_t GPS_SUBFRAME_MS = 6000;                                           
 const int32_t GPS_WORD_BITS = 30;                                                                                           //!< Number of bits per word in the NAV message [bits]
 
 // GPS NAVIGATION MESSAGE STRUCTURE
-// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200E Appendix II)
+// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200K Appendix II)
 
 // SUBFRAME 1-5 (TLM and HOW)
 
@@ -137,8 +127,8 @@ const std::vector<std::pair<int32_t, int32_t>> M_0({{107, 8}, {121, 24}});
 const double M_0_LSB = PI_TWO_N31;
 const std::vector<std::pair<int32_t, int32_t>> C_UC({{151, 16}});
 const double C_UC_LSB = TWO_N29;
-const std::vector<std::pair<int32_t, int32_t>> E({{167, 8}, {181, 24}});
-const double E_LSB = TWO_N33;
+const std::vector<std::pair<int32_t, int32_t>> ECCENTRICITY({{167, 8}, {181, 24}});
+const double ECCENTRICITY_LSB = TWO_N33;
 const std::vector<std::pair<int32_t, int32_t>> C_US({{211, 16}});
 const double C_US_LSB = TWO_N29;
 const std::vector<std::pair<int32_t, int32_t>> SQRT_A({{227, 8}, {241, 24}});
@@ -252,4 +242,4 @@ const std::vector<std::pair<int32_t, int32_t>> HEALTH_SV22({{247, 6}});
 const std::vector<std::pair<int32_t, int32_t>> HEALTH_SV23({{253, 6}});
 const std::vector<std::pair<int32_t, int32_t>> HEALTH_SV24({{259, 6}});
 
-#endif /* GNSS_SDR_GPS_L1_CA_H_ */
+#endif  // GNSS_SDR_GPS_L1_CA_H

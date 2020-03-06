@@ -8,44 +8,33 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #include "gnss_sdr_valve.h"
-#include "control_message_factory.h"  // for ControlMessageFactory
-#include <glog/logging.h>             // for LOG
-#include <gnuradio/io_signature.h>    // for io_signature
-#include <algorithm>                  // for min
-#include <cstring>                    // for memcpy
-#include <unistd.h>                   // for usleep
+#include "command_event.h"
+#include <glog/logging.h>           // for LOG
+#include <gnuradio/io_signature.h>  // for io_signature
+#include <algorithm>                // for min
+#include <cstring>                  // for memcpy
+#include <unistd.h>                 // for usleep
 #include <utility>
 
 Gnss_Sdr_Valve::Gnss_Sdr_Valve(size_t sizeof_stream_item,
     uint64_t nitems,
-    gr::msg_queue::sptr queue,
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue,
     bool stop_flowgraph) : gr::sync_block("valve",
-                               gr::io_signature::make(1, 1, sizeof_stream_item),
-                               gr::io_signature::make(1, 1, sizeof_stream_item)),
+                               gr::io_signature::make(1, 20, sizeof_stream_item),
+                               gr::io_signature::make(1, 20, sizeof_stream_item)),
                            d_nitems(nitems),
                            d_ncopied_items(0),
                            d_queue(std::move(queue)),
@@ -55,14 +44,14 @@ Gnss_Sdr_Valve::Gnss_Sdr_Valve(size_t sizeof_stream_item,
 }
 
 
-boost::shared_ptr<gr::block> gnss_sdr_make_valve(size_t sizeof_stream_item, uint64_t nitems, gr::msg_queue::sptr queue, bool stop_flowgraph)
+boost::shared_ptr<Gnss_Sdr_Valve> gnss_sdr_make_valve(size_t sizeof_stream_item, uint64_t nitems, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue, bool stop_flowgraph)
 {
     boost::shared_ptr<Gnss_Sdr_Valve> valve_(new Gnss_Sdr_Valve(sizeof_stream_item, nitems, std::move(queue), stop_flowgraph));
     return valve_;
 }
 
 
-boost::shared_ptr<gr::block> gnss_sdr_make_valve(size_t sizeof_stream_item, uint64_t nitems, gr::msg_queue::sptr queue)
+boost::shared_ptr<Gnss_Sdr_Valve> gnss_sdr_make_valve(size_t sizeof_stream_item, uint64_t nitems, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue)
 {
     boost::shared_ptr<Gnss_Sdr_Valve> valve_(new Gnss_Sdr_Valve(sizeof_stream_item, nitems, std::move(queue), true));
     return valve_;
@@ -83,10 +72,8 @@ int Gnss_Sdr_Valve::work(int noutput_items,
         {
             if (d_ncopied_items >= d_nitems)
                 {
-                    auto *cmf = new ControlMessageFactory();
-                    d_queue->handle(cmf->GetQueueMessage(200, 0));
                     LOG(INFO) << "Stopping receiver, " << d_ncopied_items << " samples processed";
-                    delete cmf;
+                    d_queue->push(pmt::make_any(command_event_make(200, 0)));
                     if (d_stop_flowgraph)
                         {
                             return -1;  // Done!
@@ -99,11 +86,17 @@ int Gnss_Sdr_Valve::work(int noutput_items,
                 {
                     return 0;
                 }
-            memcpy(output_items[0], input_items[0], n * input_signature()->sizeof_stream_item(0));
+            // multichannel support
+            for (size_t ch = 0; ch < output_items.size(); ch++)
+                {
+                    memcpy(output_items[ch], input_items[ch], n * input_signature()->sizeof_stream_item(ch));
+                }
             d_ncopied_items += n;
             return n;
         }
-
-    memcpy(output_items[0], input_items[0], noutput_items * input_signature()->sizeof_stream_item(0));
+    for (size_t ch = 0; ch < output_items.size(); ch++)
+        {
+            memcpy(output_items[ch], input_items[ch], noutput_items * input_signature()->sizeof_stream_item(ch));
+        }
     return noutput_items;
 }

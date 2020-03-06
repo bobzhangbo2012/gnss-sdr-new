@@ -5,25 +5,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -39,6 +28,7 @@
 #else
 #include <gnuradio/analog/sig_source_c.h>
 #endif
+#include "concurrent_queue.h"
 #include "file_signal_source.h"
 #include "fir_filter.h"
 #include "gnss_block_factory.h"
@@ -48,7 +38,6 @@
 #include "interleaved_byte_to_complex_byte.h"
 #include "interleaved_short_to_complex_short.h"
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gtest/gtest.h>
 
 
@@ -59,18 +48,18 @@ class FirFilterTest : public ::testing::Test
 protected:
     FirFilterTest()
     {
-        queue = gr::msg_queue::make(0);
+        queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
         item_size = sizeof(gr_complex);
         config = std::make_shared<InMemoryConfiguration>();
     }
-    ~FirFilterTest() = default;
+    ~FirFilterTest() override = default;
 
     void init();
     void configure_cbyte_cbyte();
     void configure_cbyte_gr_complex();
     void configure_gr_complex_gr_complex();
     void configure_cshort_cshort();
-    boost::shared_ptr<gr::msg_queue> queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     std::shared_ptr<InMemoryConfiguration> config;
     size_t item_size;
@@ -99,7 +88,7 @@ void FirFilterTest::init()
 
     config->set_property("InputFilter.filter_type", "bandpass");
     config->set_property("InputFilter.grid_density", "16");
-    //config->set_property("InputFilter.dump", "true");
+    // config->set_property("InputFilter.dump", "true");
 }
 
 
@@ -189,7 +178,8 @@ TEST_F(FirFilterTest, InstantiateCbyteGrComplex)
 TEST_F(FirFilterTest, ConnectAndRun)
 {
     int fs_in = 4000000;
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Fir filter test");
 
@@ -220,7 +210,8 @@ TEST_F(FirFilterTest, ConnectAndRun)
 
 TEST_F(FirFilterTest, ConnectAndRunGrcomplex)
 {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Fir filter test");
 
@@ -261,7 +252,8 @@ TEST_F(FirFilterTest, ConnectAndRunGrcomplex)
 
 TEST_F(FirFilterTest, ConnectAndRunCshorts)
 {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Fir filter test");
 
@@ -305,7 +297,8 @@ TEST_F(FirFilterTest, ConnectAndRunCshorts)
 
 TEST_F(FirFilterTest, ConnectAndRunCbytes)
 {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Fir filter test");
 
@@ -349,7 +342,8 @@ TEST_F(FirFilterTest, ConnectAndRunCbytes)
 
 TEST_F(FirFilterTest, ConnectAndRunCbyteGrcomplex)
 {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Fir filter test");
 

@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -35,6 +24,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/time_formatters.hpp>
 #include <cmath>
+#include <string>
 
 
 Glonass_Gnav_Ephemeris::Glonass_Gnav_Ephemeris()
@@ -114,7 +104,8 @@ void Glonass_Gnav_Ephemeris::glot_to_gpst(double tod_offset, double glot2utc_cor
     double tod = 0.0;
     double glot2utc = 3 * 3600;
     double days = 0.0;
-    double total_sec = 0.0, sec_of_day = 0.0;
+    double total_sec = 0.0;
+    double sec_of_day = 0.0;
     int i = 0;
 
     boost::gregorian::date gps_epoch{1980, 1, 6};
@@ -186,8 +177,8 @@ double Glonass_Gnav_Ephemeris::sv_clock_drift(double transmitTime, double timeCo
     double dt;
     dt = check_t(transmitTime - d_t_b);
     d_satClkDrift = -(d_tau_n + timeCorrUTC - d_gamma_n * dt);
-    //Correct satellite group delay and missing relativistic term here
-    //d_satClkDrift-=d_TGD;
+    // Correct satellite group delay and missing relativistic term here
+    // d_satClkDrift-=d_TGD;
 
     return d_satClkDrift;
 }

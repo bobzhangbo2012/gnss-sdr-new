@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -34,7 +23,6 @@
 #include "configuration_interface.h"
 #include <glog/logging.h>
 #include <gnuradio/blocks/file_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <teleorbit/frontend.h>
 #include <utility>
 
@@ -43,10 +31,10 @@ FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configurati
     const std::string& role,
     unsigned int in_stream,
     unsigned int out_stream,
-    gr::msg_queue::sptr queue) : role_(role),
-                                 in_stream_(in_stream),
-                                 out_stream_(out_stream),
-                                 queue_(std::move(queue))
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role),
+                                                           in_stream_(in_stream),
+                                                           out_stream_(out_stream),
+                                                           queue_(std::move(queue))
 {
     std::string default_item_type = "byte";
     item_type_ = configuration->property(role + ".item_type", default_item_type);
@@ -59,7 +47,7 @@ FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configurati
     gain3_ = configuration->property(role + ".gain3", 0);  // check gain DAC values for Flexiband frontend!
 
     AGC_ = configuration->property(role + ".AGC", true);                        // enabled AGC by default
-    flag_read_file = configuration->property(role + ".flag_read_file", false);  //disable read samples from file by default
+    flag_read_file = configuration->property(role + ".flag_read_file", false);  // disable read samples from file by default
     std::string default_signal_file = "flexiband_frame_samples.bin";
     signal_file = configuration->property(role + ".signal_file", default_signal_file);
 
@@ -80,15 +68,15 @@ FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configurati
             item_size_ = sizeof(gr_complex);
             flexiband_source_ = gr::teleorbit::frontend::make(firmware_filename_.c_str(), gain1_, gain2_, gain3_, AGC_, usb_packet_buffer_size_, signal_file.c_str(), flag_read_file);
 
-            //create I, Q -> gr_complex type conversion blocks
+            // create I, Q -> gr_complex type conversion blocks
             for (int n = 0; n < (n_channels_ * 2); n++)
                 {
-                    char_to_float.push_back(gr::blocks::char_to_float::make());
+                    char_to_float.emplace_back(gr::blocks::char_to_float::make());
                 }
 
             for (int n = 0; n < n_channels_; n++)
                 {
-                    float_to_complex_.push_back(gr::blocks::float_to_complex::make());
+                    float_to_complex_.emplace_back(gr::blocks::float_to_complex::make());
                     null_sinks_.push_back(gr::blocks::null_sink::make(sizeof(gr_complex)));
                 }
 
@@ -110,9 +98,6 @@ FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configurati
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-FlexibandSignalSource::~FlexibandSignalSource() = default;
 
 
 void FlexibandSignalSource::connect(gr::top_block_sptr top_block)
@@ -161,12 +146,13 @@ gr::basic_block_sptr FlexibandSignalSource::get_right_block()
     return get_right_block(0);
 }
 
+
 gr::basic_block_sptr FlexibandSignalSource::get_right_block(int RF_channel)
 {
     if (RF_channel == 0)
         {
-            //in the first RF channel, return the signalsource selected channel.
-            //this trick enables the use of the second or the third frequency of a FlexiBand signal without a dual frequency configuration
+            // in the first RF channel, return the signalsource selected channel.
+            // this trick enables the use of the second or the third frequency of a FlexiBand signal without a dual frequency configuration
             return float_to_complex_.at(sel_ch_ - 1);
         }
     else

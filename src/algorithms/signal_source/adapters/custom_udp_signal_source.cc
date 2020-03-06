@@ -5,25 +5,14 @@
  * \author Javier Arribas jarribas (at) cttc.es
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -40,7 +29,7 @@
 
 CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_stream, unsigned int out_stream,
-    boost::shared_ptr<gr::msg_queue> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(std::move(queue))
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(std::move(queue))
 {
     // DUMP PARAMETERS
     std::string empty = "";
@@ -81,7 +70,7 @@ CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configurati
         {
             for (int n = 0; n < channels_in_udp_; n++)
                 {
-                    null_sinks_.push_back(gr::blocks::null_sink::make(sizeof(gr_complex)));
+                    null_sinks_.emplace_back(gr::blocks::null_sink::make(sizeof(gr_complex)));
                 }
         }
     else
@@ -95,7 +84,7 @@ CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configurati
             for (int n = 0; n < channels_in_udp_; n++)
                 {
                     DLOG(INFO) << "Dumping output into file " << (dump_filename_ + "c_h" + std::to_string(n) + ".bin");
-                    file_sink_.push_back(gr::blocks::file_sink::make(item_size_, (dump_filename_ + "_ch" + std::to_string(n) + ".bin").c_str()));
+                    file_sink_.emplace_back(gr::blocks::file_sink::make(item_size_, (dump_filename_ + "_ch" + std::to_string(n) + ".bin").c_str()));
                 }
         }
     if (in_stream_ > 0)
@@ -107,9 +96,6 @@ CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configurati
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-CustomUDPSignalSource::~CustomUDPSignalSource() = default;
 
 
 void CustomUDPSignalSource::connect(gr::top_block_sptr top_block)

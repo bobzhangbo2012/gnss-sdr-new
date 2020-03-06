@@ -5,25 +5,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -34,9 +23,11 @@
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
 #include <pmt/pmt_sugar.h>  // for mp
-#include <cmath>            // for abs
-#include <exception>        // for exception
-#include <iomanip>          // for operator<<, setw
+#include <algorithm>        // for copy
+#include <array>
+#include <cmath>      // for abs
+#include <exception>  // for exception
+#include <iomanip>    // for operator<<, setw
 
 // logging levels
 #define EVENT 2      // logs important events which don't occur every block
@@ -45,8 +36,9 @@
 #define LMORE 5      //
 
 
-sbas_l1_telemetry_decoder_gs_sptr
-sbas_l1_make_telemetry_decoder_gs(const Gnss_Satellite &satellite, bool dump)
+sbas_l1_telemetry_decoder_gs_sptr sbas_l1_make_telemetry_decoder_gs(
+    const Gnss_Satellite &satellite,
+    bool dump)
 {
     return sbas_l1_telemetry_decoder_gs_sptr(new sbas_l1_telemetry_decoder_gs(satellite, dump));
 }
@@ -58,6 +50,8 @@ sbas_l1_telemetry_decoder_gs::sbas_l1_telemetry_decoder_gs(
                      gr::io_signature::make(1, 1, sizeof(Gnss_Synchro)),
                      gr::io_signature::make(1, 1, sizeof(Gnss_Synchro)))
 {
+    // prevent telemetry symbols accumulation in output buffers
+    this->set_max_noutput_items(1);
     // Ephemeris data port out
     this->message_port_register_out(pmt::mp("telemetry"));
     // Control messages to tracking block
@@ -111,9 +105,6 @@ sbas_l1_telemetry_decoder_gs::Sample_Aligner::Sample_Aligner()
 }
 
 
-sbas_l1_telemetry_decoder_gs::Sample_Aligner::~Sample_Aligner() = default;
-
-
 void sbas_l1_telemetry_decoder_gs::Sample_Aligner::reset()
 {
     d_past_sample = 0;
@@ -128,7 +119,7 @@ void sbas_l1_telemetry_decoder_gs::Sample_Aligner::reset()
  */
 bool sbas_l1_telemetry_decoder_gs::Sample_Aligner::get_symbols(const std::vector<double> &samples, std::vector<double> &symbols)
 {
-    double smpls[3] = {};
+    std::array<double, 3> smpls{};
     double corr_diff;
     bool stand_by = true;
     double sym;
@@ -136,7 +127,7 @@ bool sbas_l1_telemetry_decoder_gs::Sample_Aligner::get_symbols(const std::vector
     VLOG(FLOW) << "get_symbols(): "
                << "d_past_sample=" << d_past_sample << "\tsamples size=" << samples.size();
 
-    for (uint32_t i_sym = 0; i_sym < samples.size() / sbas_l1_telemetry_decoder_gs::D_SAMPLES_PER_SYMBOL; i_sym++)
+    for (size_t i_sym = 0; i_sym < samples.size() / sbas_l1_telemetry_decoder_gs::D_SAMPLES_PER_SYMBOL; i_sym++)
         {
             // get the next samples
             for (int32_t i = 0; i < d_n_smpls_in_history; i++)
@@ -166,7 +157,7 @@ bool sbas_l1_telemetry_decoder_gs::Sample_Aligner::get_symbols(const std::vector
                             << "smpl0: " << std::setw(6)
                             << smpls[1] << "   "
                             << "smpl1: " << std::setw(6) << smpls[2] << "\t"
-                            //<< "Flag_valid_tracking: " << std::setw(1) << in[0][0].Flag_valid_tracking << " " << std::setw(1) << in[0][0].Flag_valid_tracking << "\t"
+                            // << "Flag_valid_tracking: " << std::setw(1) << in[0][0].Flag_valid_tracking << " " << std::setw(1) << in[0][0].Flag_valid_tracking << "\t"
                             << "d_corr_paired: " << std::setw(10) << d_corr_paired << "\t"
                             << "d_corr_shifted: " << std::setw(10) << d_corr_shifted << "\t"
                             << "corr_diff: " << std::setw(10) << corr_diff << "\t"
@@ -189,20 +180,11 @@ sbas_l1_telemetry_decoder_gs::Symbol_Aligner_And_Decoder::Symbol_Aligner_And_Dec
     // convolutional code properties
     d_KK = 7;
     const int32_t nn = 2;
-    int32_t g_encoder[nn];
-    g_encoder[0] = 121;
-    g_encoder[1] = 91;
+    std::array<int32_t, nn> g_encoder{121, 91};
 
-    d_vd1 = new Viterbi_Decoder(g_encoder, d_KK, nn);
-    d_vd2 = new Viterbi_Decoder(g_encoder, d_KK, nn);
+    d_vd1 = std::make_shared<Viterbi_Decoder>(g_encoder.data(), d_KK, nn);
+    d_vd2 = std::make_shared<Viterbi_Decoder>(g_encoder.data(), d_KK, nn);
     d_past_symbol = 0;
-}
-
-
-sbas_l1_telemetry_decoder_gs::Symbol_Aligner_And_Decoder::~Symbol_Aligner_And_Decoder()
-{
-    delete d_vd1;
-    delete d_vd2;
 }
 
 
@@ -228,11 +210,11 @@ bool sbas_l1_telemetry_decoder_gs::Symbol_Aligner_And_Decoder::get_bits(const st
             symbols_vd2.push_back(*symbol_it);
         }
     // arrays for decoded bits
-    auto *bits_vd1 = new int32_t[nbits_requested];
-    auto *bits_vd2 = new int32_t[nbits_requested];
+    std::vector<int32_t> bits_vd1(nbits_requested);
+    std::vector<int32_t> bits_vd2(nbits_requested);
     // decode
-    float metric_vd1 = d_vd1->decode_continuous(symbols_vd1.data(), traceback_depth, bits_vd1, nbits_requested, nbits_decoded);
-    float metric_vd2 = d_vd2->decode_continuous(symbols_vd2.data(), traceback_depth, bits_vd2, nbits_requested, nbits_decoded);
+    float metric_vd1 = d_vd1->decode_continuous(symbols_vd1.data(), traceback_depth, bits_vd1.data(), nbits_requested, nbits_decoded);
+    float metric_vd2 = d_vd2->decode_continuous(symbols_vd2.data(), traceback_depth, bits_vd2.data(), nbits_requested, nbits_decoded);
     // choose the bits with the better metric
     for (int32_t i = 0; i < nbits_decoded; i++)
         {
@@ -246,8 +228,6 @@ bool sbas_l1_telemetry_decoder_gs::Symbol_Aligner_And_Decoder::get_bits(const st
                 }
         }
     d_past_symbol = symbols.back();
-    delete[] bits_vd1;
-    delete[] bits_vd2;
     return metric_vd1 > metric_vd2;
 }
 
@@ -434,7 +414,7 @@ int sbas_l1_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
     // 1. Copy the current tracking output
     current_symbol = in[0];
     // copy correlation samples into samples vector
-    d_sample_buf.push_back(current_symbol.Prompt_I);  //add new symbol to the symbol queue
+    d_sample_buf.push_back(current_symbol.Prompt_I);  // add new symbol to the symbol queue
 
     // store the time stamp of the first sample in the processed sample block
     double sample_stamp = static_cast<double>(in[0].Tracking_sample_counter) / static_cast<double>(in[0].fs);
@@ -464,7 +444,7 @@ int sbas_l1_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
 
             // compute message sample stamp
             // and fill messages in SBAS raw message objects
-            //std::vector<Sbas_Raw_Msg> sbas_raw_msgs;
+            // std::vector<Sbas_Raw_Msg> sbas_raw_msgs;
             for (const auto &valid_msg : valid_msgs)
                 {
                     int32_t message_sample_offset =
@@ -477,16 +457,16 @@ int sbas_l1_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
                                 << " relative_preamble_start=" << valid_msg.first
                                 << " message_sample_offset=" << message_sample_offset
                                 << ")";
-                    //Sbas_Raw_Msg sbas_raw_msg(message_sample_stamp, this->d_satellite.get_PRN(), it->second);
-                    //sbas_raw_msgs.push_back(sbas_raw_msg);
+                    // Sbas_Raw_Msg sbas_raw_msg(message_sample_stamp, this->d_satellite.get_PRN(), it->second);
+                    // sbas_raw_msgs.push_back(sbas_raw_msg);
                 }
 
             // parse messages
             // and send them to the SBAS raw message queue
-            //for(std::vector<Sbas_Raw_Msg>::iterator it = sbas_raw_msgs.begin(); it != sbas_raw_msgs.end(); it++)
+            // for(std::vector<Sbas_Raw_Msg>::iterator it = sbas_raw_msgs.begin(); it != sbas_raw_msgs.end(); it++)
             //    {
-            //std::cout << "SBAS message type " << it->get_msg_type() << " from PRN" << it->get_prn() << " received" << std::endl;
-            //sbas_telemetry_data.update(*it);
+            // std::cout << "SBAS message type " << it->get_msg_type() << " from PRN" << it->get_prn() << " received" << std::endl;
+            // sbas_telemetry_data.update(*it);
             //    }
 
             // clear all processed samples in the input buffer

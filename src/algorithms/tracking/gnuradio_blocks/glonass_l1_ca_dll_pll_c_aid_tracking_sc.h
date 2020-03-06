@@ -13,25 +13,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -44,10 +33,10 @@
 #include "gnss_synchro.h"
 #include "tracking_2nd_DLL_filter.h"
 #include "tracking_FLL_PLL_filter.h"
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
 #include <gnuradio/block.h>
 #include <volk_gnsssdr/volk_gnsssdr.h>
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
+#include <deque>
 #include <fstream>
 #include <map>
 #include <string>
@@ -60,7 +49,7 @@ glonass_l1_ca_dll_pll_c_aid_tracking_sc_sptr
 glonass_l1_ca_dll_pll_c_aid_make_tracking_sc(
     int64_t fs_in, uint32_t vector_length,
     bool dump,
-    std::string dump_filename,
+    const std::string& dump_filename,
     float pll_bw_hz,
     float dll_bw_hz,
     float pll_bw_narrow_hz,
@@ -91,7 +80,7 @@ private:
     glonass_l1_ca_dll_pll_c_aid_make_tracking_sc(
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float pll_bw_hz,
         float dll_bw_hz,
         float pll_bw_narrow_hz,
@@ -102,7 +91,7 @@ private:
     glonass_l1_ca_dll_pll_c_aid_tracking_sc(
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float pll_bw_hz,
         float dll_bw_hz,
         float pll_bw_narrow_hz,
@@ -123,12 +112,10 @@ private:
     double d_early_late_spc_chips;
     int32_t d_n_correlator_taps;
 
-    gr_complex* d_ca_code;
-    lv_16sc_t* d_ca_code_16sc;
-    float* d_local_code_shift_chips;
-    //gr_complex* d_correlator_outs;
-    lv_16sc_t* d_correlator_outs_16sc;
-    //cpu_multicorrelator multicorrelator_cpu;
+    volk_gnsssdr::vector<gr_complex> d_ca_code;
+    volk_gnsssdr::vector<lv_16sc_t> d_ca_code_16sc;
+    volk_gnsssdr::vector<float> d_local_code_shift_chips;
+    volk_gnsssdr::vector<lv_16sc_t> d_correlator_outs_16sc;
     Cpu_Multicorrelator_16sc multicorrelator_cpu_16sc;
 
     // remaining code phase and carrier phase between tracking loops
@@ -167,23 +154,23 @@ private:
     bool d_preamble_synchronized;
     double d_code_error_filt_chips_s;
     double d_code_error_filt_chips_Ti;
-    void msg_handler_preamble_index(pmt::pmt_t msg);
+    void msg_handler_preamble_index(const pmt::pmt_t& msg);
 
     // symbol history to detect bit transition
     std::deque<lv_16sc_t> d_E_history;
     std::deque<lv_16sc_t> d_P_history;
     std::deque<lv_16sc_t> d_L_history;
 
-    //Integration period in samples
+    // Integration period in samples
     int32_t d_correlation_length_samples;
 
-    //processing samples counters
+    // processing samples counters
     uint64_t d_sample_counter;
     uint64_t d_acq_sample_stamp;
 
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
-    gr_complex* d_Prompt_buffer;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;
@@ -203,4 +190,4 @@ private:
     int32_t save_matfile();
 };
 
-#endif  //GNSS_SDR_GLONASS_L1_CA_DLL_PLL_C_AID_TRACKING_SC_H
+#endif  // GNSS_SDR_GLONASS_L1_CA_DLL_PLL_C_AID_TRACKING_SC_H

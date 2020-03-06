@@ -25,28 +25,7 @@
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  *----------------------------------------------------------------------------*/
@@ -163,7 +142,8 @@ int rtkopenstat(const char *file, int level)
         }
     if (strlen(file) < 1025)
         {
-            strcpy(file_stat, file);
+            std::strncpy(file_stat, file, 1024);
+            file_stat[1023] = '\0';
         }
     else
         {
@@ -180,7 +160,7 @@ int rtkopenstat(const char *file, int level)
  * args   : none
  * return : none
  *-----------------------------------------------------------------------------*/
-void rtkclosestat(void)
+void rtkclosestat()
 {
     trace(3, "rtkclosestat:\n");
 
@@ -198,8 +178,19 @@ void rtkclosestat(void)
 void rtkoutstat(rtk_t *rtk, char *buff __attribute__((unused)))
 {
     ssat_t *ssat;
-    double tow, pos[3], vel[3], acc[3], vela[3] = {0}, acca[3] = {0}, xa[3];
-    int i, j, week, est, nfreq, nf = NF_RTK(&rtk->opt);
+    double tow;
+    double pos[3];
+    double vel[3];
+    double acc[3];
+    double vela[3] = {0};
+    double acca[3] = {0};
+    double xa[3];
+    int i;
+    int j;
+    int week;
+    int est;
+    int nfreq;
+    int nf = NF_RTK(&rtk->opt);
     char id[32];
 
     if (statlevel <= 0 || !fp_stat)
@@ -329,7 +320,7 @@ void rtkoutstat(rtk_t *rtk, char *buff __attribute__((unused)))
 
 
 /* swap solution status file -------------------------------------------------*/
-void swapsolstat(void)
+void swapsolstat()
 {
     gtime_t time = utc2gpst(timeget());
     char path[1024];
@@ -363,8 +354,19 @@ void swapsolstat(void)
 void outsolstat(rtk_t *rtk)
 {
     ssat_t *ssat;
-    double tow, pos[3], vel[3], acc[3], vela[3] = {0}, acca[3] = {0}, xa[3];
-    int i, j, week, est, nfreq, nf = NF_RTK(&rtk->opt);
+    double tow;
+    double pos[3];
+    double vel[3];
+    double acc[3];
+    double vela[3] = {0};
+    double acca[3] = {0};
+    double xa[3];
+    int i;
+    int j;
+    int week;
+    int est;
+    int nfreq;
+    int nf = NF_RTK(&rtk->opt);
     char id[32];
 
     if (statlevel <= 0 || !fp_stat)
@@ -496,11 +498,12 @@ void outsolstat(rtk_t *rtk)
 /* save error message --------------------------------------------------------*/
 void errmsg(rtk_t *rtk, const char *format, ...)
 {
-    char buff[256], tstr[32];
+    char buff[256];
+    char tstr[32];
     int n;
     va_list ap;
     time2str(rtk->sol.time, tstr, 2);
-    n = sprintf(buff, "%s: ", tstr + 11);
+    n = std::snprintf(buff, sizeof(buff), "%s: ", tstr + 11);
     va_start(ap, format);
     n += vsprintf(buff + n, format, ap);
     va_end(ap);
@@ -523,14 +526,16 @@ double sdobs(const obsd_t *obs, int i, int j, int f)
 /* single-differenced geometry-free linear combination of phase --------------*/
 double gfobs_L1L2(const obsd_t *obs, int i, int j, const double *lam)
 {
-    double pi = sdobs(obs, i, j, 0) * lam[0], pj = sdobs(obs, i, j, 1) * lam[1];
+    double pi = sdobs(obs, i, j, 0) * lam[0];
+    double pj = sdobs(obs, i, j, 1) * lam[1];
     return pi == 0.0 || pj == 0.0 ? 0.0 : pi - pj;
 }
 
 
 double gfobs_L1L5(const obsd_t *obs, int i, int j, const double *lam)
 {
-    double pi = sdobs(obs, i, j, 0) * lam[0], pj = sdobs(obs, i, j, 2) * lam[2];
+    double pi = sdobs(obs, i, j, 0) * lam[0];
+    double pj = sdobs(obs, i, j, 2) * lam[2];
     return pi == 0.0 || pj == 0.0 ? 0.0 : pi - pj;
 }
 
@@ -539,9 +544,14 @@ double gfobs_L1L5(const obsd_t *obs, int i, int j, const double *lam)
 double varerr(int sat __attribute((unused)), int sys, double el, double bl, double dt, int f,
     const prcopt_t *opt)
 {
-    double a, b, c = opt->err[3] * bl / 1e4, d = SPEED_OF_LIGHT * opt->sclkstab * dt, fact = 1.0;
+    double a;
+    double b;
+    double c = opt->err[3] * bl / 1e4;
+    double d = SPEED_OF_LIGHT * opt->sclkstab * dt;
+    double fact = 1.0;
     double sinel = sin(el);
-    int i = sys == SYS_GLO ? 1 : (sys == SYS_GAL ? 2 : 0), nf = NF_RTK(opt);
+    int i = sys == SYS_GLO ? 1 : (sys == SYS_GAL ? 2 : 0);
+    int nf = NF_RTK(opt);
 
     /* extended error model */
     if (f >= nf && opt->exterr.ena[0])
@@ -610,7 +620,9 @@ void initx_rtk(rtk_t *rtk, double xi, double var, int i)
 int selsat(const obsd_t *obs, const double *azel, int nu, int nr,
     const prcopt_t *opt, int *sat, int *iu, int *ir)
 {
-    int i, j, k = 0;
+    int i;
+    int j;
+    int k = 0;
 
     trace(3, "selsat  : nu=%d nr=%d\n", nu, nr);
 
@@ -639,8 +651,15 @@ int selsat(const obsd_t *obs, const double *azel, int nu, int nr,
 /* temporal update of position/velocity/acceleration -------------------------*/
 void udpos(rtk_t *rtk, double tt)
 {
-    double *F, *FP, *xp, pos[3], Q[9] = {0}, Qv[9], var = 0.0;
-    int i, j;
+    double *F;
+    double *FP;
+    double *xp;
+    double pos[3];
+    double Q[9] = {0};
+    double Qv[9];
+    double var = 0.0;
+    int i;
+    int j;
 
     trace(3, "udpos   : tt=%.3f\n", tt);
 
@@ -748,8 +767,10 @@ void udpos(rtk_t *rtk, double tt)
 /* temporal update of ionospheric parameters ---------------------------------*/
 void udion(rtk_t *rtk, double tt, double bl, const int *sat, int ns)
 {
-    double el, fact;
-    int i, j;
+    double el;
+    double fact;
+    int i;
+    int j;
 
     trace(3, "udion   : tt=%.1f bl=%.0f ns=%d\n", tt, bl, ns);
 
@@ -784,7 +805,9 @@ void udion(rtk_t *rtk, double tt, double bl, const int *sat, int ns)
 /* temporal update of tropospheric parameters --------------------------------*/
 void udtrop(rtk_t *rtk, double tt, double bl __attribute((unused)))
 {
-    int i, j, k;
+    int i;
+    int j;
+    int k;
 
     trace(3, "udtrop  : tt=%.1f\n", tt);
 
@@ -823,7 +846,8 @@ void udtrop(rtk_t *rtk, double tt, double bl __attribute((unused)))
 /* temporal update of receiver h/w biases ------------------------------------*/
 void udrcvbias(rtk_t *rtk, double tt)
 {
-    int i, j;
+    int i;
+    int j;
 
     trace(3, "udrcvbias: tt=%.1f\n", tt);
 
@@ -851,8 +875,10 @@ void udrcvbias(rtk_t *rtk, double tt)
 /* detect cycle slip by LLI --------------------------------------------------*/
 void detslp_ll(rtk_t *rtk, const obsd_t *obs, int i, int rcv)
 {
-    unsigned int slip, LLI;
-    int f, sat = obs[i].sat;
+    unsigned int slip;
+    unsigned int LLI;
+    int f;
+    int sat = obs[i].sat;
 
     trace(3, "detslp_ll: i=%d rcv=%d\n", i, rcv);
 
@@ -921,7 +947,8 @@ void detslp_gf_L1L2(rtk_t *rtk, const obsd_t *obs, int i, int j,
     const nav_t *nav)
 {
     int sat = obs[i].sat;
-    double g0, g1;
+    double g0;
+    double g1;
 
     trace(3, "detslp_gf_L1L2: i=%d j=%d\n", i, j);
 
@@ -948,7 +975,8 @@ void detslp_gf_L1L5(rtk_t *rtk, const obsd_t *obs, int i, int j,
     const nav_t *nav)
 {
     int sat = obs[i].sat;
-    double g0, g1;
+    double g0;
+    double g1;
 
     trace(3, "detslp_gf_L1L5: i=%d j=%d\n", i, j);
 
@@ -974,35 +1002,35 @@ void detslp_gf_L1L5(rtk_t *rtk, const obsd_t *obs, int i, int j,
 void detslp_dop(rtk_t *rtk __attribute__((unused)), const obsd_t *obs __attribute__((unused)), int i __attribute__((unused)), int rcv __attribute__((unused)),
     const nav_t *nav __attribute__((unused)))
 {
-/* detection with doppler disabled because of clock-jump issue (v.2.3.0) */
+    /* detection with doppler disabled because of clock-jump issue (v.2.3.0) */
 #if 0
-    int f,sat = obs[i].sat;
-    double tt,dph,dpt,lam,thres;
+    int f, sat = obs[i].sat;
+    double tt, dph, dpt, lam, thres;
 
-    trace(3,"detslp_dop: i=%d rcv=%d\n",i,rcv);
+    trace(3, "detslp_dop: i=%d rcv=%d\n", i, rcv);
 
-    for (f = 0;f<rtk->opt.nf;f++)
+    for (f = 0; f < rtk->opt.nf; f++)
         {
-            if (obs[i].L[f] == 0.0 || obs[i].D[f] == 0.0 || rtk->ph[rcv-1][sat-1][f] == 0.0)
+            if (obs[i].L[f] == 0.0 || obs[i].D[f] == 0.0 || rtk->ph[rcv - 1][sat - 1][f] == 0.0)
                 {
                     continue;
                 }
-            if (fabs(tt = timediff(obs[i].time,rtk->pt[rcv-1][sat-1][f]))<DTTOL) continue;
-            if ((lam = nav->lam[sat-1][f])<=0.0) continue;
+            if (fabs(tt = timediff(obs[i].time, rtk->pt[rcv - 1][sat - 1][f])) < DTTOL) continue;
+            if ((lam = nav->lam[sat - 1][f]) <= 0.0) continue;
 
             /* cycle slip threshold (cycle) */
-            thres = MAXACC*tt*tt/2.0/lam+rtk->opt.err[4]*fabs(tt)*4.0;
+            thres = MAXACC * tt * tt / 2.0 / lam + rtk->opt.err[4] * fabs(tt) * 4.0;
 
             /* phase difference and doppler x time (cycle) */
-            dph = obs[i].L[f]-rtk->ph[rcv-1][sat-1][f];
-            dpt = -obs[i].D[f]*tt;
+            dph = obs[i].L[f] - rtk->ph[rcv - 1][sat - 1][f];
+            dpt = -obs[i].D[f] * tt;
 
-            if (fabs(dph-dpt)<=thres) continue;
+            if (fabs(dph - dpt) <= thres) continue;
 
-            rtk->slip[sat-1][f]| = 1;
+            rtk->slip[sat - 1][f] | = 1;
 
-            errmsg(rtk,"slip detected (sat=%2d rcv=%d L%d=%.3f %.3f thres=%.3f)\n",
-                    sat,rcv,f+1,dph,dpt,thres);
+            errmsg(rtk, "slip detected (sat=%2d rcv=%d L%d=%.3f %.3f thres=%.3f)\n",
+                sat, rcv, f + 1, dph, dpt, thres);
         }
 #endif
 }
@@ -1012,8 +1040,25 @@ void detslp_dop(rtk_t *rtk __attribute__((unused)), const obsd_t *obs __attribut
 void udbias(rtk_t *rtk, double tt, const obsd_t *obs, const int *sat,
     const int *iu, const int *ir, int ns, const nav_t *nav)
 {
-    double cp, pr, cp1, cp2, pr1, pr2, *bias, offset, lami, lam1, lam2, C1, C2;
-    int i, j, f, slip, reset, nf = NF_RTK(&rtk->opt);
+    double cp;
+    double pr;
+    double cp1;
+    double cp2;
+    double pr1;
+    double pr2;
+    double *bias;
+    double offset;
+    double lami;
+    double lam1;
+    double lam2;
+    double C1;
+    double C2;
+    int i;
+    int j;
+    int f;
+    int slip;
+    int reset;
+    int nf = NF_RTK(&rtk->opt);
 
     trace(3, "udbias  : tt=%.1f ns=%d\n", tt, ns);
 
@@ -1150,7 +1195,9 @@ void udbias(rtk_t *rtk, double tt, const obsd_t *obs, const int *sat,
 void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
     const int *iu, const int *ir, int ns, const nav_t *nav)
 {
-    double tt = fabs(rtk->tt), bl = 0.0, dr[3];
+    double tt = fabs(rtk->tt);
+    double bl = 0.0;
+    double dr[3];
 
     trace(3, "udstate : ns=%d\n", ns);
 
@@ -1187,8 +1234,13 @@ void zdres_sat(int base, double r, const obsd_t *obs, const nav_t *nav,
     const prcopt_t *opt, double *y)
 {
     const double *lam = nav->lam[obs->sat - 1];
-    double f1, f2, C1, C2, dant_if;
-    int i, nf = NF_RTK(opt);
+    double f1;
+    double f2;
+    double C1;
+    double C2;
+    double dant_if;
+    int i;
+    int nf = NF_RTK(opt);
 
     if (opt->ionoopt == IONOOPT_IFLC)
         { /* iono-free linear combination */
@@ -1252,9 +1304,15 @@ int zdres(int base, const obsd_t *obs, int n, const double *rs,
     const double *rr, const prcopt_t *opt, int index, double *y,
     double *e, double *azel)
 {
-    double r, rr_[3], pos[3], dant[NFREQ] = {0}, disp[3];
-    double zhd, zazel[] = {0.0, 90.0 * D2R};
-    int i, nf = NF_RTK(opt);
+    double r;
+    double rr_[3];
+    double pos[3];
+    double dant[NFREQ] = {0};
+    double disp[3];
+    double zhd;
+    double zazel[] = {0.0, 90.0 * D2R};
+    int i;
+    int nf = NF_RTK(opt);
 
     trace(3, "zdres   : n=%d\n", n);
 
@@ -1345,7 +1403,10 @@ int validobs(int i, int j, int f, int nf, const double *y)
 void ddcov(const int *nb, int n, const double *Ri, const double *Rj,
     int nv, double *R)
 {
-    int i, j, k = 0, b;
+    int i;
+    int j;
+    int k = 0;
+    int b;
 
     trace(3, "ddcov   : n=%d\n", n);
 
@@ -1373,7 +1434,10 @@ int constbl(rtk_t *rtk, const double *x, const double *P, double *v,
     double *H, double *Ri, double *Rj, int index)
 {
     const double thres = 0.1; /* threshold for nonliearity (v.2.3.0) */
-    double xb[3], b[3], bb, var = 0.0;
+    double xb[3];
+    double b[3];
+    double bb;
+    double var = 0.0;
     int i;
 
     trace(3, "constbl : \n");
@@ -1430,7 +1494,10 @@ double prectrop(gtime_t time, const double *pos, int r,
     const double *azel, const prcopt_t *opt, const double *x,
     double *dtdx)
 {
-    double m_w = 0.0, cotz, grad_n, grad_e;
+    double m_w = 0.0;
+    double cotz;
+    double grad_n;
+    double grad_e;
     int i = IT_RTK(r, opt);
 
     /* wet mapping function */
@@ -1501,9 +1568,37 @@ int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
     double *H, double *R, int *vflg)
 {
     prcopt_t *opt = &rtk->opt;
-    double bl, dr[3], posu[3], posr[3], didxi = 0.0, didxj = 0.0, *im;
-    double *tropr, *tropu, *dtdxr, *dtdxu, *Ri, *Rj, lami, lamj, fi, fj, df, *Hi = nullptr;
-    int i, j, k, m, f, ff, nv = 0, nb[NFREQ * 4 * 2 + 2] = {0}, b = 0, sysi, sysj, nf = NF_RTK(opt);
+    double bl;
+    double dr[3];
+    double posu[3];
+    double posr[3];
+    double didxi = 0.0;
+    double didxj = 0.0;
+    double *im;
+    double *tropr;
+    double *tropu;
+    double *dtdxr;
+    double *dtdxu;
+    double *Ri;
+    double *Rj;
+    double lami;
+    double lamj;
+    double fi;
+    double fj;
+    double df;
+    double *Hi = nullptr;
+    int i;
+    int j;
+    int k;
+    int m;
+    int f;
+    int ff;
+    int nv = 0;
+    int nb[NFREQ * 4 * 2 + 2] = {0};
+    int b = 0;
+    int sysi;
+    int sysj;
+    int nf = NF_RTK(opt);
 
     trace(3, "ddres   : dt=%.1f nx=%d ns=%d\n", dt, rtk->nx, ns);
 
@@ -1541,7 +1636,6 @@ int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
         }
     for (m = 0; m < 4; m++)
         { /* m=0:gps/qzs/sbs, 1:glo, 2:gal, 3:bds */
-
             for (f = opt->mode > PMODE_DGPS ? 0 : nf; f < nf * 2; f++)
                 {
                     /* search reference satellite with highest elevation */
@@ -1720,26 +1814,26 @@ int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                             nb[b]++;
                         }
 #if 0 /* residuals referenced to reference satellite (2.4.2 p11) */
-                /* restore single-differenced residuals assuming sum equal zero */
-                if (f<nf)
-                    {
-                        for (j=0,s=0.0;j<MAXSAT;j++) s+=rtk->ssat[j].resc[f];
-                        s/=nb[b]+1;
-                        for (j=0;j<MAXSAT;j++)
-                            {
-                                if (j == sat[i]-1||rtk->ssat[j].resc[f]!=0.0) rtk->ssat[j].resc[f]-=s;
-                            }
-                    }
-                else
-                    {
-                        for (j=0,s=0.0;j<MAXSAT;j++) s+=rtk->ssat[j].resp[f-nf];
-                        s/=nb[b]+1;
-                        for (j=0;j<MAXSAT;j++)
-                            {
-                                if (j == sat[i]-1||rtk->ssat[j].resp[f-nf]!=0.0)
-                                    rtk->ssat[j].resp[f-nf]-=s;
-                            }
-                    }
+                    /* restore single-differenced residuals assuming sum equal zero */
+                    if (f < nf)
+                        {
+                            for (j = 0, s = 0.0; j < MAXSAT; j++) s += rtk->ssat[j].resc[f];
+                            s /= nb[b] + 1;
+                            for (j = 0; j < MAXSAT; j++)
+                                {
+                                    if (j == sat[i] - 1 || rtk->ssat[j].resc[f] != 0.0) rtk->ssat[j].resc[f] -= s;
+                                }
+                        }
+                    else
+                        {
+                            for (j = 0, s = 0.0; j < MAXSAT; j++) s += rtk->ssat[j].resp[f - nf];
+                            s /= nb[b] + 1;
+                            for (j = 0; j < MAXSAT; j++)
+                                {
+                                    if (j == sat[i] - 1 || rtk->ssat[j].resp[f - nf] != 0.0)
+                                        rtk->ssat[j].resp[f - nf] -= s;
+                                }
+                        }
 #endif
                     b++;
                 }
@@ -1778,12 +1872,23 @@ double intpres(gtime_t time, const obsd_t *obs, int n, const nav_t *nav,
     rtk_t *rtk, double *y)
 {
     static obsd_t obsb[MAXOBS];
-    static double yb[MAXOBS * NFREQ * 2], rs[MAXOBS * 6], dts[MAXOBS * 2], var[MAXOBS];
-    static double e[MAXOBS * 3], azel[MAXOBS * 2];
-    static int nb = 0, svh[MAXOBS * 2];
+    static double yb[MAXOBS * NFREQ * 2];
+    static double rs[MAXOBS * 6];
+    static double dts[MAXOBS * 2];
+    static double var[MAXOBS];
+    static double e[MAXOBS * 3];
+    static double azel[MAXOBS * 2];
+    static int nb = 0;
+    static int svh[MAXOBS * 2];
     prcopt_t *opt = &rtk->opt;
-    double tt = timediff(time, obs[0].time), ttb, *p, *q;
-    int i, j, k, nf = NF_RTK(opt);
+    double tt = timediff(time, obs[0].time);
+    double ttb;
+    double *p;
+    double *q;
+    int i;
+    int j;
+    int k;
+    int nf = NF_RTK(opt);
 
     trace(3, "intpres : n=%d tt=%.1f\n", n, tt);
 
@@ -1840,7 +1945,16 @@ double intpres(gtime_t time, const obsd_t *obs, int n, const nav_t *nav,
 /* single to double-difference transformation matrix (D') --------------------*/
 int ddmat(rtk_t *rtk, double *D)
 {
-    int i, j, k, m, f, nb = 0, nx = rtk->nx, na = rtk->na, nf = NF_RTK(&rtk->opt), nofix;
+    int i;
+    int j;
+    int k;
+    int m;
+    int f;
+    int nb = 0;
+    int nx = rtk->nx;
+    int na = rtk->na;
+    int nf = NF_RTK(&rtk->opt);
+    int nofix;
 
     trace(3, "ddmat   :\n");
 
@@ -1912,7 +2026,13 @@ int ddmat(rtk_t *rtk, double *D)
 /* restore single-differenced ambiguity --------------------------------------*/
 void restamb(rtk_t *rtk, const double *bias, int nb __attribute((unused)), double *xa)
 {
-    int i, n, m, f, index[MAXSAT], nv = 0, nf = NF_RTK(&rtk->opt);
+    int i;
+    int n;
+    int m;
+    int f;
+    int index[MAXSAT];
+    int nv = 0;
+    int nf = NF_RTK(&rtk->opt);
 
     trace(3, "restamb :\n");
 
@@ -1956,8 +2076,18 @@ void restamb(rtk_t *rtk, const double *bias, int nb __attribute((unused)), doubl
 /* hold integer ambiguity ----------------------------------------------------*/
 void holdamb(rtk_t *rtk, const double *xa)
 {
-    double *v, *H, *R;
-    int i, n, m, f, info, index[MAXSAT], nb = rtk->nx - rtk->na, nv = 0, nf = NF_RTK(&rtk->opt);
+    double *v;
+    double *H;
+    double *R;
+    int i;
+    int n;
+    int m;
+    int f;
+    int info;
+    int index[MAXSAT];
+    int nb = rtk->nx - rtk->na;
+    int nv = 0;
+    int nf = NF_RTK(&rtk->opt);
 
     trace(3, "holdamb :\n");
 
@@ -2013,8 +2143,23 @@ void holdamb(rtk_t *rtk, const double *xa)
 int resamb_LAMBDA(rtk_t *rtk, double *bias, double *xa)
 {
     prcopt_t *opt = &rtk->opt;
-    int i, j, ny, nb, info, nx = rtk->nx, na = rtk->na;
-    double *D, *DP, *y, *Qy, *b, *db, *Qb, *Qab, *QQ, s[2];
+    int i;
+    int j;
+    int ny;
+    int nb;
+    int info;
+    int nx = rtk->nx;
+    int na = rtk->na;
+    double *D;
+    double *DP;
+    double *y;
+    double *Qy;
+    double *b;
+    double *db;
+    double *Qb;
+    double *Qab;
+    double *QQ;
+    double s[2];
 
     trace(3, "resamb_LAMBDA : nx=%d\n", nx);
 
@@ -2075,10 +2220,10 @@ int resamb_LAMBDA(rtk_t *rtk, double *bias, double *xa)
             trace(4, "N(2)=");
             tracemat(4, b + nb, 1, nb, 10, 3);
 
-            rtk->sol.ratio = s[0] > 0 ? static_cast<float>(s[1] / s[0]) : 0.0f;
+            rtk->sol.ratio = s[0] > 0 ? static_cast<float>(s[1] / s[0]) : 0.0F;
             if (rtk->sol.ratio > 999.9)
                 {
-                    rtk->sol.ratio = 999.9f;
+                    rtk->sol.ratio = 999.9F;
                 }
 
             /* validation by popular ratio-test */
@@ -2152,7 +2297,12 @@ int valpos(rtk_t *rtk, const double *v, const double *R, const int *vflg,
     double vv = 0.0;
 #endif
     double fact = thres * thres;
-    int i, stat = 1, sat1, sat2, type, freq;
+    int i;
+    int stat = 1;
+    int sat1;
+    int sat2;
+    int type;
+    int freq;
     char stype;
 
     trace(3, "valpos  : nv=%d thres=%.1f\n", nv, thres);
@@ -2169,25 +2319,25 @@ int valpos(rtk_t *rtk, const double *v, const double *R, const int *vflg,
             type = (vflg[i] >> 4) & 0xF;
             freq = vflg[i] & 0xF;
             stype = type == 0 ? 'L' : (type == 1 ? 'L' : 'C');
-            errmsg(rtk, "large residual (sat=%2d-%2d %s%d v=%6.3f sig=%.3f)\n",
+            errmsg(rtk, "large residual (sat=%2d-%2d %c%d v=%6.3f sig=%.3f)\n",
                 sat1, sat2, stype, freq + 1, v[i], std::sqrt(R[i + i * nv]));
         }
 #if 0 /* omitted v.2.4.0 */
-    if (stat&&nv>NP(opt))
+    if (stat && nv > NP(opt))
         {
             /* chi-square validation */
-            for (i = 0; i<nv; i++) vv += v[i]*v[i]/R[i+i*nv];
+            for (i = 0; i < nv; i++) vv += v[i] * v[i] / R[i + i * nv];
 
-            if (vv > chisqr[nv-NP(opt)-1])
+            if (vv > chisqr[nv - NP(opt) - 1])
                 {
-                    errmsg(rtk,"residuals validation failed (nv=%d np=%d vv=%.2f cs=%.2f)\n",
-                            nv, NP(opt), vv, chisqr[nv-NP(opt)-1]);
+                    errmsg(rtk, "residuals validation failed (nv=%d np=%d vv=%.2f cs=%.2f)\n",
+                        nv, NP(opt), vv, chisqr[nv - NP(opt) - 1]);
                     stat = 0;
                 }
             else
                 {
-                    trace(3,"valpos : validation ok (%s nv=%d np=%d vv=%.2f cs=%.2f)\n",
-                            rtk->tstr, nv, NP(opt), vv, chisqr[nv-NP(opt)-1]);
+                    trace(3, "valpos : validation ok (%s nv=%d np=%d vv=%.2f cs=%.2f)\n",
+                        rtk->tstr, nv, NP(opt), vv, chisqr[nv - NP(opt) - 1]);
                 }
         }
 #endif
@@ -2201,9 +2351,34 @@ int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
 {
     prcopt_t *opt = &rtk->opt;
     gtime_t time = obs[0].time;
-    double *rs, *dts, *var, *y, *e, *azel, *v, *H, *R, *xp, *Pp, *xa, *bias, dt;
-    int i, j, f, n = nu + nr, ns, ny, nv, sat[MAXSAT], iu[MAXSAT], ir[MAXSAT], niter;
-    int info, vflg[MAXOBS * NFREQ * 2 + 1], svh[MAXOBS * 2];
+    double *rs;
+    double *dts;
+    double *var;
+    double *y;
+    double *e;
+    double *azel;
+    double *v;
+    double *H;
+    double *R;
+    double *xp;
+    double *Pp;
+    double *xa;
+    double *bias;
+    double dt;
+    int i;
+    int j;
+    int f;
+    int n = nu + nr;
+    int ns;
+    int ny;
+    int nv;
+    int sat[MAXSAT];
+    int iu[MAXSAT];
+    int ir[MAXSAT];
+    int niter;
+    int info;
+    int vflg[MAXOBS * NFREQ * 2 + 1];
+    int svh[MAXOBS * 2];
     int stat = rtk->opt.mode <= PMODE_DGPS ? SOLQ_DGPS : SOLQ_FLOAT;
     int nf = opt->ionoopt == IONOOPT_IFLC ? 1 : opt->nf;
 
@@ -2593,7 +2768,9 @@ int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     prcopt_t *opt = &rtk->opt;
     sol_t solb = {{0, 0}, {}, {}, {}, '0', '0', '0', 0.0, 0.0, 0.0};
     gtime_t time;
-    int i, nu, nr;
+    int i;
+    int nu;
+    int nr;
     char msg[128] = "";
 
     trace(3, "rtkpos  : time=%s n=%d\n", time_str(obs[0].time, 3), n);
@@ -2613,11 +2790,9 @@ int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     /* count rover/base station observations */
     for (nu = 0; nu < n && obs[nu].rcv == 1; nu++)
         {
-            ;
         }
     for (nr = 0; nu + nr < n && obs[nu + nr].rcv == 2; nr++)
         {
-            ;
         }
 
     time = rtk->sol.time; /* previous epoch */
@@ -2664,7 +2839,6 @@ int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         }
     if (opt->mode == PMODE_MOVEB)
         { /*  moving baseline */
-
             /* estimate position/velocity of base station */
             if (!pntpos(obs + nu, nr, nav, &rtk->opt, &solb, nullptr, nullptr, msg))
                 {

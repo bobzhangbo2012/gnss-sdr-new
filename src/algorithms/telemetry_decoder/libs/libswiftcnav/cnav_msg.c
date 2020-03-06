@@ -16,24 +16,14 @@
  *
  * This file is part of GNSS-SDR.
  *
- * This file is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, version 3.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Lesser Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: LGPL-3.0-only
+ *.
  */
 
 
-#include "edc.h"
-#include "bits.h"
 #include "cnav_msg.h"
-
+#include "bits.h"
+#include "edc.h"
 #include <limits.h>
 #include <string.h>
 
@@ -56,9 +46,9 @@
  */
 
 /** GPS L2C preamble */
-const uint32_t GPS_CNAV_PREAMBLE1 = 0x8Bu; /* (0b10001011u) */
+const uint32_t GPS_CNAV_PREAMBLE1 = 0x8BU; /* (0b10001011u) */
 /** Inverted GPS L2C preamble */
-const uint32_t GPS_CNAV_PREAMBLE2 = 0x74u; /* (0b01110100u) */
+const uint32_t GPS_CNAV_PREAMBLE2 = 0x74U; /* (0b01110100u) */
 /** GPS L2C preamble length in bits */
 #define GPS_CNAV_PREAMBLE_LENGTH (8)
 /** GPS L2C CNAV message length in bits */
@@ -106,7 +96,7 @@ static uint32_t _cnav_extract_crc(const cnav_v27_part_t *part)
         GPS_CNAV_MSG_CRC_LENGTH);
     if (part->invert)
         {
-            crc ^= 0xFFFFFF;
+            crc ^= 0xFFFFFFU;
         }
     return crc;
 }
@@ -307,7 +297,7 @@ static void _cnav_msg_invert(cnav_v27_part_t *part)
     size_t i = 0;
     for (i = 0; i < sizeof(part->decoded); i++)
         {
-            part->decoded[i] ^= 0xFFu;
+            part->decoded[i] ^= 0xFFU;
         }
 }
 

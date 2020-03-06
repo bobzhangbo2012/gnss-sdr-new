@@ -1,19 +1,10 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 add_subdirectory(supl)
@@ -24,6 +15,9 @@ set(CORE_LIBS_SOURCES
     string_converter.cc
     gnss_sdr_supl_client.cc
     gnss_sdr_sample_counter.cc
+    channel_status_msg_receiver.cc
+    channel_event.cc
+    command_event.cc
 )
 
 set(CORE_LIBS_HEADERS
@@ -32,6 +26,9 @@ set(CORE_LIBS_HEADERS
     string_converter.h
     gnss_sdr_supl_client.h
     gnss_sdr_sample_counter.h
+    channel_status_msg_receiver.h
+    channel_event.h
+    command_event.h
 )
 
 if(ENABLE_FPGA)
@@ -56,10 +53,11 @@ add_library(core_libs ${CORE_LIBS_SOURCES} ${CORE_LIBS_HEADERS})
 
 target_link_libraries(core_libs
     PUBLIC
-        Boost::boost
+        Boost::headers
         Gnuradio::runtime
         core_libs_supl
         core_system_parameters
+        pvt_libs
     PRIVATE
         Boost::serialization
         Gflags::gflags

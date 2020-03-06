@@ -5,39 +5,30 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_UHD_SIGNAL_SOURCE_H_
-#define GNSS_SDR_UHD_SIGNAL_SOURCE_H_
+#ifndef GNSS_SDR_UHD_SIGNAL_SOURCE_H
+#define GNSS_SDR_UHD_SIGNAL_SOURCE_H
 
+#include "concurrent_queue.h"
 #include "gnss_block_interface.h"
 #include <boost/shared_ptr.hpp>
 #include <gnuradio/blocks/file_sink.h>
 #include <gnuradio/hier_block2.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/uhd/usrp_source.h>
+#include <pmt/pmt.h>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -52,9 +43,9 @@ class UhdSignalSource : public GNSSBlockInterface
 public:
     UhdSignalSource(ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
-        unsigned int out_stream, boost::shared_ptr<gr::msg_queue> queue);
+        unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);
 
-    virtual ~UhdSignalSource();
+    ~UhdSignalSource() = default;
 
     inline std::string role() override
     {
@@ -107,7 +98,7 @@ private:
     std::vector<boost::shared_ptr<gr::block>> valve_;
     std::vector<gr::blocks::file_sink::sptr> file_sink_;
 
-    boost::shared_ptr<gr::msg_queue> queue_;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
 };
 
-#endif /*GNSS_SDR_UHD_SIGNAL_SOURCE_H_*/
+#endif  // GNSS_SDR_UHD_SIGNAL_SOURCE_H

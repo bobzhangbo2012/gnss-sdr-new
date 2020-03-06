@@ -8,32 +8,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_IN_MEMORY_CONFIGURATION_H_
-#define GNSS_SDR_IN_MEMORY_CONFIGURATION_H_
+#ifndef GNSS_SDR_IN_MEMORY_CONFIGURATION_H
+#define GNSS_SDR_IN_MEMORY_CONFIGURATION_H
 
 #include "configuration_interface.h"
 #include <cstdint>
@@ -54,7 +43,7 @@ class InMemoryConfiguration : public ConfigurationInterface
 {
 public:
     InMemoryConfiguration();
-    virtual ~InMemoryConfiguration();
+    ~InMemoryConfiguration();
     std::string property(std::string property_name, std::string default_value);
     bool property(std::string property_name, bool default_value);
     int64_t property(std::string property_name, int64_t default_value);
@@ -66,7 +55,7 @@ public:
     float property(std::string property_name, float default_value);
     double property(std::string property_name, double default_value);
     void set_property(std::string property_name, std::string value);
-    void supersede_property(std::string property_name, std::string value);
+    void supersede_property(const std::string& property_name, const std::string& value);
     bool is_present(const std::string& property_name);
 
 private:
@@ -74,4 +63,4 @@ private:
     std::unique_ptr<StringConverter> converter_;
 };
 
-#endif /*GNSS_SDR_IN_MEMORY_CONFIGURATION_H_*/
+#endif  // GNSS_SDR_IN_MEMORY_CONFIGURATION_H

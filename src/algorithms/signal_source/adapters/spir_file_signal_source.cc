@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is not part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -43,7 +32,7 @@
 
 SpirFileSignalSource::SpirFileSignalSource(ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_streams, unsigned int out_streams,
-    boost::shared_ptr<gr::msg_queue> queue) : role_(role), in_streams_(in_streams), out_streams_(out_streams), queue_(std::move(queue))
+    const std::shared_ptr<Concurrent_Queue<pmt::pmt_t>>& queue) : role_(role), in_streams_(in_streams), out_streams_(out_streams), queue_(queue)
 {
     std::string default_filename = "../data/my_capture.dat";
     std::string default_item_type = "int";
@@ -137,7 +126,7 @@ SpirFileSignalSource::SpirFileSignalSource(ConfigurationInterface* configuration
                 {
                     int sample_packet_factor = 1;  // 1 int -> 1 complex sample (I&Q from 1 channel)
                     samples_ = floor(static_cast<double>(size) / static_cast<double>(item_size())) * sample_packet_factor;
-                    samples_ = samples_ - ceil(0.002 * static_cast<double>(sampling_frequency_));  //process all the samples available in the file excluding the last 2 ms
+                    samples_ = samples_ - ceil(0.002 * static_cast<double>(sampling_frequency_));  // process all the samples available in the file excluding the last 2 ms
                 }
         }
 
@@ -152,7 +141,7 @@ SpirFileSignalSource::SpirFileSignalSource(ConfigurationInterface* configuration
 
     if (dump_)
         {
-            //sink_ = gr_make_file_sink(item_size_, dump_filename_.c_str());
+            // sink_ = gr_make_file_sink(item_size_, dump_filename_.c_str());
             sink_ = gr::blocks::file_sink::make(sizeof(float), dump_filename_.c_str());
             DLOG(INFO) << "file_sink(" << sink_->unique_id() << ")";
         }
@@ -178,9 +167,6 @@ SpirFileSignalSource::SpirFileSignalSource(ConfigurationInterface* configuration
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-SpirFileSignalSource::~SpirFileSignalSource() = default;
 
 
 void SpirFileSignalSource::connect(gr::top_block_sptr top_block)
@@ -300,7 +286,7 @@ void SpirFileSignalSource::disconnect(gr::top_block_sptr top_block)
 gr::basic_block_sptr SpirFileSignalSource::get_left_block()
 {
     LOG(WARNING) << "Left block of a signal source should not be retrieved";
-    //return gr_block_sptr();
+    // return gr_block_sptr();
     return gr::blocks::file_source::sptr();
 }
 

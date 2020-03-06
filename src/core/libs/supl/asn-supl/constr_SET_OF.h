@@ -1,9 +1,9 @@
 /*-
- * Copyright (c) 2003 Lev Walkin <vlm@lionet.info>. All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
-#ifndef _CONSTR_SET_OF_H_
-#define _CONSTR_SET_OF_H_
+#ifndef _CONSTR_SET_OF_H
+#define _CONSTR_SET_OF_H
 
 #include <asn_application.h>
 
@@ -15,8 +15,8 @@ extern "C"
     typedef struct asn_SET_OF_specifics_s
     {
         /*
-	 * Target structure description.
-	 */
+         * Target structure description.
+         */
         int struct_size; /* Size of the target structure. */
         int ctx_offset;  /* Offset of the asn_struct_ctx_t member */
 
@@ -25,8 +25,8 @@ extern "C"
     } asn_SET_OF_specifics_t;
 
     /*
- * A set specialized functions dealing with the SET OF type.
- */
+     * A set specialized functions dealing with the SET OF type.
+     */
     asn_struct_free_f SET_OF_free;
     asn_struct_print_f SET_OF_print;
     asn_constr_check_f SET_OF_constraint;

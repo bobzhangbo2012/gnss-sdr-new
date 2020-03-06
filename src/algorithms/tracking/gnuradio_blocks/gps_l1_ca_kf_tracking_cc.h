@@ -14,31 +14,24 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GPS_L1_CA_KF_TRACKING_CC_H
 #define GNSS_SDR_GPS_L1_CA_KF_TRACKING_CC_H
+
+#if ARMA_NO_BOUND_CHECKING
+#define ARMA_NO_DEBUG 1
+#endif
 
 #include "bayesian_estimation.h"
 #include "cpu_multicorrelator_real_codes.h"
@@ -47,6 +40,7 @@
 #include "tracking_2nd_PLL_filter.h"
 #include <armadillo>
 #include <gnuradio/block.h>
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
 #include <fstream>
 #include <map>
 #include <string>
@@ -60,7 +54,7 @@ gps_l1_ca_kf_make_tracking_cc(uint32_t order,
     int64_t if_freq,
     int64_t fs_in, uint32_t vector_length,
     bool dump,
-    std::string dump_filename,
+    const std::string& dump_filename,
     float dll_bw_hz,
     float early_late_space_chips,
     bool bce_run,
@@ -93,7 +87,7 @@ private:
         int64_t if_freq,
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float dll_bw_hz,
         float early_late_space_chips,
         bool bce_run,
@@ -106,7 +100,7 @@ private:
         int64_t if_freq,
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float dll_bw_hz,
         float early_late_space_chips,
         bool bce_run,
@@ -165,14 +159,14 @@ private:
     // Tracking_2nd_PLL_filter d_carrier_loop_filter;
 
     // acquisition
-    double d_acq_carrier_doppler_step_hz;
+    double d_acq_carrier_doppler_step_hz{};
     double d_acq_code_phase_samples;
     double d_acq_carrier_doppler_hz;
     // correlator
     int32_t d_n_correlator_taps;
-    float* d_ca_code;
-    float* d_local_code_shift_chips;
-    gr_complex* d_correlator_outs;
+    volk_gnsssdr::vector<float> d_ca_code;
+    volk_gnsssdr::vector<float> d_local_code_shift_chips;
+    volk_gnsssdr::vector<gr_complex> d_correlator_outs;
     Cpu_Multicorrelator_Real_Codes multicorrelator_cpu;
 
     // tracking vars
@@ -183,7 +177,7 @@ private:
     double d_carrier_dopplerrate_hz2;
     double d_carrier_phase_step_rad;
     double d_acc_carrier_phase_rad;
-    double d_carr_phase_error_rad;
+    double d_carr_phase_error_rad{};
     double d_carr_phase_sigma2;
     double d_code_phase_samples;
     double code_error_chips;
@@ -198,7 +192,7 @@ private:
 
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
-    gr_complex* d_Prompt_buffer;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;

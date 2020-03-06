@@ -5,32 +5,21 @@
  *
  * The implementation of this block is a combination of various helpful
  * sources. The data format and command structure is taken from the
- * original Osmocom rtl_tcp_source_f (http://git.osmocom.org/gr-osmosdr).
+ * original Osmocom rtl_tcp_source_f (https://git.osmocom.org/gr-osmosdr).
  * The aynchronous reading code comes from the examples provides
  * by Boost.Asio and the bounded buffer producer-consumer solution is
- * taken from the Boost.CircularBuffer examples (http://boost.org/).
+ * taken from the Boost.CircularBuffer examples (https://www.boost.org/).
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -47,6 +36,7 @@
 #include <gnuradio/sync_block.h>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class rtl_tcp_signal_source_c;
 
@@ -110,7 +100,7 @@ private:
     size_t unread_;
 
     // lookup for scaling data
-    boost::array<float, 0xff> lookup_;
+    boost::array<float, 0xff> lookup_{};
 
     // async read callback
     void handle_read(const boost::system::error_code &ec,

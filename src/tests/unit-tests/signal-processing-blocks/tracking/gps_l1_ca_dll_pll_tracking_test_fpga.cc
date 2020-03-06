@@ -8,25 +8,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -83,7 +72,7 @@ void send_tracking_gps_input_samples(FILE *rx_signal_file,
             return;
         }
 
-    buffer_DMA = (char *)malloc(DMA_TRACK_TRANSFER_SIZE);
+    buffer_DMA = reinterpret_cast<char *>(malloc(DMA_TRACK_TRANSFER_SIZE));
     if (!buffer_DMA)
         {
             std::cerr << "Memory error!" << std::endl;
@@ -133,7 +122,7 @@ void send_tracking_gps_input_samples(FILE *rx_signal_file,
 
 
 // thread that sends the samples to the FPGA
-void sending_thread(gr::top_block_sptr top_block, const char *file_name)
+void sending_thread(const gr::top_block_sptr &top_block, const char *file_name)
 {
     // file descriptor
     FILE *rx_signal_file;  // file descriptor
@@ -152,7 +141,7 @@ void sending_thread(gr::top_block_sptr top_block, const char *file_name)
 
     usleep(FIVE_SECONDS);  // wait for some time to give time to the other thread to program the device
 
-    //send_tracking_gps_input_samples(dma_descr, rx_signal_file, file_length);
+    // send_tracking_gps_input_samples(dma_descr, rx_signal_file, file_length);
     send_tracking_gps_input_samples(rx_signal_file, file_length, top_block);
 
     fclose(rx_signal_file);
@@ -171,12 +160,12 @@ class GpsL1CADllPllTrackingTestFpga_msg_rx : public gr::block
 {
 private:
     friend GpsL1CADllPllTrackingTestFpga_msg_rx_sptr GpsL1CADllPllTrackingTestFpga_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_events(const pmt::pmt_t &msg);
     GpsL1CADllPllTrackingTestFpga_msg_rx();
 
 public:
     int rx_message;
-    ~GpsL1CADllPllTrackingTestFpga_msg_rx();  //!< Default destructor
+    ~GpsL1CADllPllTrackingTestFpga_msg_rx() override;  //!< Default destructor
 };
 
 
@@ -187,11 +176,11 @@ GpsL1CADllPllTrackingTestFpga_msg_rx_sptr GpsL1CADllPllTrackingTestFpga_msg_rx_m
 }
 
 
-void GpsL1CADllPllTrackingTestFpga_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL1CADllPllTrackingTestFpga_msg_rx::msg_handler_events(const pmt::pmt_t &msg)
 {
     try
         {
-            int64_t message = pmt::to_long(std::move(msg));
+            int64_t message = pmt::to_long(msg);
             rx_message = message;
         }
     catch (boost::bad_any_cast &e)
@@ -252,7 +241,7 @@ public:
         gnss_synchro = Gnss_Synchro();
     }
 
-    ~GpsL1CADllPllTrackingTestFpga() = default;
+    ~GpsL1CADllPllTrackingTestFpga() override = default;
 
     void configure_receiver();
 
@@ -280,7 +269,7 @@ int GpsL1CADllPllTrackingTestFpga::configure_generator()
         }
     p3 = std::string("-rinex_obs_file=") + FLAGS_filename_rinex_obs;               // RINEX 2.10 observation file output
     p4 = std::string("-sig_out_file=") + FLAGS_filename_raw_data;                  // Baseband signal output file. Will be stored in int8_t IQ multiplexed samples
-    p5 = std::string("-sampling_freq=") + std::to_string(baseband_sampling_freq);  //Baseband sampling frequency [MSps]
+    p5 = std::string("-sampling_freq=") + std::to_string(baseband_sampling_freq);  // Baseband sampling frequency [MSps]
     return 0;
 }
 
@@ -294,7 +283,9 @@ int GpsL1CADllPllTrackingTestFpga::generate_signal()
 
     int pid;
     if ((pid = fork()) == -1)
-        perror("fork err");
+        {
+            perror("fork err");
+        }
     else if (pid == 0)
         {
             execv(&generator_binary[0], parmList);
@@ -320,8 +311,6 @@ void GpsL1CADllPllTrackingTestFpga::configure_receiver()
     config->set_property("GNSS-SDR.internal_fs_sps",
         std::to_string(baseband_sampling_freq));
     // Set Tracking
-    //config->set_property("Tracking_1C.implementation",
-    //        "GPS_L1_CA_DLL_PLL_C_Aid_Tracking_Fpga");
     config->set_property("Tracking_1C.implementation",
         "GPS_L1_CA_DLL_PLL_Tracking_Fpga");
     config->set_property("Tracking_1C.item_type", "cshort");
@@ -376,7 +365,7 @@ void GpsL1CADllPllTrackingTestFpga::check_results_acc_carrier_phase(
     arma::vec &true_time_s, arma::vec &true_value, arma::vec &meas_time_s,
     arma::vec &meas_value)
 {
-    //1. True value interpolation to match the measurement times
+    // 1. True value interpolation to match the measurement times
     arma::vec true_value_interp;
     arma::uvec true_time_s_valid = find(true_time_s > 0);
     true_time_s = true_time_s(true_time_s_valid);
@@ -454,9 +443,10 @@ TEST_F(GpsL1CADllPllTrackingTestFpga, ValidationOfResultsFpga)
     configure_generator();
 
     // DO not generate signal raw signal samples and observations RINEX file by default
-    //generate_signal();
+    // generate_signal();
 
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
 
     configure_receiver();
@@ -478,7 +468,7 @@ TEST_F(GpsL1CADllPllTrackingTestFpga, ValidationOfResultsFpga)
         << "Failure opening true observables file";
 
     top_block = gr::make_top_block("Tracking test");
-    //std::shared_ptr<GpsL1CaDllPllCAidTrackingFpga> tracking = std::make_shared<GpsL1CaDllPllCAidTrackingFpga> (config.get(), "Tracking_1C", 1, 1);
+    // std::shared_ptr<GpsL1CaDllPllCAidTrackingFpga> tracking = std::make_shared<GpsL1CaDllPllCAidTrackingFpga> (config.get(), "Tracking_1C", 1, 1);
     std::shared_ptr<GpsL1CaDllPllTrackingFpga> tracking = std::make_shared<GpsL1CaDllPllTrackingFpga>(config.get(), "Tracking_1C", 1, 1);
 
     boost::shared_ptr<GpsL1CADllPllTrackingTestFpga_msg_rx> msg_rx = GpsL1CADllPllTrackingTestFpga_msg_rx_make();
@@ -500,7 +490,7 @@ TEST_F(GpsL1CADllPllTrackingTestFpga, ValidationOfResultsFpga)
               << " Initial code delay [Chips]=" << true_obs_data.prn_delay_chips
               << std::endl;
 
-    gnss_synchro.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_obs_data.prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD;
+    gnss_synchro.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_obs_data.prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S;
     gnss_synchro.Acq_doppler_hz = true_obs_data.doppler_l1_hz;
     gnss_synchro.Acq_samplestamp_samples = 0;
 
@@ -543,7 +533,7 @@ TEST_F(GpsL1CADllPllTrackingTestFpga, ValidationOfResultsFpga)
         {
             start = std::chrono::system_clock::now();
             top_block->run();  // Start threads and wait
-            //tracking->reset();// unlock the channel
+            // tracking->reset();  // unlock the channel
             end = std::chrono::system_clock::now();
             elapsed_seconds = end - start;
         })

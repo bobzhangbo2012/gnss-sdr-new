@@ -16,17 +16,8 @@
  *
  * This file is part of GNSS-SDR.
  *
- * This file is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, version 3.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Lesser Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: LGPL-3.0-only
+ *.
  */
 
 #include "edc.h"
@@ -93,7 +84,7 @@ uint32_t crc24q(const uint8_t *buf, uint32_t len, uint32_t crc)
     uint32_t i = 0;
     for (i = 0; i < len; i++)
         {
-            crc = ((crc << 8) & 0xFFFFFF) ^ CRC24QTAB[((crc >> 16) ^ buf[i]) & 0xff];
+            crc = ((crc << 8U) & 0xFFFFFFU) ^ CRC24QTAB[((crc >> 16U) ^ buf[i]) & 0xFFU];
         }
     return crc;
 }
@@ -122,21 +113,21 @@ uint32_t crc24q_bits(uint32_t crc, const uint8_t *buf, uint32_t n_bits, bool inv
     uint32_t i = 0;
     for (i = 0; i < n_bits / 8; ++i)
         {
-            acc = (acc << 8) | *buf++;
+            acc = (acc << 8U) | *buf++;
             if (invert)
                 {
-                    acc ^= 0xFFu;
+                    acc ^= 0xFFU;
                 }
-            b = (acc >> shift) & 0xFFu;
-            crc = ((crc << 8) & 0xFFFFFFu) ^ CRC24QTAB[((crc >> 16) ^ b) & 0xFFu];
+            b = (acc >> shift) & 0xFFU;
+            crc = ((crc << 8U) & 0xFFFFFFU) ^ CRC24QTAB[((crc >> 16U) ^ b) & 0xFFU];
         }
-    acc = (acc << 8) | *buf;
+    acc = (acc << 8U) | *buf;
     if (invert)
         {
-            acc ^= 0xFFu;
+            acc ^= 0xFFU;
         }
-    b = (acc >> shift) & 0xFFu;
-    crc = ((crc << 8) & 0xFFFFFFu) ^ CRC24QTAB[((crc >> 16) ^ b) & 0xFFu];
+    b = (acc >> shift) & 0xFFU;
+    crc = ((crc << 8U) & 0xFFFFFFU) ^ CRC24QTAB[((crc >> 16U) ^ b) & 0xFFU];
 
     return crc;
 }

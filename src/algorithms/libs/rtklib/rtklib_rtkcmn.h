@@ -25,32 +25,11 @@
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  * References :
- *     [1] IS-GPS-200D, Navstar GPS Space Segment/Navigation User Interfaces,
+ *     [1] IS-GPS-200K, Navstar GPS Space Segment/Navigation User Interfaces,
  *         7 March, 2006
  *     [2] RTCA/DO-229C, Minimum operational performanc standards for global
  *         positioning system/wide area augmentation system airborne equipment,
@@ -75,10 +54,11 @@
  *
  *----------------------------------------------------------------------------*/
 
-#ifndef GNSS_SDR_RTKLIB_RTKCMN_H_
-#define GNSS_SDR_RTKLIB_RTKCMN_H_
+#ifndef GNSS_SDR_RTKLIB_RTKCMN_H
+#define GNSS_SDR_RTKLIB_RTKCMN_H
 
 #include "rtklib.h"
+#include <string>
 
 
 /* coordinate rotation matrix ------------------------------------------------*/
@@ -174,7 +154,7 @@ double time2bdt(gtime_t t, int *week);
 gtime_t timeadd(gtime_t t, double sec);
 double timediff(gtime_t t1, gtime_t t2);
 double timediffweekcrossover(gtime_t t1, gtime_t t2);
-gtime_t timeget(void);
+gtime_t timeget();
 void timeset(gtime_t t);
 int read_leaps_text(FILE *fp);
 int read_leaps_usno(FILE *fp);
@@ -188,8 +168,8 @@ double utc2gmst(gtime_t t, double ut1_utc);
 void time2str(gtime_t t, char *s, int n);
 char *time_str(gtime_t t, int n);
 double time2doy(gtime_t t);
-int adjgpsweek(int week);
-unsigned int tickget(void);
+int adjgpsweek(int week, bool pre_2009_file = false);
+unsigned int tickget();
 void sleepms(int ms);
 void deg2dms(double deg, double *dms, int ndec);
 void deg2dms(double deg, double *dms);
@@ -232,19 +212,19 @@ void freeobs(obs_t *obs);
 void freenav(nav_t *nav, int opt);
 
 void traceopen(const char *file);
-void traceclose(void);
+void traceclose();
 void tracelevel(int level);
-void traceswap(void);
+void traceswap();
 void trace(int level, const char *format, ...);
 void tracet(int level, const char *format, ...);
 void tracemat(int level, const double *A, int n, int m, int p, int q);
 void traceobs(int level, const obsd_t *obs, int n);
-//void tracenav(int level, const nav_t *nav);
-//void tracegnav(int level, const nav_t *nav);
-//void tracehnav(int level, const nav_t *nav);
-//void tracepeph(int level, const nav_t *nav);
-//void tracepclk(int level, const nav_t *nav);
-//void traceb  (int level, const unsigned char *p, int n);
+// void tracenav(int level, const nav_t *nav);
+// void tracegnav(int level, const nav_t *nav);
+// void tracehnav(int level, const nav_t *nav);
+// void tracepeph(int level, const nav_t *nav);
+// void tracepclk(int level, const nav_t *nav);
+// void traceb  (int level, const unsigned char *p, int n);
 
 int execcmd(const char *cmd);
 void createdir(const char *path);
@@ -257,7 +237,6 @@ double satwavelen(int sat, int frq, const nav_t *nav);
 double geodist(const double *rs, const double *rr, double *e);
 double satazel(const double *pos, const double *e, double *azel);
 
-//#define SQRT(x)     ((x)<0.0?0.0:sqrt(x))
 void dops(int ns, const double *azel, double elmin, double *dop);
 double ionmodel(gtime_t t, const double *ion, const double *pos,
     const double *azel);
@@ -286,4 +265,4 @@ int rtk_uncompress(const char *file, char *uncfile);
 int expath(const char *path, char *paths[], int nmax);
 void windupcorr(gtime_t time, const double *rs, const double *rr, double *phw);
 
-#endif /* GNSS_SDR_RTKLIB_RTKCMN_H_ */
+#endif  // GNSS_SDR_RTKLIB_RTKCMN_H

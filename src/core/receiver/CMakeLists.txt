@@ -1,25 +1,15 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 
 set(GNSS_RECEIVER_SOURCES
     control_thread.cc
-    control_message_factory.cc
     file_configuration.cc
     gnss_block_factory.cc
     gnss_flowgraph.cc
@@ -29,7 +19,6 @@ set(GNSS_RECEIVER_SOURCES
 
 set(GNSS_RECEIVER_HEADERS
     control_thread.h
-    control_message_factory.h
     file_configuration.h
     gnss_block_factory.h
     gnss_flowgraph.h
@@ -37,14 +26,7 @@ set(GNSS_RECEIVER_HEADERS
     tcp_cmd_interface.h
     concurrent_map.h
     concurrent_queue.h
-    control_message.h
 )
-
-if(ENABLE_CUDA)
-    set(OPT_RECEIVER_INCLUDE_DIRS
-        ${OPT_RECEIVER_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS}
-    )
-endif()
 
 list(SORT GNSS_RECEIVER_HEADERS)
 list(SORT GNSS_RECEIVER_SOURCES)
@@ -118,18 +100,22 @@ if(ENABLE_FLEXIBAND)
     target_compile_definitions(core_receiver PRIVATE -DFLEXIBAND_DRIVER=1)
 endif()
 
-if(OPENCL_FOUND)
+if(ENABLE_OPENCL)
     message(STATUS "Adding processing blocks implemented using OpenCL")
+    target_link_libraries(core_receiver PUBLIC algorithms_libs OpenCL::OpenCL)
     target_compile_definitions(core_receiver PRIVATE -DOPENCL_BLOCKS=1)
 else()
     target_compile_definitions(core_receiver PRIVATE -DOPENCL_BLOCKS=0)
 endif()
 
 if(ENABLE_CUDA)
+    if(NOT CMAKE_VERSION VERSION_GREATER 3.11)
+        target_include_directories(core_receiver PUBLIC ${CUDA_INCLUDE_DIRS})
+    endif()
     target_compile_definitions(core_receiver PRIVATE -DCUDA_GPU_ACCEL=1)
 endif()
 
-if(Boost_VERSION VERSION_GREATER "106599")
+if(Boost_VERSION_STRING VERSION_GREATER 1.65.99)
     target_compile_definitions(core_receiver
         PRIVATE
             -DBOOST_GREATER_1_65
@@ -138,17 +124,10 @@ endif()
 
 target_link_libraries(core_receiver
     PUBLIC
-        Armadillo::armadillo
-        Boost::boost
-        Boost::thread
-        Gnuradio::runtime
-        channel_libs
         core_libs
-        core_monitor
+        Gnuradio::runtime
     PRIVATE
-        Boost::chrono
-        Gflags::gflags
-        Glog::glog
+        core_monitor
         signal_source_adapters
         data_type_adapters
         input_filter_adapters
@@ -160,15 +139,42 @@ target_link_libraries(core_receiver
         telemetry_decoder_adapters
         obs_adapters
         pvt_adapters
+        Boost::headers
+        Gflags::gflags
+        Glog::glog
+        Armadillo::armadillo
 )
 
-if(OS_IS_MACOSX)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_definitions(core_receiver
-            PUBLIC
-                -DBOOST_ASIO_HAS_STD_STRING_VIEW
-        )
+if(ENABLE_ARMA_NO_DEBUG)
+    target_compile_definitions(core_receiver
+        PRIVATE -DARMA_NO_BOUND_CHECKING=1
+    )
+endif()
+
+# Fix for Boost Asio < 1.70
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND (Boost_VERSION_STRING VERSION_LESS 1.70.0))
+        if(${has_string_view})
+            target_compile_definitions(core_receiver
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=1
+            )
+        else()
+            target_compile_definitions(core_receiver
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=0
+            )
+        endif()
     endif()
+endif()
+
+if(ENABLE_FPGA)
+    target_link_libraries(core_receiver
+        PUBLIC
+            Boost::thread
+        PRIVATE
+            Boost::chrono
+    )
 endif()
 
 if(ENABLE_FLEXIBAND AND TELEORBIT_FOUND)
@@ -204,5 +210,4 @@ endif()
 set_property(TARGET core_receiver APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/core/receiver>
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/core/interfaces>
-    $<BUILD_INTERFACE:${OPT_RECEIVER_INCLUDE_DIRS}>
 )

@@ -5,31 +5,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GALILEO_E5A_H_
-#define GNSS_SDR_GALILEO_E5A_H_
+#ifndef GNSS_SDR_GALILEO_E5A_H
+#define GNSS_SDR_GALILEO_E5A_H
 
 #include "MATH_CONSTANTS.h"
 #include "gnss_frequencies.h"
@@ -41,13 +30,13 @@
 
 // Carrier and code frequencies
 const double GALILEO_E5A_FREQ_HZ = FREQ5;                 //!< Galileo E5a carrier frequency [Hz]
-const double GALILEO_E5A_CODE_CHIP_RATE_HZ = 1.023e7;     //!< Galileo E5a code rate [chips/s]
-const double GALILEO_E5A_I_TIERED_CODE_PERIOD = 0.020;    //!< Galileo E5a-I tiered code period [s]
-const double GALILEO_E5A_Q_TIERED_CODE_PERIOD = 0.100;    //!< Galileo E5a-Q tiered code period [s]
+const double GALILEO_E5A_CODE_CHIP_RATE_CPS = 1.023e7;    //!< Galileo E5a code rate [chips/s]
+const double GALILEO_E5A_I_TIERED_CODE_PERIOD_S = 0.020;  //!< Galileo E5a-I tiered code period [s]
+const double GALILEO_E5A_Q_TIERED_CODE_PERIOD_S = 0.100;  //!< Galileo E5a-Q tiered code period [s]
 const int32_t GALILEO_E5A_CODE_LENGTH_CHIPS = 10230;      //!< Galileo E5a primary code length [chips]
 const int32_t GALILEO_E5A_I_SECONDARY_CODE_LENGTH = 20;   //!< Galileo E5a-I secondary code length [chips]
 const int32_t GALILEO_E5A_Q_SECONDARY_CODE_LENGTH = 100;  //!< Galileo E5a-Q secondary code length [chips]
-const double GALILEO_E5A_CODE_PERIOD = 0.001;             //!< Galileo E1 primary code period [s]
+const double GALILEO_E5A_CODE_PERIOD_S = 0.001;           //!< Galileo E1 primary code period [s]
 const int32_t GALILEO_E5A_CODE_PERIOD_MS = 1;             //!< Galileo E1 primary code period [ms]
 const int32_t GALILEO_E5A_SYMBOL_RATE_BPS = 50;           //!< Galileo E5a symbol rate [bits/second]
 const int32_t GALILEO_E5A_NUMBER_OF_CODES = 50;
@@ -57,8 +46,8 @@ const int32_t GALILEO_E5A_NUMBER_OF_CODES = 50;
 const int32_t GALILEO_E5A_HISTORY_DEEP = 20;
 const int32_t GALILEO_E5A_CRC_ERROR_LIMIT = 6;
 
-//optimum parameters
-const uint32_t GALILEO_E5A_OPT_ACQ_FS_HZ = 10000000;  //!< Sampling frequncy that maximizes the acquisition SNR while using a non-multiple of chip rate
+// optimum parameters
+const uint32_t GALILEO_E5A_OPT_ACQ_FS_SPS = 10000000;  //!< Sampling frequency that maximizes the acquisition SNR while using a non-multiple of chip rate
 
 // F/NAV message structure
 
@@ -203,11 +192,11 @@ const std::vector<std::pair<int32_t, int32_t>> FNAV_DELTAA12_2_5_BIT({{160, 13}}
 const std::vector<std::pair<int32_t, int32_t>> FNAV_E_2_5_BIT({{173, 11}});
 const std::vector<std::pair<int32_t, int32_t>> FNAV_W_2_5_BIT({{184, 16}});
 const std::vector<std::pair<int32_t, int32_t>> FNAV_DELTAI_2_5_BIT({{200, 11}});
-//const std::vector<std::pair<int,int>> FNAV_Omega012_2_5_bit({{210,4}});
+// const std::vector<std::pair<int,int>> FNAV_Omega012_2_5_bit({{210,4}});
 
 // WORD 6 Almanac SVID2(1/2) SVID3
 const std::vector<std::pair<int32_t, int32_t>> FNAV_IO_DA_6_BIT({{7, 4}});
-//const std::vector<std::pair<int,int>> FNAV_Omega022_2_6_bit({{10,12}});
+// const std::vector<std::pair<int,int>> FNAV_Omega022_2_6_bit({{10,12}});
 const std::vector<std::pair<int32_t, int32_t>> FNAV_OMEGADOT_2_6_BIT({{23, 11}});
 const std::vector<std::pair<int32_t, int32_t>> FNAV_M0_2_6_BIT({{34, 16}});
 const std::vector<std::pair<int32_t, int32_t>> FNAV_AF0_2_6_BIT({{50, 16}});
@@ -388,4 +377,4 @@ const std::string GALILEO_E5A_Q_SECONDARY_CODE[GALILEO_E5A_NUMBER_OF_CODES] = {
 };
 
 
-#endif /* GNSS_SDR_GALILEO_E5A_H_ */
+#endif  // GNSS_SDR_GALILEO_E5A_H

@@ -13,25 +13,14 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_BEIDOU_DNAV_ALMANAC_H_
-#define GNSS_SDR_BEIDOU_DNAV_ALMANAC_H_
+#ifndef GNSS_SDR_BEIDOU_DNAV_ALMANAC_H
+#define GNSS_SDR_BEIDOU_DNAV_ALMANAC_H
 
 #include <boost/serialization/nvp.hpp>
 
@@ -70,7 +59,7 @@ public:
         ar& BOOST_SERIALIZATION_NVP(i_satellite_PRN);
         ar& BOOST_SERIALIZATION_NVP(d_Delta_i);
         ar& BOOST_SERIALIZATION_NVP(d_Toa);
-        //ar& BOOST_SERIALIZATION_NVP(i_WNa);
+        // ar& BOOST_SERIALIZATION_NVP(i_WNa);
         ar& BOOST_SERIALIZATION_NVP(d_M_0);
         ar& BOOST_SERIALIZATION_NVP(d_e_eccentricity);
         ar& BOOST_SERIALIZATION_NVP(d_sqrt_A);
@@ -78,7 +67,7 @@ public:
         ar& BOOST_SERIALIZATION_NVP(d_OMEGA);
         ar& BOOST_SERIALIZATION_NVP(d_OMEGA_DOT);
         ar& BOOST_SERIALIZATION_NVP(i_SV_health);
-        //ar& BOOST_SERIALIZATION_NVP(i_AS_status);
+        // ar& BOOST_SERIALIZATION_NVP(i_AS_status);
         ar& BOOST_SERIALIZATION_NVP(d_A_f0);
         ar& BOOST_SERIALIZATION_NVP(d_A_f1);
     }

@@ -5,25 +5,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -47,15 +36,15 @@ channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<Channe
  */
 class channel_msg_receiver_cc : public gr::block
 {
+public:
+    ~channel_msg_receiver_cc() = default;  //!< Default destructor
+
 private:
+    friend channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
+    channel_msg_receiver_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
     std::shared_ptr<ChannelFsm> d_channel_fsm;
     bool d_repeat;  // todo: change FSM to include repeat value
-    friend channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
     void msg_handler_events(pmt::pmt_t msg);
-    channel_msg_receiver_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
-
-public:
-    ~channel_msg_receiver_cc();  //!< Default destructor
 };
 
-#endif
+#endif  // GNSS_SDR_CHANNEL_MSG_RECEIVER_CC_H

@@ -9,25 +9,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -140,7 +129,7 @@ bool cuda_multicorrelator::init_cuda_integrated_resampler(
     int n_correlators)
 {
     // use command-line specified CUDA device, otherwise use device with highest Gflops/s
-    //	findCudaDevice(argc, (const char **)argv);
+    //    findCudaDevice(argc, (const char **)argv);
     cudaDeviceProp prop;
     int num_devices, device;
     cudaGetDeviceCount(&num_devices);
@@ -208,8 +197,8 @@ bool cuda_multicorrelator::init_cuda_integrated_resampler(
     //******** CudaMalloc version ***********
 
     // input signal GPU memory (can be mapped to CPU memory in shared memory devices!)
-    //	cudaMalloc((void **)&d_sig_in, size);
-    //	cudaMemset(d_sig_in,0,size);
+    //    cudaMalloc((void **)&d_sig_in, size);
+    //    cudaMemset(d_sig_in,0,size);
 
     // Doppler-free signal (internal GPU memory)
     cudaMalloc((void **)&d_sig_doppler_wiped, size);
@@ -249,20 +238,20 @@ bool cuda_multicorrelator::set_local_code_and_taps(
 {
     cudaSetDevice(selected_gps_device);
     //********* ZERO COPY VERSION ************
-    //	// Get device pointer from host memory. No allocation or memcpy
-    //	cudaError_t code;
-    //	// local code CPU -> GPU copy memory
-    //	code=cudaHostGetDevicePointer((void **)&d_local_codes_in,  (void *) local_codes_in, 0);
-    //	if (code!=cudaSuccess)
-    //	{
-    //		printf("cuda cudaHostGetDevicePointer error in set_local_code_and_taps \r\n");
-    //	}
-    //	// Correlator shifts vector CPU -> GPU copy memory (fractional chip shifts are allowed!)
-    //	code=cudaHostGetDevicePointer((void **)&d_shifts_chips,  (void *) shifts_chips, 0);
-    //	if (code!=cudaSuccess)
-    //	{
-    //		printf("cuda cudaHostGetDevicePointer error in set_local_code_and_taps \r\n");
-    //	}
+    //    // Get device pointer from host memory. No allocation or memcpy
+    //    cudaError_t code;
+    //    // local code CPU -> GPU copy memory
+    //    code=cudaHostGetDevicePointer((void **)&d_local_codes_in,  (void *) local_codes_in, 0);
+    //    if (code!=cudaSuccess)
+    //    {
+    //        printf("cuda cudaHostGetDevicePointer error in set_local_code_and_taps \r\n");
+    //    }
+    //    // Correlator shifts vector CPU -> GPU copy memory (fractional chip shifts are allowed!)
+    //    code=cudaHostGetDevicePointer((void **)&d_shifts_chips,  (void *) shifts_chips, 0);
+    //    if (code!=cudaSuccess)
+    //    {
+    //        printf("cuda cudaHostGetDevicePointer error in set_local_code_and_taps \r\n");
+    //    }
 
     //******** CudaMalloc version ***********
     //local code CPU -> GPU copy memory

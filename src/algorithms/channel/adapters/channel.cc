@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -37,21 +26,20 @@
 #include "telemetry_decoder_interface.h"
 #include "tracking_interface.h"
 #include <glog/logging.h>
-#include <cstring>  // for memcpy
 #include <utility>  // for std::move
 
 
-Channel::Channel(ConfigurationInterface* configuration, uint32_t channel, std::shared_ptr<AcquisitionInterface> acq,
-    std::shared_ptr<TrackingInterface> trk, std::shared_ptr<TelemetryDecoderInterface> nav,
-    std::string role, std::string implementation, gr::msg_queue::sptr queue)
+Channel::Channel(ConfigurationInterface* configuration, uint32_t channel, const std::shared_ptr<AcquisitionInterface>& acq,
+    const std::shared_ptr<TrackingInterface>& trk, const std::shared_ptr<TelemetryDecoderInterface>& nav,
+    const std::string& role, const std::string& implementation, const std::shared_ptr<Concurrent_Queue<pmt::pmt_t> >& queue)
 {
-    acq_ = std::move(acq);
-    trk_ = std::move(trk);
-    nav_ = std::move(nav);
-    role_ = std::move(role);
-    implementation_ = std::move(implementation);
+    acq_ = acq;
+    trk_ = trk;
+    nav_ = nav;
+    role_ = role;
+    implementation_ = implementation;
     channel_ = channel;
-    queue_ = std::move(queue);
+    queue_ = queue;
     channel_fsm_ = std::make_shared<ChannelFsm>();
 
     flag_enable_fpga = configuration->property("GNSS-SDR.enable_FPGA", false);
@@ -117,9 +105,6 @@ Channel::Channel(ConfigurationInterface* configuration, uint32_t channel, std::s
 
     channel_msg_rx = channel_msg_receiver_make_cc(channel_fsm_, repeat_);
 }
-
-
-Channel::~Channel() = default;
 
 
 void Channel::connect(gr::top_block_sptr top_block)
@@ -209,9 +194,9 @@ void Channel::set_signal(const Gnss_Signal& gnss_signal)
     std::lock_guard<std::mutex> lk(mx);
     gnss_signal_ = gnss_signal;
     std::string str_aux = gnss_signal_.get_signal_str();
-    const char* str = str_aux.c_str();                              // get a C style null terminated string
-    std::memcpy(static_cast<void*>(gnss_synchro_.Signal), str, 3);  // copy string into synchro char array: 2 char + null
-    gnss_synchro_.Signal[2] = 0;                                    // make sure that string length is only two characters
+    gnss_synchro_.Signal[0] = str_aux[0];
+    gnss_synchro_.Signal[1] = str_aux[1];
+    gnss_synchro_.Signal[2] = '\0';  // make sure that string length is only two characters
     gnss_synchro_.PRN = gnss_signal_.get_satellite().get_PRN();
     gnss_synchro_.System = gnss_signal_.get_satellite().get_system_short().c_str()[0];
     acq_->set_local_code();
@@ -233,6 +218,12 @@ void Channel::stop_channel()
             return;
         }
     DLOG(INFO) << "Channel stop_channel()";
+}
+
+
+void Channel::assist_acquisition_doppler(double Carrier_Doppler_hz)
+{
+    acq_->set_doppler_center(static_cast<int>(Carrier_Doppler_hz));
 }
 
 

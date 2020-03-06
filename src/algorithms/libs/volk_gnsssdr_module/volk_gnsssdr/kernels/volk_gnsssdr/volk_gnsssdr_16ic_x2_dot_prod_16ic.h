@@ -10,25 +10,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -77,7 +66,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_generic(lv_16sc_t* result,
         }
 }
 
-#endif /*LV_HAVE_GENERIC*/
+#endif /* LV_HAVE_GENERIC */
 
 
 #ifdef LV_HAVE_SSE2
@@ -108,7 +97,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_a_sse2(lv_16sc_t* out, con
             for (number = 0; number < sse_iters; number++)
                 {
                     // a[127:0]=[a3.i,a3.r,a2.i,a2.r,a1.i,a1.r,a0.i,a0.r]
-                    a = _mm_load_si128((__m128i*)_in_a);  //load (2 byte imag, 2 byte real) x 4 into 128 bits reg
+                    a = _mm_load_si128((__m128i*)_in_a);  // load (2 byte imag, 2 byte real) x 4 into 128 bits reg
                     __VOLK_GNSSSDR_PREFETCH(_in_a + 8);
                     b = _mm_load_si128((__m128i*)_in_b);
                     __VOLK_GNSSSDR_PREFETCH(_in_b + 8);
@@ -123,7 +112,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_a_sse2(lv_16sc_t* out, con
                     imag1 = _mm_mullo_epi16(a, b_sl);  // a3.i*b3.r, ....
                     imag2 = _mm_mullo_epi16(b, a_sl);  // b3.i*a3.r, ....
 
-                    imag = _mm_adds_epi16(imag1, imag2);  //with saturation arithmetic!
+                    imag = _mm_adds_epi16(imag1, imag2);  // with saturation arithmetic!
 
                     realcacc = _mm_adds_epi16(realcacc, real);
                     imagcacc = _mm_adds_epi16(imagcacc, imag);
@@ -186,10 +175,10 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_u_sse2(lv_16sc_t* out, con
 
             for (number = 0; number < sse_iters; number++)
                 {
-                    //std::complex<T> memory structure: real part -> reinterpret_cast<cv T*>(a)[2*i]
-                    //imaginary part -> reinterpret_cast<cv T*>(a)[2*i + 1]
+                    // std::complex<T> memory structure: real part -> reinterpret_cast<cv T*>(a)[2*i]
+                    // imaginary part -> reinterpret_cast<cv T*>(a)[2*i + 1]
                     // a[127:0]=[a3.i,a3.r,a2.i,a2.r,a1.i,a1.r,a0.i,a0.r]
-                    a = _mm_loadu_si128((__m128i*)_in_a);  //load (2 byte imag, 2 byte real) x 4 into 128 bits reg
+                    a = _mm_loadu_si128((__m128i*)_in_a);  // load (2 byte imag, 2 byte real) x 4 into 128 bits reg
                     __VOLK_GNSSSDR_PREFETCH(_in_a + 8);
                     b = _mm_loadu_si128((__m128i*)_in_b);
                     __VOLK_GNSSSDR_PREFETCH(_in_b + 8);
@@ -204,7 +193,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_u_sse2(lv_16sc_t* out, con
                     imag1 = _mm_mullo_epi16(a, b_sl);  // a3.i*b3.r, ....
                     imag2 = _mm_mullo_epi16(b, a_sl);  // b3.i*a3.r, ....
 
-                    imag = _mm_adds_epi16(imag1, imag2);  //with saturation arithmetic!
+                    imag = _mm_adds_epi16(imag1, imag2);  // with saturation arithmetic!
 
                     realcacc = _mm_adds_epi16(realcacc, real);
                     imagcacc = _mm_adds_epi16(imagcacc, imag);
@@ -281,7 +270,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_u_axv2(lv_16sc_t* out, con
                     imag1 = _mm256_mullo_epi16(a, b_sl);
                     imag2 = _mm256_mullo_epi16(b, a_sl);
 
-                    imag = _mm256_adds_epi16(imag1, imag2);  //with saturation arithmetic!
+                    imag = _mm256_adds_epi16(imag1, imag2);  // with saturation arithmetic!
 
                     realcacc = _mm256_adds_epi16(realcacc, real);
                     imagcacc = _mm256_adds_epi16(imagcacc, imag);
@@ -359,7 +348,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_a_axv2(lv_16sc_t* out, con
                     imag1 = _mm256_mullo_epi16(a, b_sl);
                     imag2 = _mm256_mullo_epi16(b, a_sl);
 
-                    imag = _mm256_adds_epi16(imag1, imag2);  //with saturation arithmetic!
+                    imag = _mm256_adds_epi16(imag1, imag2);  // with saturation arithmetic!
 
                     realcacc = _mm256_adds_epi16(realcacc, real);
                     imagcacc = _mm256_adds_epi16(imagcacc, imag);
@@ -571,4 +560,4 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_neon_optvma(lv_16sc_t* out
 
 #endif /* LV_HAVE_NEONV7 */
 
-#endif /*INCLUDED_volk_gnsssdr_16ic_x2_dot_prod_16ic_H*/
+#endif /* INCLUDED_volk_gnsssdr_16ic_x2_dot_prod_16ic_H */

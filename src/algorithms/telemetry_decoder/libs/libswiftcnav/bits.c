@@ -16,17 +16,8 @@
  *
  * This file is part of GNSS-SDR.
  *
- * This file is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, version 3.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Lesser Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: LGPL-3.0-only
+ *.
  */
 
 #include "bits.h"
@@ -51,11 +42,11 @@ static const uint8_t BITN[16] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4}
  */
 uint8_t parity(uint32_t x)
 {
-    x ^= x >> 16;
-    x ^= x >> 8;
-    x ^= x >> 4;
-    x &= 0xF;
-    return (0x6996 >> x) & 1;
+    x ^= x >> 16U;
+    x ^= x >> 8U;
+    x ^= x >> 4U;
+    x &= 0xFU;
+    return (0x6996U >> x) & 1U;
 }
 
 
@@ -74,8 +65,8 @@ uint32_t getbitu(const uint8_t *buff, uint32_t pos, uint8_t len)
     uint32_t i = 0;
     for (i = pos; i < pos + len; i++)
         {
-            bits = (bits << 1) +
-                   ((buff[i / 8] >> (7 - i % 8)) & 1u);
+            bits = (bits << 1U) +
+                   ((buff[i / 8] >> (7 - i % 8)) & 1U);
         }
 
     return bits;
@@ -99,7 +90,7 @@ int32_t getbits(const uint8_t *buff, uint32_t pos, uint8_t len)
     /* Sign extend, taken from:
      * http://graphics.stanford.edu/~seander/bithacks.html#VariableSignExtend
      */
-    int32_t m = 1u << (len - 1);
+    int32_t m = 1U << (len - 1);
     return (bits ^ m) - m;
 }
 
@@ -114,22 +105,22 @@ int32_t getbits(const uint8_t *buff, uint32_t pos, uint8_t len)
  */
 void setbitu(uint8_t *buff, uint32_t pos, uint32_t len, uint32_t data)
 {
-    uint32_t mask = 1u << (len - 1);
+    uint32_t mask = 1U << (len - 1);
 
     if (len <= 0 || 32 < len)
         {
             return;
         }
     uint32_t i = 0;
-    for (i = pos; i < pos + len; i++, mask >>= 1)
+    for (i = pos; i < pos + len; i++, mask >>= 1U)
         {
             if (data & mask)
                 {
-                    buff[i / 8] |= 1u << (7 - i % 8);
+                    buff[i / 8] |= 1U << (7 - i % 8);
                 }
             else
                 {
-                    buff[i / 8] &= ~(1u << (7 - i % 8));
+                    buff[i / 8] &= ~(1U << (7 - i % 8));
                 }
         }
 }
@@ -246,10 +237,10 @@ void bitcopy(void *dst, uint32_t dst_index, const void *src, uint32_t src_index,
 uint8_t count_bits_u64(uint64_t v, uint8_t bv)
 {
     uint8_t r = 0;
-    int i = 0;
+    uint32_t i = 0;
     for (i = 0; i < 16; i++)
         {
-            r += BITN[(v >> (i * 4)) & 0xf];
+            r += BITN[(v >> (i * 4U)) & 0xFU];
         }
     return bv == 1 ? r : 64 - r;
 }
@@ -265,10 +256,10 @@ uint8_t count_bits_u64(uint64_t v, uint8_t bv)
 uint8_t count_bits_u32(uint32_t v, uint8_t bv)
 {
     uint8_t r = 0;
-    int i = 0;
+    uint32_t i = 0;
     for (i = 0; i < 8; i++)
         {
-            r += BITN[(v >> (i * 4)) & 0xf];
+            r += BITN[(v >> (i * 4U)) & 0xFU];
         }
     return bv == 1 ? r : 32 - r;
 }
@@ -284,10 +275,10 @@ uint8_t count_bits_u32(uint32_t v, uint8_t bv)
 uint8_t count_bits_u16(uint16_t v, uint8_t bv)
 {
     uint8_t r = 0;
-    int i = 0;
+    uint32_t i = 0;
     for (i = 0; i < 4; i++)
         {
-            r += BITN[(v >> (i * 4)) & 0xf];
+            r += BITN[(v >> (i * 4U)) & 0xFU];
         }
     return bv == 1 ? r : 16 - r;
 }
@@ -303,10 +294,10 @@ uint8_t count_bits_u16(uint16_t v, uint8_t bv)
 uint8_t count_bits_u8(uint8_t v, uint8_t bv)
 {
     uint8_t r = 0;
-    int i = 0;
+    uint32_t i = 0;
     for (i = 0; i < 2; i++)
         {
-            r += BITN[(v >> (i * 4)) & 0xf];
+            r += BITN[(v >> (i * 4U)) & 0xFU];
         }
     return bv == 1 ? r : 8 - r;
 }

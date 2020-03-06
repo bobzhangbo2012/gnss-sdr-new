@@ -8,36 +8,26 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_RTCM_PRINTER_H_
-#define GNSS_SDR_RTCM_PRINTER_H_
+#ifndef GNSS_SDR_RTCM_PRINTER_H
+#define GNSS_SDR_RTCM_PRINTER_H
 
 #include <cstdint>  // for int32_t
 #include <fstream>  // for std::ofstream
 #include <map>      // for std::map
 #include <memory>   // std::shared_ptr
+#include <string>
 
 class Galileo_Ephemeris;
 class Glonass_Gnav_Ephemeris;
@@ -163,7 +153,7 @@ private:
     uint16_t port;
     uint16_t station_id;
     int32_t rtcm_dev_descriptor;                            // RTCM serial device descriptor (i.e. COM port)
-    int32_t init_serial(const std::string& serial_device);  //serial port control
+    int32_t init_serial(const std::string& serial_device);  // serial port control
     void close_serial();
     std::shared_ptr<Rtcm> rtcm;
     bool Print_Message(const std::string& message);

@@ -6,37 +6,28 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H_
-#define GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H_
+#ifndef GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H
+#define GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H
 
 #include "channel_fsm.h"
 #include "gnss_synchro.h"
 #include "pcps_opencl_acquisition_cc.h"
 #include <gnuradio/blocks/stream_to_vector.h>
+#include <memory>
 #include <string>
+#include <vector>
 
 class ConfigurationInterface;
 
@@ -52,7 +43,7 @@ public:
         unsigned int in_streams,
         unsigned int out_streams);
 
-    virtual ~GpsL1CaPcpsOpenClAcquisition();
+    ~GpsL1CaPcpsOpenClAcquisition() = default;
 
     inline std::string role() override
     {
@@ -94,13 +85,14 @@ public:
     }
 
     /*!
-      * \brief Set channel fsm associated to this acquisition instance
-      */
+     * \brief Set channel fsm associated to this acquisition instance
+     */
     inline void set_channel_fsm(std::weak_ptr<ChannelFsm> channel_fsm) override
     {
         channel_fsm_ = channel_fsm;
         acquisition_cc_->set_channel_fsm(channel_fsm);
     }
+
     /*!
      * \brief Set statistics threshold of PCPS algorithm
      */
@@ -144,6 +136,12 @@ public:
 
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
+    inline bool opencl_ready() const
+    {
+        bool ready = this->acquisition_cc_->opencl_ready();
+        return ready;
+    }
+
 private:
     ConfigurationInterface* configuration_;
     pcps_opencl_acquisition_cc_sptr acquisition_cc_;
@@ -163,13 +161,12 @@ private:
     int64_t fs_in_;
     bool dump_;
     std::string dump_filename_;
-    std::complex<float>* code_;
+    std::vector<std::complex<float>> code_;
     Gnss_Synchro* gnss_synchro_;
     std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-
     float calculate_threshold(float pfa);
 };
 
-#endif /* GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H_ */
+#endif  // GNSS_SDR_GPS_L1_CA_PCPS_OPENCL_ACQUISITION_H

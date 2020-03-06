@@ -11,25 +11,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -114,46 +103,6 @@ static inline void volk_gnsssdr_8ic_magnitude_squared_8i_u_sse3(char* magnitudeV
 }
 #endif /* LV_HAVE_SSSE3 */
 
-//#ifdef LV_HAVE_SSE
-//#include <xmmintrin.h>
-//
-//static inline void volk_gnsssdr_8ic_magnitude_squared_8i_u_sse(float* magnitudeVector, const lv_32fc_t* complexVector, unsigned int num_points){
-//    unsigned int number = 0;
-//    const unsigned int quarterPoints = num_points / 4;
-//
-//    const float* complexVectorPtr = (float*)complexVector;
-//    float* magnitudeVectorPtr = magnitudeVector;
-//
-//    __m128 cplxValue1, cplxValue2, iValue, qValue, result;
-//    for(;number < quarterPoints; number++){
-//      cplxValue1 = _mm_loadu_ps(complexVectorPtr);
-//      complexVectorPtr += 4;
-//
-//      cplxValue2 = _mm_loadu_ps(complexVectorPtr);
-//      complexVectorPtr += 4;
-//
-//      // Arrange in i1i2i3i4 format
-//      iValue = _mm_shuffle_ps(cplxValue1, cplxValue2, _MM_SHUFFLE(2,0,2,0));
-//      // Arrange in q1q2q3q4 format
-//      qValue = _mm_shuffle_ps(cplxValue1, cplxValue2, _MM_SHUFFLE(3,1,3,1));
-//
-//      iValue = _mm_mul_ps(iValue, iValue); // Square the I values
-//      qValue = _mm_mul_ps(qValue, qValue); // Square the Q Values
-//
-//      result = _mm_add_ps(iValue, qValue); // Add the I2 and Q2 values
-//
-//      _mm_storeu_ps(magnitudeVectorPtr, result);
-//      magnitudeVectorPtr += 4;
-//    }
-//
-//    number = quarterPoints * 4;
-//    for(; number < num_points; number++){
-//       float val1Real = *complexVectorPtr++;
-//       float val1Imag = *complexVectorPtr++;
-//      *magnitudeVectorPtr++ = (val1Real * val1Real) + (val1Imag * val1Imag);
-//    }
-//}
-//#endif /* LV_HAVE_SSE */
 
 #ifdef LV_HAVE_GENERIC
 
@@ -227,47 +176,6 @@ static inline void volk_gnsssdr_8ic_magnitude_squared_8i_a_sse3(char* magnitudeV
         }
 }
 #endif /* LV_HAVE_SSSE3 */
-
-//#ifdef LV_HAVE_SSE
-//#include <xmmintrin.h>
-//
-//static inline void volk_gnsssdr_8ic_magnitude_squared_8i_a_sse(float* magnitudeVector, const lv_32fc_t* complexVector, unsigned int num_points){
-//    unsigned int number = 0;
-//    const unsigned int quarterPoints = num_points / 4;
-//
-//    const float* complexVectorPtr = (float*)complexVector;
-//    float* magnitudeVectorPtr = magnitudeVector;
-//
-//    __m128 cplxValue1, cplxValue2, iValue, qValue, result;
-//    for(;number < quarterPoints; number++){
-//      cplxValue1 = _mm_load_ps(complexVectorPtr);
-//      complexVectorPtr += 4;
-//
-//      cplxValue2 = _mm_load_ps(complexVectorPtr);
-//      complexVectorPtr += 4;
-//
-//      // Arrange in i1i2i3i4 format
-//      iValue = _mm_shuffle_ps(cplxValue1, cplxValue2, _MM_SHUFFLE(2,0,2,0));
-//      // Arrange in q1q2q3q4 format
-//      qValue = _mm_shuffle_ps(cplxValue1, cplxValue2, _MM_SHUFFLE(3,1,3,1));
-//
-//      iValue = _mm_mul_ps(iValue, iValue); // Square the I values
-//      qValue = _mm_mul_ps(qValue, qValue); // Square the Q Values
-//
-//      result = _mm_add_ps(iValue, qValue); // Add the I2 and Q2 values
-//
-//      _mm_store_ps(magnitudeVectorPtr, result);
-//      magnitudeVectorPtr += 4;
-//    }
-//
-//    number = quarterPoints * 4;
-//    for(; number < num_points; number++){
-//       float val1Real = *complexVectorPtr++;
-//       float val1Imag = *complexVectorPtr++;
-//      *magnitudeVectorPtr++ = (val1Real * val1Real) + (val1Imag * val1Imag);
-//    }
-//}
-//#endif /* LV_HAVE_SSE */
 
 
 #ifdef LV_HAVE_ORC

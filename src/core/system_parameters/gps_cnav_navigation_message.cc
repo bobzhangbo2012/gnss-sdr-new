@@ -1,37 +1,27 @@
 /*!
  * \file gps_cnav_navigation_message.cc
- * \brief Implementation of a GPS CNAV Data message decoder as described in IS-GPS-200H
+ * \brief Implementation of a GPS CNAV Data message decoder as described in IS-GPS-200K
  *
- * See http://www.gps.gov/technical/icwg/IS-GPS-200H.pdf Appendix III
+ * See https://www.gps.gov/technical/icwg/IS-GPS-200K.pdf Appendix III
  * \author Javier Arribas, 2015. jarribas(at)cttc.es
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #include "gps_cnav_navigation_message.h"
 #include "gnss_satellite.h"
+#include <limits>  // for std::numeric_limits
 
 
 void Gps_CNAV_Navigation_Message::reset()
@@ -96,7 +86,7 @@ uint64_t Gps_CNAV_Navigation_Message::read_navigation_unsigned(std::bitset<GPS_C
         {
             for (int32_t j = 0; j < parameter[i].second; j++)
                 {
-                    value <<= 1;  // shift left
+                    value <<= 1ULL;  // shift left
                     if (static_cast<int>(bits[GPS_CNAV_DATA_PAGE_BITS - parameter[i].first - j]) == 1)
                         {
                             value += 1ULL;  // insert the bit
@@ -126,7 +116,7 @@ int64_t Gps_CNAV_Navigation_Message::read_navigation_signed(std::bitset<GPS_CNAV
         {
             for (int32_t j = 0; j < parameter[i].second; j++)
                 {
-                    value <<= 1;                    // shift left
+                    value *= 2;                     // shift left the signed integer
                     value &= 0xFFFFFFFFFFFFFFFELL;  // reset the corresponding bit (for the 64 bits variable)
                     if (static_cast<int>(bits[GPS_CNAV_DATA_PAGE_BITS - parameter[i].first - j]) == 1)
                         {
@@ -213,7 +203,7 @@ void Gps_CNAV_Navigation_Message::decode_page(std::bitset<GPS_CNAV_DATA_PAGE_BIT
             b_flag_ephemeris_2 = true;
             break;
         case 30:  // (CLOCK, IONO, GRUP DELAY)
-            //clock
+            // clock
             ephemeris_record.d_Toc = static_cast<int32_t>(read_navigation_unsigned(data_bits, CNAV_TOC));
             ephemeris_record.d_Toc *= CNAV_TOC_LSB;
             ephemeris_record.d_URA0 = static_cast<double>(read_navigation_signed(data_bits, CNAV_URA_NED0));
@@ -225,9 +215,9 @@ void Gps_CNAV_Navigation_Message::decode_page(std::bitset<GPS_CNAV_DATA_PAGE_BIT
             ephemeris_record.d_A_f1 *= CNAV_AF1_LSB;
             ephemeris_record.d_A_f2 = static_cast<double>(read_navigation_signed(data_bits, CNAV_AF2));
             ephemeris_record.d_A_f2 *= CNAV_AF2_LSB;
-            //group delays
+            // group delays
             // Check if the grup delay values are not available. See IS-GPS-200, Table 30-IV.
-            //Bit string "1000000000000" is -4096 in 2 complement
+            // Bit string "1000000000000" is -4096 in 2 complement
             ephemeris_record.d_TGD = static_cast<double>(read_navigation_signed(data_bits, CNAV_TGD));
             if (ephemeris_record.d_TGD < -4095.9)
                 {
@@ -262,7 +252,7 @@ void Gps_CNAV_Navigation_Message::decode_page(std::bitset<GPS_CNAV_DATA_PAGE_BIT
                     ephemeris_record.d_ISCL5Q = 0.0;
                 }
             ephemeris_record.d_ISCL5Q *= CNAV_ISCL5Q_LSB;
-            //iono
+            // iono
             iono_record.d_alpha0 = static_cast<double>(read_navigation_signed(data_bits, CNAV_ALPHA0));
             iono_record.d_alpha0 = iono_record.d_alpha0 * CNAV_ALPHA0_LSB;
             iono_record.d_alpha1 = static_cast<double>(read_navigation_signed(data_bits, CNAV_ALPHA1));

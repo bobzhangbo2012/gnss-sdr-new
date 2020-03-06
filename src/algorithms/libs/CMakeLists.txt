@@ -1,19 +1,10 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 add_subdirectory(rtklib)
@@ -40,6 +31,7 @@ set(GNSS_SPLIBS_SOURCES
     conjugate_ic.cc
     gnss_sdr_create_directory.cc
     geofunctions.cc
+    item_type_helpers.cc
 )
 
 set(GNSS_SPLIBS_HEADERS
@@ -65,20 +57,15 @@ set(GNSS_SPLIBS_HEADERS
     gnss_sdr_create_directory.h
     gnss_circular_deque.h
     geofunctions.h
+    item_type_helpers.h
 )
 
-if(OPENCL_FOUND)
+if(ENABLE_OPENCL)
     set(GNSS_SPLIBS_SOURCES ${GNSS_SPLIBS_SOURCES}
         opencl/fft_execute.cc # Needs OpenCL
         opencl/fft_setup.cc # Needs OpenCL
         opencl/fft_kernelstring.cc # Needs OpenCL
     )
-    include_directories(${OPENCL_INCLUDE_DIRS})
-    if(OS_IS_MACOSX)
-        set(OPT_LIBRARIES ${OPT_LIBRARIES} "-framework OpenCL")
-    else()
-        set(OPT_LIBRARIES ${OPT_LIBRARIES} ${OPENCL_LIBRARIES})
-    endif()
 endif()
 
 list(SORT GNSS_SPLIBS_HEADERS)
@@ -88,21 +75,47 @@ source_group(Headers FILES ${GNSS_SPLIBS_HEADERS})
 
 add_library(algorithms_libs ${GNSS_SPLIBS_SOURCES} ${GNSS_SPLIBS_HEADERS})
 
+if(${FILESYSTEM_FOUND})
+    target_compile_definitions(algorithms_libs PRIVATE -DHAS_STD_FILESYSTEM=1)
+    if(${find_experimental})
+        target_compile_definitions(algorithms_libs PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
+    endif()
+    target_link_libraries(algorithms_libs PRIVATE std::filesystem)
+else()
+    target_link_libraries(algorithms_libs PRIVATE Boost::filesystem Boost::system)
+endif()
+
+target_include_directories(algorithms_libs
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/algorithms/libs/gsl/include
+)
+
 target_link_libraries(algorithms_libs
     PUBLIC
         Armadillo::armadillo
-        Boost::boost
-        Gflags::gflags
+        Boost::headers
         Gnuradio::runtime
         Gnuradio::blocks
-        ${OPT_LIBRARIES}
     PRIVATE
         core_system_parameters
         Volk::volk ${ORC_LIBRARIES}
         Volkgnsssdr::volkgnsssdr
-        Boost::filesystem
+        Gflags::gflags
         Glog::glog
 )
+
+if(ENABLE_OPENCL)
+    target_link_libraries(algorithms_libs PUBLIC OpenCL::OpenCL)
+    target_include_directories(algorithms_libs PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/opencl
+    )
+endif()
+
+if(ENABLE_ARMA_NO_DEBUG)
+    target_compile_definitions(algorithms_libs
+        PUBLIC -DARMA_NO_BOUND_CHECKING=1
+    )
+endif()
 
 target_include_directories(algorithms_libs
     PUBLIC
@@ -112,6 +125,30 @@ target_include_directories(algorithms_libs
 target_compile_definitions(algorithms_libs
     PUBLIC -DGNSSSDR_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}"
 )
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND NOT WIN32)
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.1.1")
+        target_compile_definitions(algorithms_libs
+            PRIVATE -DOLDCOMPILER=1
+        )
+    endif()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        if(CLANG_VERSION VERSION_LESS "600")
+            target_compile_definitions(algorithms_libs
+                PRIVATE -DOLDCOMPILER=1
+            )
+        endif()
+    else()
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.5.0")
+            target_compile_definitions(algorithms_libs
+                PRIVATE -DOLDCOMPILER=1
+            )
+        endif()
+    endif()
+endif()
 
 set_property(TARGET algorithms_libs
     APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
@@ -133,11 +170,19 @@ source_group(Headers FILES gnss_sdr_flags.h)
 
 add_library(gnss_sdr_flags gnss_sdr_flags.cc gnss_sdr_flags.h)
 
+if(${FILESYSTEM_FOUND})
+    target_compile_definitions(gnss_sdr_flags PRIVATE -DHAS_STD_FILESYSTEM=1)
+    if(${find_experimental})
+        target_compile_definitions(gnss_sdr_flags PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
+    endif()
+    target_link_libraries(gnss_sdr_flags PRIVATE std::filesystem)
+else()
+    target_link_libraries(gnss_sdr_flags PRIVATE Boost::filesystem)
+endif()
+
 target_link_libraries(gnss_sdr_flags
     PUBLIC
         Gflags::gflags
-    PRIVATE
-        Boost::filesystem
 )
 
 if(${GFLAGS_GREATER_20})

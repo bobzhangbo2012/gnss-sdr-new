@@ -14,18 +14,7 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -46,9 +35,6 @@ Exponential_Smoother::Exponential_Smoother()
     offset_ = 12.0;
     init_buffer_.reserve(samples_for_initialization_);
 }
-
-
-Exponential_Smoother::~Exponential_Smoother() = default;
 
 
 void Exponential_Smoother::set_alpha(float alpha)
@@ -79,7 +65,7 @@ void Exponential_Smoother::set_samples_for_initialization(int num_samples)
         {
             ns = 1;
         }
-    samples_for_initialization_ = num_samples;
+    samples_for_initialization_ = ns;
     init_buffer_.reserve(samples_for_initialization_);
 }
 

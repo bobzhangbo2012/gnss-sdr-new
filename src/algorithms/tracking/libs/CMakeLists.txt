@@ -1,33 +1,12 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-
-if(ENABLE_CUDA)
-    # Append current NVCC flags by something, eg comput capability
-    # set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --gpu-architecture sm_30)
-    list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_30,code=sm_30; -std=c++11;-O3; -use_fast_math -default-stream per-thread")
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-    set(LIB_TYPE STATIC) #set the lib type
-    cuda_add_library(CUDA_CORRELATOR_LIB ${LIB_TYPE} cuda_multicorrelator.h cuda_multicorrelator.cu)
-    set(OPT_TRACKING_LIBRARIES ${OPT_TRACKING_LIBRARIES} CUDA_CORRELATOR_LIB)
-    set(OPT_TRACKING_INCLUDES ${OPT_TRACKING_INCLUDES} ${CUDA_INCLUDE_DIRS})
-endif()
 
 set(TRACKING_LIB_SOURCES
     cpu_multicorrelator.cc
@@ -63,6 +42,29 @@ set(TRACKING_LIB_HEADERS
     exponential_smoother.h
 )
 
+set(OPT_TRACKING_LIBRARIES "")
+set(OPT_TRACKING_INCLUDES "")
+if(ENABLE_CUDA)
+    if(CMAKE_VERSION VERSION_GREATER 3.11)
+        set(TRACKING_LIB_SOURCES ${TRACKING_LIB_SOURCES} cuda_multicorrelator.cu)
+        set(TRACKING_LIB_HEADERS ${TRACKING_LIB_HEADERS} cuda_multicorrelator.h)
+    else()
+        list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_30,code=sm_30; -std=c++11;-O3; -use_fast_math -default-stream per-thread")
+        set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+        cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+        set(LIB_TYPE STATIC) #set the lib type
+        cuda_add_library(CUDA_CORRELATOR_LIB ${LIB_TYPE} cuda_multicorrelator.h cuda_multicorrelator.cu)
+        set(OPT_TRACKING_LIBRARIES ${OPT_TRACKING_LIBRARIES} CUDA_CORRELATOR_LIB)
+        set(OPT_TRACKING_INCLUDES ${OPT_TRACKING_INCLUDES} ${CUDA_INCLUDE_DIRS})
+    endif()
+endif()
+
+if(ARMADILLO_VERSION_STRING VERSION_GREATER 7.400)
+    # sqrtmat_sympd() requires 7.400
+    set(TRACKING_LIB_SOURCES ${TRACKING_LIB_SOURCES} nonlinear_tracking.cc)
+    set(TRACKING_LIB_HEADERS ${TRACKING_LIB_HEADERS} nonlinear_tracking.h)
+endif()
+
 if(ENABLE_FPGA)
     set(TRACKING_LIB_SOURCES ${TRACKING_LIB_SOURCES} fpga_multicorrelator.cc dll_pll_conf_fpga.cc)
     set(TRACKING_LIB_HEADERS ${TRACKING_LIB_HEADERS} fpga_multicorrelator.h dll_pll_conf_fpga.h)
@@ -78,36 +80,63 @@ add_library(tracking_libs ${TRACKING_LIB_SOURCES} ${TRACKING_LIB_HEADERS})
 target_link_libraries(tracking_libs
     PUBLIC
         Armadillo::armadillo
-        Boost::boost
+        Boost::headers
         Gnuradio::runtime
         Volkgnsssdr::volkgnsssdr
         core_system_parameters
+        algorithms_libs
         ${OPT_TRACKING_LIBRARIES}
     PRIVATE
+        gnss_sdr_flags
         Gflags::gflags
         Glog::glog
 )
 
-target_include_directories(tracking_libs
-    PUBLIC
-        ${OPT_TRACKING_INCLUDES}
-)
+if(NOT CMAKE_VERSION VERSION_GREATER 3.11)
+    target_link_libraries(tracking_libs
+        PUBLIC
+            ${OPT_TRACKING_LIBRARIES}
+    )
+    target_include_directories(tracking_libs
+        PUBLIC
+            ${OPT_TRACKING_INCLUDES}
+    )
+endif()
 
-if(Boost_VERSION VERSION_GREATER "106599")
+if(Boost_VERSION_STRING VERSION_GREATER 1.65.99)
     target_compile_definitions(tracking_libs
         PUBLIC
             -DBOOST_GREATER_1_65
     )
 endif()
 
-if(OS_IS_MACOSX)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_definitions(tracking_libs
-            PUBLIC
-                -DBOOST_ASIO_HAS_STD_STRING_VIEW
-        )
+# Fix for Boost Asio < 1.70
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND (Boost_VERSION_STRING VERSION_LESS 1.70.0))
+        if(${has_string_view})
+            target_compile_definitions(tracking_libs
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=1
+            )
+        else()
+            target_compile_definitions(tracking_libs
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=0
+            )
+        endif()
     endif()
 endif()
+
+if(ENABLE_ARMA_NO_DEBUG)
+    target_compile_definitions(tracking_libs
+        PUBLIC -DARMA_NO_BOUND_CHECKING=1
+    )
+endif()
+
+target_include_directories(tracking_libs
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/core/interfaces
+)
 
 if(ENABLE_CLANG_TIDY)
     if(CLANG_TIDY_EXE)

@@ -5,35 +5,23 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_IBYTE_TO_COMPLEX_H_
-#define GNSS_SDR_IBYTE_TO_COMPLEX_H_
+#ifndef GNSS_SDR_IBYTE_TO_COMPLEX_H
+#define GNSS_SDR_IBYTE_TO_COMPLEX_H
 
 #include "conjugate_cc.h"
 #include "gnss_block_interface.h"
-#include "gnss_synchro.h"
 #include <gnuradio/blocks/file_sink.h>
 #include <gnuradio/blocks/interleaved_char_to_complex.h>
 #include <string>
@@ -51,7 +39,7 @@ public:
         const std::string& role, unsigned int in_streams,
         unsigned int out_streams);
 
-    virtual ~IbyteToComplex();
+    ~IbyteToComplex() = default;
 
     inline std::string role() override
     {

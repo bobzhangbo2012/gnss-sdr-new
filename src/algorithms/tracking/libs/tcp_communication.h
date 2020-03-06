@@ -6,31 +6,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_TCP_COMMUNICATION_H_
-#define GNSS_SDR_TCP_COMMUNICATION_H_
+#ifndef GNSS_SDR_TCP_COMMUNICATION_H
+#define GNSS_SDR_TCP_COMMUNICATION_H
 
 #include "tcp_packet_data.h"
 #include <boost/array.hpp>
@@ -53,7 +42,7 @@ class Tcp_Communication
 {
 public:
     Tcp_Communication();
-    ~Tcp_Communication();
+    ~Tcp_Communication() = default;
 
     int listen_tcp_connection(size_t d_port_, size_t d_port_ch0_);
     void send_receive_tcp_packet_galileo_e1(boost::array<float, NUM_TX_VARIABLES_GALILEO_E1> buf, Tcp_Packet_Data *tcp_data_);

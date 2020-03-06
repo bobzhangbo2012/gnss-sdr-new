@@ -1,19 +1,10 @@
-/* Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)
+/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
+ *
+ * GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include "qa_utils.h"
@@ -32,24 +23,18 @@
 #include <vector>                              // for vector
 
 
-float uniform()
+template <typename T>
+void random_values(T *buf, unsigned int n, std::default_random_engine &e1)
 {
-    std::random_device r;
-    std::default_random_engine e1(r());
-    std::uniform_real_distribution<float> uniform_dist(-1, 1);
-    return uniform_dist(e1);  // uniformly (-1, 1)
-}
-
-template <class t>
-void random_floats(t *buf, unsigned n)
-{
-    for (unsigned i = 0; i < n; i++)
-        buf[i] = uniform();
+    std::uniform_real_distribution<T> uniform_dist(T(-1), T(1));
+    for (unsigned int i = 0; i < n; i++)
+        buf[i] = uniform_dist(e1);
 }
 
 void load_random_data(void *data, volk_gnsssdr_type_t type, unsigned int n)
 {
     std::random_device r;
+    std::default_random_engine e1(r());
     std::default_random_engine e2(r());
 
     if (type.is_complex) n *= 2;
@@ -57,9 +42,9 @@ void load_random_data(void *data, volk_gnsssdr_type_t type, unsigned int n)
     if (type.is_float)
         {
             if (type.size == 8)
-                random_floats<double>((double *)data, n);
+                random_values<double>((double *)data, n, e1);
             else
-                random_floats<float>((float *)data, n);
+                random_values<float>((float *)data, n, e1);
         }
     else
         {
@@ -99,7 +84,7 @@ void load_random_data(void *data, volk_gnsssdr_type_t type, unsigned int n)
                                 ((uint8_t *)data)[i] = (uint8_t)scaled_rand;
                             break;
                         default:
-                            throw "load_random_data: no support for data size > 8 or < 1";  //no shenanigans here
+                            throw "load_random_data: no support for data size > 8 or < 1";  // no shenanigans here
                         }
                 }
         }
@@ -150,24 +135,24 @@ volk_gnsssdr_type_t volk_gnsssdr_type_from_string(std::string name)
             throw std::string("name too short to be a datatype");
         }
 
-    //is it a scalar?
+    // is it a scalar?
     if (name[0] == 's')
         {
             type.is_scalar = true;
             name = name.substr(1, name.size() - 1);
         }
 
-    //get the data size
+    // get the data size
     size_t last_size_pos = name.find_last_of("0123456789");
     if (last_size_pos == std::string::npos)
         {
             throw std::string("no size spec in type ").append(name);
         }
-    //will throw if malformed
+    // will throw if malformed
     int size = volk_lexical_cast<int>(name.substr(0, last_size_pos + 1));
 
     assert(((size % 8) == 0) && (size <= 64) && (size != 0));
-    type.size = size / 8;  //in bytes
+    type.size = size / 8;  // in bytes
 
     for (size_t i = last_size_pos + 1; i < name.size(); i++)
         {
@@ -186,7 +171,7 @@ volk_gnsssdr_type_t volk_gnsssdr_type_from_string(std::string name)
                     type.is_signed = false;
                     break;
                 default:
-                    throw;
+                    throw std::string("Error: no such type: '") + name[i] + "'";
                 }
         }
 
@@ -244,7 +229,7 @@ static void get_signatures_from_name(std::vector<volk_gnsssdr_type_t> &inputsig,
             try
                 {
                     type = volk_gnsssdr_type_from_string(token);
-                    if (side == SIDE_NAME) side = SIDE_OUTPUT;  //if this is the first one after the name...
+                    if (side == SIDE_NAME) side = SIDE_OUTPUT;  // if this is the first one after the name...
 
                     if (side == SIDE_INPUT)
                         inputsig.push_back(type);
@@ -253,7 +238,7 @@ static void get_signatures_from_name(std::vector<volk_gnsssdr_type_t> &inputsig,
                 }
             catch (...)
                 {
-                    if (token[0] == 'x' && (token.size() > 1) && (token[1] > '0' || token[1] < '9'))
+                    if (token[0] == 'x' && (token.size() > 1) && (token[1] > '0' && token[1] < '9'))
                         {
                             if (side == SIDE_INPUT)
                                 assert(inputsig.size() > 0);
@@ -270,18 +255,18 @@ static void get_signatures_from_name(std::vector<volk_gnsssdr_type_t> &inputsig,
                         }
 
                     else if (side == SIDE_INPUT)
-                        {  //it's the function name, at least it better be
+                        {  // it's the function name, at least it better be
                             side = SIDE_NAME;
                             fn_name.append("_");
                             fn_name.append(token);
                         }
                     else if (side == SIDE_OUTPUT)
                         {
-                            if (token != toked.back()) throw;  //the last token in the name is the alignment
+                            if (token != toked.back()) throw;  // the last token in the name is the alignment
                         }
                 }
         }
-    //we don't need an output signature (some fn's operate on the input data, "in place"), but we do need at least one input!
+    // we don't need an output signature (some fn's operate on the input data, "in place"), but we do need at least one input!
     assert(inputsig.size() != 0);
 }
 
@@ -540,7 +525,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
     const float tol_f = tol;
     const unsigned int tol_i = static_cast<unsigned int>(tol);
 
-    //first let's get a list of available architectures for the test
+    // first let's get a list of available architectures for the test
     std::vector<std::string> arch_list = get_arch_list(desc);
 
     if ((!benchmark_mode) && (arch_list.size() < 2))
@@ -549,10 +534,10 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
             return false;
         }
 
-    //something that can hang onto memory and cleanup when this function exits
+    // something that can hang onto memory and cleanup when this function exits
     volk_gnsssdr_qa_aligned_mem_pool mem_pool;
 
-    //now we have to get a function signature by parsing the name
+    // now we have to get a function signature by parsing the name
     std::vector<volk_gnsssdr_type_t> inputsig, outputsig;
     try
         {
@@ -570,7 +555,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
             return false;
         }
 
-    //pull the input scalars into their own vector
+    // pull the input scalars into their own vector
     std::vector<volk_gnsssdr_type_t> inputsc;
     for (size_t i = 0; i < inputsig.size(); i++)
         {
@@ -585,7 +570,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
     for (unsigned int inputsig_index = 0; inputsig_index < inputsig.size(); ++inputsig_index)
         {
             volk_gnsssdr_type_t sig = inputsig[inputsig_index];
-            if (!sig.is_scalar)  //we don't make buffers for scalars
+            if (!sig.is_scalar)  // we don't make buffers for scalars
                 inbuffs.push_back(mem_pool.get_new(vlen * sig.size * (sig.is_complex ? 2 : 1)));
         }
     for (size_t i = 0; i < inbuffs.size(); i++)
@@ -593,7 +578,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
             load_random_data(inbuffs[i], inputsig[i], vlen);
         }
 
-    //ok let's make a vector of vector of void buffers, which holds the input/output vectors for each arch
+    // ok let's make a vector of vector of void buffers, which holds the input/output vectors for each arch
     std::vector<std::vector<void *> > test_data;
     for (size_t i = 0; i < arch_list.size(); i++)
         {
@@ -615,7 +600,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
     both_sigs.insert(both_sigs.end(), outputsig.begin(), outputsig.end());
     both_sigs.insert(both_sigs.end(), inputsig.begin(), inputsig.end());
 
-    //now run the test
+    // now run the test
     vlen = vlen - vlen_twiddle;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     std::vector<double> profile_times;
@@ -641,7 +626,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test1_s32f((volk_gnsssdr_fn_1arg_s32f)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. START
+                    // ADDED BY GNSS-SDR. START
                     else if (inputsc.size() == 1 && !inputsc[0].is_float)
                         {
                             if (inputsc[0].is_complex)
@@ -660,7 +645,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test1_s8i((volk_gnsssdr_fn_1arg_s8i)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. END
+                    // ADDED BY GNSS-SDR. END
                     else
                         throw "unsupported 1 arg function >1 scalars";
                     break;
@@ -680,7 +665,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test2_s32f((volk_gnsssdr_fn_2arg_s32f)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. START
+                    // ADDED BY GNSS-SDR. START
                     else if (inputsc.size() == 1 && !inputsc[0].is_float)
                         {
                             if (inputsc[0].is_complex)
@@ -699,7 +684,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test2_s8i((volk_gnsssdr_fn_2arg_s8i)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. END
+                    // ADDED BY GNSS-SDR. END
                     else
                         throw "unsupported 2 arg function >1 scalars";
                     break;
@@ -719,7 +704,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test3_s32f((volk_gnsssdr_fn_3arg_s32f)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. START
+                    // ADDED BY GNSS-SDR. START
                     else if (inputsc.size() == 1 && !inputsc[0].is_float)
                         {
                             if (inputsc[0].is_complex)
@@ -740,7 +725,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                     run_cast_test3_s8i((volk_gnsssdr_fn_3arg_s8i)(manual_func), test_data[i], scalar.real(), vlen, iter, arch_list[i]);
                                 }
                         }
-                    //ADDED BY GNSS-SDR. END
+                    // ADDED BY GNSS-SDR. END
                     else
                         throw "unsupported 3 arg function >1 scalars";
                     break;
@@ -766,8 +751,8 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
             profile_times.push_back(arch_time);
         }
 
-    //and now compare each output to the generic output
-    //first we have to know which output is the generic one, they aren't in order...
+    // and now compare each output to the generic output
+    // first we have to know which output is the generic one, they aren't in order...
     size_t generic_offset = 0;
     for (size_t i = 0; i < arch_list.size(); i++)
         {
@@ -816,7 +801,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                                 }
                             else
                                 {
-                                    //i could replace this whole switch statement with a memcmp if i wasn't interested in printing the outputs where they differ
+                                    // i could replace this whole switch statement with a memcmp if i wasn't interested in printing the outputs where they differ
                                     switch (both_sigs[j].size)
                                         {
                                         case 8:
@@ -894,7 +879,7 @@ bool run_volk_gnsssdr_tests(volk_gnsssdr_func_desc_t desc,
                             if (fail)
                                 {
                                     volk_gnsssdr_test_time_t *result = &results->back().results[arch_list[i]];
-                                    result->pass = !fail;
+                                    result->pass = false;
                                     fail_global = true;
                                     std::cout << name << ": fail on arch " << arch_list[i] << std::endl;
                                 }

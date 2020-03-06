@@ -5,32 +5,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GPS_L5_H_
-#define GNSS_SDR_GPS_L5_H_
+#ifndef GNSS_SDR_GPS_L5_H
+#define GNSS_SDR_GPS_L5_H
 
 #include "GPS_CNAV.h"
 #include "MATH_CONSTANTS.h"
@@ -42,8 +31,8 @@
 // Physical constants
 const double GPS_L5_C_M_S = 299792458.0;                //!< The speed of light, [m/s]
 const double GPS_L5_C_M_MS = 299792.4580;               //!< The speed of light, [m/ms]
-const double GPS_L5_PI = 3.1415926535898;               //!< Pi as defined in IS-GPS-200E
-const double GPS_L5_TWO_PI = 6.283185307179586;         //!< 2Pi as defined in IS-GPS-200E
+const double GPS_L5_PI = 3.1415926535898;               //!< Pi as defined in IS-GPS-200K
+const double GPS_L5_TWO_PI = 6.283185307179586;         //!< 2Pi as defined in IS-GPS-200K
 const double GPS_L5_OMEGA_EARTH_DOT = 7.2921151467e-5;  //!< Earth rotation rate, [rad/s]
 const double GPS_L5_GM = 3.986005e14;                   //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
 const double GPS_L5_F = -4.442807633e-10;               //!< Constant, [s/(m)^(1/2)]
@@ -51,21 +40,21 @@ const double GPS_L5_F = -4.442807633e-10;               //!< Constant, [s/(m)^(1
 // carrier and code frequencies
 const double GPS_L5_FREQ_HZ = FREQ5;  //!< L5 [Hz]
 
-const double GPS_L5I_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
+const double GPS_L5I_CODE_RATE_CPS = 10.23e6;     //!< GPS L5i code rate [chips/s]
 const int32_t GPS_L5I_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i  code length [chips]
-const double GPS_L5I_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
+const double GPS_L5I_PERIOD_S = 0.001;            //!< GPS L5 code period [seconds]
 const int32_t GPS_L5I_PERIOD_MS = 1;              //!< GPS L5 code period [ms]
-const double GPS_L5I_SYMBOL_PERIOD = 0.01;        //!< GPS L5 symbol period [seconds]
+const double GPS_L5I_SYMBOL_PERIOD_S = 0.01;      //!< GPS L5 symbol period [seconds]
 const int32_t GPS_L5I_SYMBOL_PERIOD_MS = 10;      //!< GPS L5 symbol period [ms]
 
-const double GPS_L5Q_CODE_RATE_HZ = 10.23e6;      //!< GPS L5i code rate [chips/s]
+const double GPS_L5Q_CODE_RATE_CPS = 10.23e6;     //!< GPS L5i code rate [chips/s]
 const int32_t GPS_L5Q_CODE_LENGTH_CHIPS = 10230;  //!< GPS L5i code length [chips]
-const double GPS_L5Q_PERIOD = 0.001;              //!< GPS L5 code period [seconds]
+const double GPS_L5Q_PERIOD_S = 0.001;            //!< GPS L5 code period [seconds]
 
 const int32_t GPS_L5_HISTORY_DEEP = 5;
 
-//optimum parameters
-const uint32_t GPS_L5_OPT_ACQ_FS_HZ = 10000000;  //!< Sampling frequncy that maximizes the acquisition SNR while using a non-multiple of chip rate
+// optimum parameters
+const uint32_t GPS_L5_OPT_ACQ_FS_SPS = 10000000;  //!< Sampling frequency that maximizes the acquisition SNR while using a non-multiple of chip rate
 
 const int32_t GPS_L5I_INIT_REG[210] =
     {266, 365, 804, 1138,
@@ -193,4 +182,4 @@ const int32_t GPS_L5Q_NH_CODE_LENGTH = 20;
 const int32_t GPS_L5Q_NH_CODE[20] = {0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0};
 const std::string GPS_L5Q_NH_CODE_STR = "00000100110101001110";
 
-#endif /* GNSS_SDR_GPS_L5_H_ */
+#endif  // GNSS_SDR_GPS_L5_H

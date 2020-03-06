@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -41,7 +30,6 @@
 #include "tracking_interface.h"
 #include "tracking_true_obs_reader.h"
 #include <armadillo>
-#include <boost/filesystem.hpp>
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/interleaved_char_to_complex.h>
@@ -53,10 +41,24 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
+#endif
+
+#if HAS_STD_FILESYSTEM
+#if HAS_STD_FILESYSTEM_EXPERIMENTAL
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#else
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 #endif
 
 DEFINE_bool(plot_gps_l1_kf_tracking_test, false, "Plots results of GpsL1CAKfTrackingTest with gnuplot");
@@ -386,7 +388,7 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
     top_block = gr::make_top_block("Tracking test");
 
     std::shared_ptr<GNSSBlockInterface> trk_ = factory->GetBlock(config, "Tracking_1C", implementation, 1, 1);
-    std::shared_ptr<TrackingInterface> tracking = std::dynamic_pointer_cast<TrackingInterface>(trk_);  //std::make_shared<GpsL1CaDllPllCAidTracking>(config.get(), "Tracking_1C", 1, 1);
+    std::shared_ptr<TrackingInterface> tracking = std::dynamic_pointer_cast<TrackingInterface>(trk_);  // std::make_shared<GpsL1CaDllPllCAidTracking>(config.get(), "Tracking_1C", 1, 1);
 
     boost::shared_ptr<GpsL1CAKfTrackingTest_msg_rx> msg_rx = GpsL1CAKfTrackingTest_msg_rx_make();
 
@@ -400,7 +402,7 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
     true_obs_data.restart();
 
     std::cout << "Initial Doppler [Hz]=" << true_obs_data.doppler_l1_hz << " Initial code delay [Chips]=" << true_obs_data.prn_delay_chips << std::endl;
-    gnss_synchro.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_obs_data.prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD;
+    gnss_synchro.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_obs_data.prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S;
     gnss_synchro.Acq_doppler_hz = true_obs_data.doppler_l1_hz;
     gnss_synchro.Acq_samplestamp_samples = 0;
 
@@ -458,7 +460,7 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
             epoch_counter++;
         }
 
-    //load the measured values
+    // load the measured values
     Tracking_Dump_Reader trk_dump;
 
     ASSERT_EQ(trk_dump.open_obs_file(std::string("./tracking_ch_0.dat")), true)
@@ -466,7 +468,7 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
 
     nepoch = trk_dump.num_epochs();
     std::cout << "Measured observation epochs=" << nepoch << std::endl;
-    //trk_dump.restart();
+    // trk_dump.restart();
 
     arma::vec trk_timestamp_s = arma::zeros(nepoch, 1);
     arma::vec trk_acc_carrier_phase_cycles = arma::zeros(nepoch, 1);
@@ -525,8 +527,8 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
                 {
                     try
                         {
-                            boost::filesystem::path p(gnuplot_executable);
-                            boost::filesystem::path dir = p.parent_path();
+                            fs::path p(gnuplot_executable);
+                            fs::path dir = p.parent_path();
                             const std::string& gnuplot_path = dir.native();
                             Gnuplot::set_GNUPlotPath(gnuplot_path);
 
@@ -535,7 +537,7 @@ TEST_F(GpsL1CAKfTrackingTest, ValidationOfResults)
                             for (auto it = prompt.begin(); it != prompt.end(); it++)
                                 {
                                     timevec.push_back(t);
-                                    t = t + GPS_L1_CA_CODE_PERIOD;
+                                    t = t + GPS_L1_CA_CODE_PERIOD_S;
                                 }
                             Gnuplot g1("linespoints");
                             g1.set_title("GPS L1 C/A signal tracking correlators' output (satellite PRN #" + std::to_string(FLAGS_test_satellite_PRN) + ")");

@@ -1,10 +1,9 @@
 /*-
- * Copyright (c) 2003, 2004, 2005 Lev Walkin <vlm@lionet.info>.
- * All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
-#ifndef _CONSTR_CHOICE_H_
-#define _CONSTR_CHOICE_H_
+#ifndef _CONSTR_CHOICE_H
+#define _CONSTR_CHOICE_H
 
 #include <asn_application.h>
 
@@ -16,16 +15,16 @@ extern "C"
     typedef struct asn_CHOICE_specifics_s
     {
         /*
-	 * Target structure description.
-	 */
+         * Target structure description.
+         */
         int struct_size; /* Size of the target structure. */
         int ctx_offset;  /* Offset of the asn_codec_ctx_t member */
         int pres_offset; /* Identifier of the present member */
         int pres_size;   /* Size of the identifier (enum) */
 
         /*
-	 * Tags to members mapping table.
-	 */
+         * Tags to members mapping table.
+         */
         asn_TYPE_tag2member_t *tag2el;
         int tag2el_count;
 
@@ -33,14 +32,14 @@ extern "C"
         int *canonical_order;
 
         /*
-	 * Extensions-related stuff.
-	 */
+         * Extensions-related stuff.
+         */
         int ext_start; /* First member of extensions, or -1 */
     } asn_CHOICE_specifics_t;
 
     /*
- * A set specialized functions dealing with the CHOICE type.
- */
+     * A set specialized functions dealing with the CHOICE type.
+     */
     asn_struct_free_f CHOICE_free;
     asn_struct_print_f CHOICE_print;
     asn_constr_check_f CHOICE_constraint;

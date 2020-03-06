@@ -1,19 +1,10 @@
-# Copyright (C) 2015-2018 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2015-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 if(DEFINED __INCLUDED_VOLK_ADD_TEST)
     return()
@@ -65,7 +56,7 @@ function(VOLK_ADD_TEST test_name executable_name)
   file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR} srcdir)
   list(APPEND environs "srcdir=\"${srcdir}\"")
 
-  #http://www.cmake.org/pipermail/cmake/2009-May/029464.html
+  #https://www.cmake.org/pipermail/cmake/2009-May/029464.html
   #Replaced this add test + set environs code with the shell script generation.
   #Its nicer to be able to manually run the shell script to diagnose problems.
   if(UNIX)
@@ -154,6 +145,9 @@ function(VOLK_ADD_TEST test_name executable_name)
     string(REPLACE ";" " " VOLK_TEST_ARGS "${VOLK_TEST_ARGS}")
 
     #finally: append the test name to execute
+    if(NOT CMAKE_CROSSCOMPILING_EMULATOR)
+        set(CMAKE_CROSSCOMPILING_EMULATOR "")
+    endif()
     file(APPEND ${sh_file} "${CMAKE_CROSSCOMPILING_EMULATOR} ${executable_name} ${VOLK_TEST_ARGS}\n")
 
     #make the shell file executable
@@ -216,4 +210,3 @@ function(VOLK_ADD_TEST test_name executable_name)
   endif()
 
 endfunction()
-

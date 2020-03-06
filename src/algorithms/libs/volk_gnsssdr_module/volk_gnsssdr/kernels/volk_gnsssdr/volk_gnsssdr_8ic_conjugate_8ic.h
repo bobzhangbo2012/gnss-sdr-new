@@ -10,25 +10,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -113,7 +102,7 @@ static inline void volk_gnsssdr_8ic_conjugate_8ic_u_avx(lv_8sc_t* cVector, const
             tmp128lo = _mm_add_epi8(tmp128lo, conjugator2);
             tmp128hi = _mm256_extractf128_si256(_mm256_castps_si256(tmp), 1);
             tmp128hi = _mm_add_epi8(tmp128hi, conjugator2);
-            //tmp = _mm256_set_m128i(tmp128hi , tmp128lo); //not defined in some versions of immintrin.h
+            // tmp = _mm256_set_m128i(tmp128hi , tmp128lo); //not defined in some versions of immintrin.h
             tmp = _mm256_castsi256_ps(_mm256_insertf128_si256(_mm256_castsi128_si256(tmp128lo), (tmp128hi), 1));
             _mm256_storeu_ps((float*)c, tmp);
 
@@ -230,7 +219,7 @@ static inline void volk_gnsssdr_8ic_conjugate_8ic_a_avx(lv_8sc_t* cVector, const
             tmp128lo = _mm_add_epi8(tmp128lo, conjugator2);
             tmp128hi = _mm256_extractf128_si256(_mm256_castps_si256(tmp), 1);
             tmp128hi = _mm_add_epi8(tmp128hi, conjugator2);
-            //tmp = _mm256_set_m128i(tmp128hi , tmp128lo); //not defined in some versions of immintrin.h
+            // tmp = _mm256_set_m128i(tmp128hi , tmp128lo); //not defined in some versions of immintrin.h
             tmp = _mm256_castsi256_ps(_mm256_insertf128_si256(_mm256_castsi128_si256(tmp128lo), (tmp128hi), 1));
             _mm256_store_ps((float*)c, tmp);
 

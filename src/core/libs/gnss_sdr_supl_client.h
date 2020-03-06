@@ -8,31 +8,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_SUPL_CLIENT_H_
-#define GNSS_SDR_SUPL_CLIENT_H_
+#ifndef GNSS_SDR_SUPL_CLIENT_H
+#define GNSS_SDR_SUPL_CLIENT_H
 
 extern "C"
 {
@@ -62,19 +51,10 @@ extern "C"
  */
 class Gnss_Sdr_Supl_Client
 {
-private:
-    // GSM CELL INFO
-    int mcc;
-    int mns;
-    int lac;
-    int ci;
-    // assistance protocol structure
-    supl_ctx_t ctx{};
-    // assistance data
-    supl_assist_t assist{};
-    bool read_gal_almanac_from_gsa(const std::string& file_name);
-
 public:
+    Gnss_Sdr_Supl_Client();
+    ~Gnss_Sdr_Supl_Client() = default;
+
     // SUPL SERVER INFO
     std::string server_name;
     int server_port;
@@ -113,6 +93,7 @@ public:
      * \return Error code -> 0 no errors.
      */
     int get_assistance(int i_mcc, int i_mns, int i_lac, int i_ci);
+
     /*
      * \brief Read the received SUPL data and stores it into the corresponding class members (gps_ephemeris_map, gps_almanac_map, gps_iono, gps_time, gps_utc, gps_acq_map, and gps_ref_loc)
      *
@@ -201,7 +182,7 @@ public:
     /*!
      * \brief Save Galileo almanac map to XML file
      */
-    bool save_gal_almanac_xml(const std::string& file_name, std::map<int, Galileo_Almanac> gal_almanac);
+    bool save_gal_almanac_xml(const std::string& file_name, std::map<int, Galileo_Almanac> galileo_almanac_map_to_save);
 
     /*!
      * \brief Read GPS almanac map from XML file
@@ -211,7 +192,7 @@ public:
     /*!
      * \brief Save GPS almanac map to XML file
      */
-    bool save_gps_almanac_xml(const std::string& file_name, std::map<int, Gps_Almanac> gps_almanac_map);
+    bool save_gps_almanac_xml(const std::string& file_name, std::map<int, Gps_Almanac> gps_almanac_map_to_save);
 
     /*!
      * \brief Read iono from XML file
@@ -270,8 +251,17 @@ public:
      */
     void print_assistance();
 
-    Gnss_Sdr_Supl_Client();
-    ~Gnss_Sdr_Supl_Client();
+private:
+    // GSM CELL INFO
+    int mcc;
+    int mns;
+    int lac;
+    int ci;
+    // assistance protocol structure
+    supl_ctx_t ctx{};
+    // assistance data
+    supl_assist_t assist{};
+    bool read_gal_almanac_from_gsa(const std::string& file_name);
 };
 
-#endif
+#endif  // GNSS_SDR_SUPL_CLIENT_H

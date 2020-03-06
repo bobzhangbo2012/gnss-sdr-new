@@ -1,19 +1,10 @@
-# Copyright (C) 2011-2019 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 
 # - Try to find Googletest source code
@@ -26,26 +17,62 @@
 # LIBGTEST_DEV_DIR
 # GTEST_INCLUDE_DIRS
 
+if(NOT COMMAND feature_summary)
+    include(FeatureSummary)
+endif()
+
+pkg_check_modules(PC_GTEST gtest)
+
+if(NOT GTEST_DIR)
+    set(GTEST_DIR_USER_PROVIDED /usr/local)
+else()
+    set(GTEST_DIR_USER_PROVIDED ${GTEST_DIR})
+endif()
+if(DEFINED ENV{GTEST_DIR})
+    set(GTEST_DIR_USER_PROVIDED
+        ${GTEST_DIR_USER_PROVIDED}
+        $ENV{GTEST_DIR}
+    )
+endif()
 
 find_path(LIBGTEST_DEV_DIR
     NAMES src/gtest-all.cc
     PATHS
-        ${GTEST_DIR}
-        ${GTEST_DIR}/googletest
+        ${GTEST_DIR_USER_PROVIDED}
+        ${GTEST_DIR_USER_PROVIDED}/googletest
         /usr/src/googletest/googletest
         /usr/src/gtest
         /usr/include/gtest
+        /usr/local/src/googletest/googletest
         /opt/local/src/gtest-1.7.0
 )
 
 find_path(GTEST_INCLUDE_DIRS
     NAMES gtest/gtest.h
+    HINTS ${PC_GTEST_INCLUDEDIR}
     PATHS
-        ${GTEST_DIR}/googletest/include
+        ${GTEST_DIR_USER_PROVIDED}/googletest/include
         /usr/include
+        /usr/local/include
         /opt/local/src/gtest-1.7.0/include
 )
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GOOGLETEST DEFAULT_MSG LIBGTEST_DEV_DIR GTEST_INCLUDE_DIRS)
+
+if(GOOGLETEST_FOUND AND PC_GTEST_VERSION)
+    set(GOOGLETEST_VERSION ${PC_GTEST_VERSION})
+    set_package_properties(GOOGLETEST PROPERTIES
+        DESCRIPTION "Source code of Google's Testing Framework (found: v${GOOGLETEST_VERSION})"
+    )
+else()
+    set_package_properties(GOOGLETEST PROPERTIES
+        DESCRIPTION "Source code of Google's Testing Framework"
+    )
+endif()
+
+set_package_properties(GOOGLETEST PROPERTIES
+    URL "https://github.com/google/googletest"
+)
+
 mark_as_advanced(LIBGTEST_DEV_DIR GTEST_INCLUDE_DIRS)

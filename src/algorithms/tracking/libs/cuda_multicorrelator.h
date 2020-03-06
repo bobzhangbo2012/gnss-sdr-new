@@ -9,31 +9,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_CUDA_MULTICORRELATOR_H_
-#define GNSS_SDR_CUDA_MULTICORRELATOR_H_
+#ifndef GNSS_SDR_CUDA_MULTICORRELATOR_H
+#define GNSS_SDR_CUDA_MULTICORRELATOR_H
 
 
 #ifdef __CUDACC__
@@ -76,13 +65,13 @@ struct GPU_Complex
     }
     CUDA_CALLABLE_MEMBER_DEVICE void multiply_acc(const GPU_Complex& a, const GPU_Complex& b)
     {
-        //c=a*b+c
-        //real part
-        //c.r=(a.r*b.r - a.i*b.i)+c.r
+        // c=a*b+c
+        // real part
+        // c.r=(a.r*b.r - a.i*b.i)+c.r
 #ifdef __CUDACC__
         r = __fmaf_rn(a.r, b.r, r);
         r = __fmaf_rn(-a.i, b.i, r);
-        //imag part
+        // imag part
         i = __fmaf_rn(a.i, b.r, i);
         i = __fmaf_rn(a.r, b.i, i);
 #else
@@ -162,10 +151,10 @@ private:
     int blocksPerGrid;
 
     cudaStream_t stream1;
-    //cudaStream_t stream2;
+    // cudaStream_t stream2;
     int num_gpu_devices;
     int selected_device;
 };
 
 
-#endif /* GNSS_SDR_CUDA_MULTICORRELATOR_H_ */
+#endif  // GNSS_SDR_CUDA_MULTICORRELATOR_H

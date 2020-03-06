@@ -7,32 +7,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GLONASS_GNAV_UTC_MODEL_H_
-#define GNSS_SDR_GLONASS_GNAV_UTC_MODEL_H_
+#ifndef GNSS_SDR_GLONASS_GNAV_UTC_MODEL_H
+#define GNSS_SDR_GLONASS_GNAV_UTC_MODEL_H
 
 #include <boost/serialization/nvp.hpp>
 #include <cstdint>
@@ -45,6 +34,11 @@
 class Glonass_Gnav_Utc_Model
 {
 public:
+    /*!
+     * Default constructor
+     */
+    Glonass_Gnav_Utc_Model();
+
     bool valid;
     // Clock Parameters
     double d_tau_c;    //!< GLONASS time scale correction to UTC(SU) time. [s]
@@ -53,6 +47,12 @@ public:
     double d_N_A;      //!< Calendar day number within the four-year period beginning since the leap year for Almanac data [days]
     double d_B1;       //!< Coefficient  to  determine DeltaUT1 [s]
     double d_B2;       //!< Coefficient  to  determine DeltaUT1 [s/msd]
+
+    /*!
+     * \brief Computes the Coordinated Universal Time (UTC) and
+     * returns it in [s] (GLONASS ICD (Edition 5.1) Section 3.3.3 GLONASS Time)
+     */
+    double utc_time(double glonass_time_corrected);
 
     template <class Archive>
     /*!
@@ -72,17 +72,6 @@ public:
         archive& make_nvp("d_B1", d_B1);
         archive& make_nvp("d_B2", d_B2);
     }
-
-    /*!
-     * Default constructor
-     */
-    Glonass_Gnav_Utc_Model();
-
-    /*!
-     * \brief Computes the Coordinated Universal Time (UTC) and
-     * returns it in [s] (GLONASS ICD (Edition 5.1) Section 3.3.3 GLONASS Time)
-     */
-    double utc_time(double glonass_time_corrected);
 };
 
 #endif

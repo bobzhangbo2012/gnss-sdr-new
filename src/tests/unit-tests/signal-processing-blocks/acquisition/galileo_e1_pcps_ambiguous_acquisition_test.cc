@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -33,6 +22,7 @@
 
 #include "Galileo_E1.h"
 #include "acquisition_dump_reader.h"
+#include "concurrent_queue.h"
 #include "galileo_e1_pcps_ambiguous_acquisition.h"
 #include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
@@ -47,16 +37,31 @@
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <utility>
+
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
 #endif
+
+#if HAS_STD_FILESYSTEM
+#if HAS_STD_FILESYSTEM_EXPERIMENTAL
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#else
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+#endif
+
 
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GalileoE1PcpsAmbiguousAcquisitionTest_msg_rx;
@@ -161,7 +166,8 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::init()
             config->set_property("Acquisition_1B.dump", "false");
         }
     config->set_property("Acquisition_1B.dump_filename", "./tmp-acq-gal1/acquisition");
-    config->set_property("Acquisition_1B.threshold", "0.0001");
+    // config->set_property("Acquisition_1B.threshold", "2.5");
+    config->set_property("Acquisition_1B.pfa", "0.001");
     config->set_property("Acquisition_1B.doppler_max", std::to_string(doppler_max));
     config->set_property("Acquisition_1B.doppler_step", std::to_string(doppler_step));
     config->set_property("Acquisition_1B.repeat_satellite", "false");
@@ -171,11 +177,11 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::init()
 
 void GalileoE1PcpsAmbiguousAcquisitionTest::plot_grid()
 {
-    //load the measured values
+    // load the measured values
     std::string basename = "./tmp-acq-gal1/acquisition_E_1B";
     auto sat = static_cast<unsigned int>(gnss_synchro.PRN);
 
-    auto samples_per_code = static_cast<unsigned int>(round(4000000 / (GALILEO_E1_CODE_CHIP_RATE_HZ / GALILEO_E1_B_CODE_LENGTH_CHIPS)));  // !!
+    auto samples_per_code = static_cast<unsigned int>(round(4000000 / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS)));  // !!
     Acquisition_Dump_Reader acq_dump(basename, sat, doppler_max, doppler_step, samples_per_code);
 
     if (!acq_dump.read_binary_acq())
@@ -185,7 +191,7 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::plot_grid()
 
     std::vector<int>* doppler = &acq_dump.doppler;
     std::vector<unsigned int>* samples = &acq_dump.samples;
-    std::vector<std::vector<float> >* mag = &acq_dump.mag;
+    std::vector<std::vector<float>>* mag = &acq_dump.mag;
 
     const std::string gnuplot_executable(FLAGS_gnuplot_executable);
     if (gnuplot_executable.empty())
@@ -199,8 +205,8 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::plot_grid()
             std::cout << "Plotting the acquisition grid. This can take a while..." << std::endl;
             try
                 {
-                    boost::filesystem::path p(gnuplot_executable);
-                    boost::filesystem::path dir = p.parent_path();
+                    fs::path p(gnuplot_executable);
+                    fs::path dir = p.parent_path();
                     const std::string& gnuplot_path = dir.native();
                     Gnuplot::set_GNUPlotPath(gnuplot_path);
 
@@ -216,7 +222,7 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::plot_grid()
                     g1.set_title("Galileo E1b/c signal acquisition for satellite PRN #" + std::to_string(gnss_synchro.PRN));
                     g1.set_xlabel("Doppler [Hz]");
                     g1.set_ylabel("Sample");
-                    //g1.cmd("set view 60, 105, 1, 1");
+                    // g1.cmd("set view 60, 105, 1, 1");
                     g1.plot_grid3d(*doppler, *samples, *mag);
 
                     g1.savetops("Galileo_E1_acq_grid");
@@ -228,9 +234,9 @@ void GalileoE1PcpsAmbiguousAcquisitionTest::plot_grid()
                 }
         }
     std::string data_str = "./tmp-acq-gal1";
-    if (boost::filesystem::exists(data_str))
+    if (fs::exists(data_str))
         {
-            boost::filesystem::remove_all(data_str);
+            fs::remove_all(data_str);
         }
 }
 
@@ -250,7 +256,7 @@ TEST_F(GalileoE1PcpsAmbiguousAcquisitionTest, ConnectAndRun)
     std::chrono::time_point<std::chrono::system_clock> start, end;
     std::chrono::duration<double> elapsed_seconds(0);
     top_block = gr::make_top_block("Acquisition test");
-    gr::msg_queue::sptr queue = gr::msg_queue::make(0);
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     init();
     std::shared_ptr<GNSSBlockInterface> acq_ = factory->GetBlock(config, "Acquisition_1B", "Galileo_E1_PCPS_Ambiguous_Acquisition", 1, 0);
     std::shared_ptr<AcquisitionInterface> acquisition = std::dynamic_pointer_cast<AcquisitionInterface>(acq_);
@@ -283,14 +289,14 @@ TEST_F(GalileoE1PcpsAmbiguousAcquisitionTest, ValidationOfResults)
     if (FLAGS_plot_acq_grid == true)
         {
             std::string data_str = "./tmp-acq-gal1";
-            if (boost::filesystem::exists(data_str))
+            if (fs::exists(data_str))
                 {
-                    boost::filesystem::remove_all(data_str);
+                    fs::remove_all(data_str);
                 }
-            boost::filesystem::create_directory(data_str);
+            fs::create_directory(data_str);
         }
 
-    double expected_delay_samples = 2920;  //18250;
+    double expected_delay_samples = 2920;  // 18250;
     double expected_doppler_hz = -632;
     init();
     top_block = gr::make_top_block("Acquisition test");

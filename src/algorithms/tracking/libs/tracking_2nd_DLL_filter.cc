@@ -11,25 +11,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -50,7 +39,7 @@ void Tracking_2nd_DLL_filter::calculate_lopp_coef(float* tau1, float* tau2, floa
 
 void Tracking_2nd_DLL_filter::set_DLL_BW(float dll_bw_hz)
 {
-    //Calculate filter coefficient values
+    // Calculate filter coefficient values
     d_dllnoisebandwidth = dll_bw_hz;
     calculate_lopp_coef(&d_tau1_code, &d_tau2_code, d_dllnoisebandwidth, d_dlldampingratio, 1.0);  // Calculate filter coefficient values
 }
@@ -68,7 +57,7 @@ float Tracking_2nd_DLL_filter::get_code_nco(float DLL_discriminator)
 {
     float code_nco = d_old_code_nco + (d_tau2_code / d_tau1_code) * (DLL_discriminator - d_old_code_error) + (DLL_discriminator + d_old_code_error) * (d_pdi_code / (2.0 * d_tau1_code));
     d_old_code_nco = code_nco;
-    d_old_code_error = DLL_discriminator;  //[chips]
+    d_old_code_error = DLL_discriminator;  // [chips]
     return code_nco;
 }
 
@@ -85,9 +74,6 @@ Tracking_2nd_DLL_filter::Tracking_2nd_DLL_filter()
     d_pdi_code = 0.001;  // Summation interval for code
     d_dlldampingratio = 0.7;
 }
-
-
-Tracking_2nd_DLL_filter::~Tracking_2nd_DLL_filter() = default;
 
 
 void Tracking_2nd_DLL_filter::set_pdi(float pdi_code)

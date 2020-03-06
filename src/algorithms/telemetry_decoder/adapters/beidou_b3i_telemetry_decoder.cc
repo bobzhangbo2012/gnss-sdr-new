@@ -13,18 +13,7 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -34,7 +23,7 @@
 #include <glog/logging.h>
 
 BeidouB3iTelemetryDecoder::BeidouB3iTelemetryDecoder(
-    ConfigurationInterface *configuration, const std::string& role,
+    ConfigurationInterface *configuration, const std::string &role,
     unsigned int in_streams, unsigned int out_streams)
     : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
@@ -56,9 +45,6 @@ BeidouB3iTelemetryDecoder::BeidouB3iTelemetryDecoder(
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-BeidouB3iTelemetryDecoder::~BeidouB3iTelemetryDecoder() = default;
 
 
 void BeidouB3iTelemetryDecoder::set_satellite(const Gnss_Satellite &satellite)

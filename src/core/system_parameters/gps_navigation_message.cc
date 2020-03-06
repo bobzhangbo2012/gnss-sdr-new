@@ -1,31 +1,20 @@
 /*!
 m * \file gps_navigation_message.cc
- * \brief  Implementation of a GPS NAV Data message decoder as described in IS-GPS-200E
+ * \brief  Implementation of a GPS NAV Data message decoder as described in IS-GPS-200K
  *
- * See http://www.gps.gov/technical/icwg/IS-GPS-200E.pdf Appendix II
+ * See https://www.gps.gov/technical/icwg/IS-GPS-200K.pdf Appendix II
  * \author Javier Arribas, 2011. jarribas(at)cttc.es
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -35,6 +24,7 @@ m * \file gps_navigation_message.cc
 #include <cmath>     // for fmod, abs, floor
 #include <cstring>   // for memcpy
 #include <iostream>  // for operator<<, cout, endl
+#include <limits>    // for std::numeric_limits
 
 
 void Gps_Navigation_Message::reset()
@@ -82,8 +72,8 @@ void Gps_Navigation_Message::reset()
     d_A_f1 = 0.0;
     d_A_f2 = 0.0;
 
-    //clock terms
-    //d_master_clock=0;
+    // clock terms
+    // d_master_clock=0;
     d_dtr = 0.0;
     d_satClkCorr = 0.0;
     d_satClkDrift = 0.0;
@@ -216,7 +206,7 @@ int64_t Gps_Navigation_Message::read_navigation_signed(std::bitset<GPS_SUBFRAME_
         {
             for (int32_t j = 0; j < parameter[i].second; j++)
                 {
-                    value <<= 1;                    // shift left
+                    value *= 2;                     // shift left the signed integer
                     value &= 0xFFFFFFFFFFFFFFFELL;  // reset the corresponding bit (for the 64 bits variable)
                     if (static_cast<int>(bits[GPS_SUBFRAME_BITS - parameter[i].first - j]) == 1)
                         {
@@ -251,16 +241,16 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
     // Decode all 5 sub-frames
     switch (subframe_ID)
         {
-        //--- Decode the sub-frame id ------------------------------------------
-        // ICD (IS-GPS-200E Appendix II). http://www.losangeles.af.mil/shared/media/document/AFD-100813-045.pdf
+        // --- Decode the sub-frame id -----------------------------------------
+        // ICD (IS-GPS-200K Appendix II). https://www.gps.gov/technical/icwg/IS-GPS-200K.pdf
         case 1:
-            //--- It is subframe 1 -------------------------------------
+            // --- It is subframe 1 -------------------------------------
             // Compute the time of week (TOW) of the first sub-frames in the array ====
             // The transmitted TOW is actual TOW of the next subframe
             // (the variable subframe at this point contains bits of the last subframe).
-            //TOW = bin2dec(subframe(31:47)) * 6;
+            // TOW = bin2dec(subframe(31:47)) * 6;
             d_TOW_SF1 = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, TOW));
-            //we are in the first subframe (the transmitted TOW is the start time of the next subframe) !
+            // we are in the first subframe (the transmitted TOW is the start time of the next subframe) !
             d_TOW_SF1 = d_TOW_SF1 * 6;
             d_TOW = d_TOW_SF1;  // Set transmission time
             b_integrity_status_flag = read_navigation_bool(subframe_bits, INTEGRITY_STATUS_FLAG);
@@ -284,7 +274,7 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
             d_A_f2 = d_A_f2 * A_F2_LSB;
             break;
 
-        case 2:  //--- It is subframe 2 -------------------
+        case 2:  // --- It is subframe 2 -------------------
             d_TOW_SF2 = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, TOW));
             d_TOW_SF2 = d_TOW_SF2 * 6;
             d_TOW = d_TOW_SF2;  // Set transmission time
@@ -300,8 +290,8 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
             d_M_0 = d_M_0 * M_0_LSB;
             d_Cuc = static_cast<double>(read_navigation_signed(subframe_bits, C_UC));
             d_Cuc = d_Cuc * C_UC_LSB;
-            d_e_eccentricity = static_cast<double>(read_navigation_unsigned(subframe_bits, E));
-            d_e_eccentricity = d_e_eccentricity * E_LSB;
+            d_e_eccentricity = static_cast<double>(read_navigation_unsigned(subframe_bits, ECCENTRICITY));
+            d_e_eccentricity = d_e_eccentricity * ECCENTRICITY_LSB;
             d_Cus = static_cast<double>(read_navigation_signed(subframe_bits, C_US));
             d_Cus = d_Cus * C_US_LSB;
             d_sqrt_A = static_cast<double>(read_navigation_unsigned(subframe_bits, SQRT_A));
@@ -350,7 +340,7 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
             b_antispoofing_flag = read_navigation_bool(subframe_bits, ANTI_SPOOFING_FLAG);
             SV_data_ID = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, SV_DATA_ID));
             SV_page = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, SV_PAGE));
-            if (SV_page > 24 && SV_page < 33)  // Page 4 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200H, page 110)
+            if (SV_page > 24 && SV_page < 33)  // Page 4 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200K, page 110)
                 {
                     //! \TODO read almanac
                     if (SV_data_ID != 0)
@@ -358,12 +348,12 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
                         }
                 }
 
-            if (SV_page == 52)  // Page 13 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200H, page 110)
+            if (SV_page == 52)  // Page 13 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200K, page 110)
                 {
                     //! \TODO read Estimated Range Deviation (ERD) values
                 }
 
-            if (SV_page == 56)  // Page 18 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200H, page 110)
+            if (SV_page == 56)  // Page 18 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200K, page 110)
                 {
                     // Page 18 - Ionospheric and UTC data
                     d_alpha0 = static_cast<double>(read_navigation_signed(subframe_bits, ALPHA_0));
@@ -401,7 +391,7 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
                     // Reserved
                 }
 
-            if (SV_page == 63)  // Page 25 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200H, page 110)
+            if (SV_page == 63)  // Page 25 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200K, page 110)
                 {
                     // Page 25 Anti-Spoofing, SV config and almanac health (PRN: 25-32)
                     //! \TODO Read Anti-Spoofing, SV config
@@ -416,7 +406,7 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
                 }
             break;
 
-        case 5:  //--- It is subframe 5 -----------------almanac health (PRN: 1-24) and Almanac reference week number and time.
+        case 5:  // -- It is subframe 5 -----------------almanac health (PRN: 1-24) and Almanac reference week number and time.
             int32_t SV_data_ID_5;
             int32_t SV_page_5;
             d_TOW_SF5 = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, TOW));
@@ -434,7 +424,7 @@ int32_t Gps_Navigation_Message::subframe_decoder(char* subframe)
                         {
                         }
                 }
-            if (SV_page_5 == 51)  // Page 25 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200H, page 110)
+            if (SV_page_5 == 51)  // Page 25 (from Table 20-V. Data IDs and SV IDs in Subframes 4 and 5, IS-GPS-200K, page 110)
                 {
                     i_Toa = static_cast<int32_t>(read_navigation_unsigned(subframe_bits, T_OA));
                     i_Toa = i_Toa * T_OA_LSB;
@@ -485,13 +475,13 @@ double Gps_Navigation_Message::utc_time(const double gpstime_corrected) const
 
     if ((weeksToLeapSecondEvent) >= 0)  // is not in the past
         {
-            //Detect if the effectivity time and user's time is within six hours  = 6 * 60 *60 = 21600 s
+            // Detect if the effectivity time and user's time is within six hours  = 6 * 60 *60 = 21600 s
             int32_t secondOfLeapSecondEvent = i_DN * 24 * 60 * 60;
             if (weeksToLeapSecondEvent > 0)
                 {
                     t_utc_daytime = fmod(gpstime_corrected - Delta_t_UTC, 86400);
                 }
-            else  //we are in the same week than the leap second event
+            else  // we are in the same week than the leap second event
                 {
                     if (std::abs(gpstime_corrected - secondOfLeapSecondEvent) > 21600)
                         {
@@ -514,7 +504,7 @@ double Gps_Navigation_Message::utc_time(const double gpstime_corrected) const
                              */
                             int32_t W = static_cast<int32_t>(fmod(gpstime_corrected - Delta_t_UTC - 43200, 86400)) + 43200;
                             t_utc_daytime = fmod(W, 86400 + d_DeltaT_LSF - d_DeltaT_LS);
-                            //implement something to handle a leap second event!
+                            // implement something to handle a leap second event!
                         }
                     if ((gpstime_corrected - secondOfLeapSecondEvent) > 21600)
                         {

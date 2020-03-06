@@ -6,31 +6,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_HYBRID_LS_PVT_H_
-#define GNSS_SDR_HYBRID_LS_PVT_H_
+#ifndef GNSS_SDR_HYBRID_LS_PVT_H
+#define GNSS_SDR_HYBRID_LS_PVT_H
 
 #include "galileo_almanac.h"
 #include "galileo_navigation_message.h"
@@ -48,14 +37,6 @@
  */
 class Hybrid_Ls_Pvt : public Ls_Pvt
 {
-private:
-    int count_valid_position;
-    bool d_flag_dump_enabled;
-    std::string d_dump_filename;
-    std::ofstream d_dump_file;
-    int d_nchannels;  // Number of available channels for positioning
-    double d_galileo_current_time;
-
 public:
     Hybrid_Ls_Pvt(int nchannels, std::string dump_filename, bool flag_dump_to_file);
     ~Hybrid_Ls_Pvt();
@@ -75,6 +56,13 @@ public:
 
     Gps_CNAV_Iono gps_cnav_iono;
     Gps_CNAV_Utc_Model gps_cnav_utc_model;
+
+private:
+    bool d_flag_dump_enabled;
+    std::string d_dump_filename;
+    std::ofstream d_dump_file;
+    int d_nchannels;  // Number of available channels for positioning
+    double d_galileo_current_time;
 };
 
 #endif

@@ -2,30 +2,19 @@
  * \file gps_cnav_ephemeris.cc
  * \brief  Interface of a GPS CNAV EPHEMERIS storage and orbital model functions
  *
- * See http://www.gps.gov/technical/icwg/IS-GPS-200E.pdf Appendix II
+ * See https://www.gps.gov/technical/icwg/IS-GPS-200K.pdf Appendix III
  * \author Javier Arribas, 2015. jarribas(at)cttc.es
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -68,7 +57,7 @@ Gps_CNAV_Ephemeris::Gps_CNAV_Ephemeris()
 
     b_integrity_status_flag = false;
     b_alert_flag = false;         // If true, indicates  that the SV URA may be worse than indicated in d_SV_accuracy, use that SV at our own risk.
-    b_antispoofing_flag = false;  //  If true, the AntiSpoofing mode is ON in that SV
+    b_antispoofing_flag = false;  // If true, the AntiSpoofing mode is ON in that SV
 
     d_satClkDrift = 0.0;
     d_dtr = 0.0;
@@ -140,9 +129,9 @@ double Gps_CNAV_Ephemeris::sv_clock_relativistic_term(double transmitTime)
     double E_old;
     double dE;
     double M;
-    const double GM = 3.986005e14;      //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
-    const double F = -4.442807633e-10;  //!< Constant, [s/(m)^(1/2)]
-    const double A_REF = 26559710.0;    // See IS-GPS-200H,  pp. 163
+    const double GM = 3.986005e14;      // Universal gravitational constant times the mass of the Earth, [m^3/s^2]
+    const double F = -4.442807633e-10;  // Constant, [s/(m)^(1/2)]
+    const double A_REF = 26559710.0;    // See IS-GPS-200K,  pp. 163
     double d_sqrt_A = sqrt(A_REF + d_DELTA_A);
 
     // Restore semi-major axis
@@ -159,7 +148,7 @@ double Gps_CNAV_Ephemeris::sv_clock_relativistic_term(double transmitTime)
     M = d_M_0 + n * tk;
 
     // Reduce mean anomaly to between 0 and 2pi
-    //M = fmod((M + 2.0 * GPS_L2_PI), (2.0 * GPS_L2_PI));
+    // M = fmod((M + 2.0 * GPS_L2_PI), (2.0 * GPS_L2_PI));
 
     // Initial guess of eccentric anomaly
     E = M;
@@ -172,7 +161,7 @@ double Gps_CNAV_Ephemeris::sv_clock_relativistic_term(double transmitTime)
             dE = fmod(E - E_old, 2.0 * PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }
@@ -200,12 +189,12 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
     double i;
     double Omega;
 
-    const double A_REF = 26559710.0;  // See IS-GPS-200H,  pp. 170
+    const double A_REF = 26559710.0;  // See IS-GPS-200K,  pp. 170
     double d_sqrt_A = sqrt(A_REF + d_DELTA_A);
 
-    const double GM = 3.986005e14;                   //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
-    const double OMEGA_DOT_REF = -2.6e-9;            // semicircles / s, see IS-GPS-200H pp. 164
-    const double OMEGA_EARTH_DOT = 7.2921151467e-5;  //!< Earth rotation rate, [rad/s]
+    const double GM = 3.986005e14;                   // Universal gravitational constant times the mass of the Earth, [m^3/s^2]
+    const double OMEGA_DOT_REF = -2.6e-9;            // semicircles / s, see IS-GPS-200K pp. 164
+    const double OMEGA_EARTH_DOT = 7.2921151467e-5;  // Earth rotation rate, [rad/s]
     // Find satellite's position ----------------------------------------------
 
     // Restore semi-major axis
@@ -218,7 +207,6 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
     n0 = sqrt(GM / (a * a * a));
 
     // Mean motion difference from computed value
-
     double delta_n_a = d_Delta_n + 0.5 * d_DELTA_DOT_N * tk;
 
     // Corrected mean motion
@@ -228,8 +216,7 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
     M = d_M_0 + n * tk;
 
     // Reduce mean anomaly to between 0 and 2pi
-    //M = fmod((M + 2 * GPS_L2_PI), (2 * GPS_L2_PI));
-
+    // M = fmod((M + 2 * GPS_L2_PI), (2 * GPS_L2_PI));
 
     // Initial guess of eccentric anomaly
     E = M;
@@ -242,7 +229,7 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
             dE = fmod(E - E_old, 2 * PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }
@@ -256,7 +243,7 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
     phi = nu + d_OMEGA;
 
     // Reduce phi to between 0 and 2*pi rad
-    //phi = fmod((phi), (2*GPS_L2_PI));
+    // phi = fmod((phi), (2*GPS_L2_PI));
 
     // Correct argument of latitude
     u = phi + d_Cuc * cos(2 * phi) + d_Cus * sin(2 * phi);
@@ -272,7 +259,7 @@ double Gps_CNAV_Ephemeris::satellitePosition(double transmitTime)
     Omega = d_OMEGA0 + (d_OMEGA_DOT - OMEGA_EARTH_DOT) * tk - OMEGA_EARTH_DOT * d_Toe1;
 
     // Reduce to between 0 and 2*pi rad
-    //Omega = fmod((Omega + 2*GPS_L2_PI), (2*GPS_L2_PI));
+    // Omega = fmod((Omega + 2*GPS_L2_PI), (2*GPS_L2_PI));
 
     // --- Compute satellite coordinates in Earth-fixed coordinates
     d_satpos_X = cos(u) * r * cos(Omega) - sin(u) * r * cos(i) * sin(Omega);

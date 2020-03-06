@@ -1,33 +1,22 @@
 /*!
-* \file test_main.cc
-* \brief This file implements all system tests.
-* \author Carles Fernandez-Prades, 2012. cfernandez(at)cttc.es
-*
-*
-* -------------------------------------------------------------------------
-*
-* Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)
-*
-* GNSS-SDR is a software defined Global Navigation
-* Satellite Systems receiver
-*
-* This file is part of GNSS-SDR.
-*
-* GNSS-SDR is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* GNSS-SDR is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
-*
-* -------------------------------------------------------------------------
-*/
+ * \file test_main.cc
+ * \brief This file implements all system tests.
+ * \author Carles Fernandez-Prades, 2012. cfernandez(at)cttc.es
+ *
+ *
+ * -------------------------------------------------------------------------
+ *
+ * Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
+ *
+ * GNSS-SDR is a software defined Global Navigation
+ * Satellite Systems receiver
+ *
+ * This file is part of GNSS-SDR.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * -------------------------------------------------------------------------
+ */
 
 #include "concurrent_map.h"
 #include "concurrent_queue.h"
@@ -60,7 +49,6 @@ DECLARE_string(log_dir);
 #include "unit-tests/arithmetic/fft_speed_test.cc"
 #include "unit-tests/arithmetic/magnitude_squared_test.cc"
 #include "unit-tests/arithmetic/multiply_test.cc"
-#include "unit-tests/control-plane/control_message_factory_test.cc"
 #include "unit-tests/control-plane/control_thread_test.cc"
 #include "unit-tests/control-plane/file_configuration_test.cc"
 #include "unit-tests/control-plane/gnss_block_factory_test.cc"
@@ -93,25 +81,33 @@ DECLARE_string(log_dir);
 #include "unit-tests/signal-processing-blocks/sources/gnss_sdr_valve_test.cc"
 #include "unit-tests/signal-processing-blocks/sources/unpack_2bit_samples_test.cc"
 // #include "unit-tests/signal-processing-blocks/acquisition/glonass_l2_ca_pcps_acquisition_test.cc"
+#include "unit-tests/signal-processing-blocks/libs/item_type_helpers_test.cc"
 
 #if OPENCL_BLOCKS_TEST
 #include "unit-tests/signal-processing-blocks/acquisition/gps_l1_ca_pcps_opencl_acquisition_gsoc2013_test.cc"
 #endif
 
 #include "unit-tests/signal-processing-blocks/tracking/bayesian_estimation_test.cc"
+#if ARMADILLO_HAVE_MVNRND
+#include "unit-tests/signal-processing-blocks/tracking/cubature_filter_test.cc"
+#include "unit-tests/signal-processing-blocks/tracking/unscented_filter_test.cc"
+#endif
 #include "unit-tests/signal-processing-blocks/tracking/cpu_multicorrelator_real_codes_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/cpu_multicorrelator_test.cc"
+#include "unit-tests/signal-processing-blocks/tracking/discriminator_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/galileo_e1_dll_pll_veml_tracking_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/galileo_e5a_tracking_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/glonass_l1_ca_dll_pll_c_aid_tracking_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/glonass_l1_ca_dll_pll_tracking_test.cc"
 #include "unit-tests/signal-processing-blocks/tracking/tracking_loop_filter_test.cc"
 
+
 #if CUDA_BLOCKS_TEST
 #include "unit-tests/signal-processing-blocks/tracking/gpu_multicorrelator_test.cc"
 #endif
 
 #if FPGA_BLOCKS_TEST
+#include "unit-tests/signal-processing-blocks/acquisition/galileo_e1_pcps_ambiguous_acquisition_test_fpga.cc"
 #include "unit-tests/signal-processing-blocks/acquisition/gps_l1_ca_pcps_acquisition_test_fpga.cc"
 #include "unit-tests/signal-processing-blocks/tracking/gps_l1_ca_dll_pll_tracking_test_fpga.cc"
 #endif
@@ -128,8 +124,8 @@ DECLARE_string(log_dir);
 
 #if EXTRA_TESTS
 #include "unit-tests/signal-processing-blocks/acquisition/acq_performance_test.cc"
-//#include "unit-tests/signal-processing-blocks/acquisition/beidou_b1i_pcps_acquisition_test.cc"
-//#include "unit-tests/signal-processing-blocks/acquisition/beidou_b3i_pcps_acquisition_test.cc"
+// #include "unit-tests/signal-processing-blocks/acquisition/beidou_b1i_pcps_acquisition_test.cc"
+// #include "unit-tests/signal-processing-blocks/acquisition/beidou_b3i_pcps_acquisition_test.cc"
 #include "unit-tests/signal-processing-blocks/acquisition/glonass_l1_ca_pcps_acquisition_test.cc"
 #include "unit-tests/signal-processing-blocks/acquisition/gps_l2_m_pcps_acquisition_test.cc"
 #include "unit-tests/signal-processing-blocks/pvt/rtklib_solver_test.cc"

@@ -1,17 +1,27 @@
-/*
-** SUPL library with some RRLP
-**
-** Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
-** All rights reserved.
-** Redistribution and modifications are permitted subject to BSD license.
-** Modifified by Carles Fernandez <carles d-o-t fernandez a-t cttc d-o-t es>
-** to make use of the gnutls library.
-*/
+/*!
+ * \file supl.c
+ * \brief SUPL library with some RRLP
+ * \author Carles Fernandez, 2017 cfernandez(at)cttc.es
+ *
+ * -------------------------------------------------------------------------
+ *
+ * Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
+ *
+ * GNSS-SDR is a software defined Global Navigation
+ *          Satellite Systems receiver
+ *
+ * This file is part of GNSS-SDR.
+ *
+ * SPDX-License-Identifier: BSD-1-Clause
+ *
+ * -------------------------------------------------------------------------
+ */
 
 #include "supl.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -76,7 +86,7 @@ int EXPORT supl_ulp_encode(supl_ulp_t *pdu)
             memset(pdu->buffer, 0, sizeof(pdu->buffer));
 
             pdu_len = (ret.encoded + 7) >> 3;
-            ((ULP_PDU_t *)pdu->pdu)->length = pdu_len;
+            (pdu->pdu)->length = pdu_len;
 
             ret = uper_encode_to_buffer(&asn_DEF_ULP_PDU, pdu->pdu, pdu->buffer, sizeof(pdu->buffer));
             if (ret.encoded > 0)
@@ -133,8 +143,8 @@ int EXPORT supl_ulp_send(supl_ctx_t *ctx, supl_ulp_t *pdu)
 
 int EXPORT supl_ulp_recv(supl_ctx_t *ctx, supl_ulp_t *pdu)
 {
-    int err;
-    int n;
+    int64_t err;
+    int64_t n;
     asn_dec_rval_t rval;
     ULP_PDU_t *length;
 
@@ -306,7 +316,8 @@ void EXPORT supl_close(supl_ctx_t *ctx)
 static int server_connect(char *server)
 {
     int fd = -1;
-    struct addrinfo *ailist, *aip;
+    struct addrinfo *ailist;
+    struct addrinfo *aip;
     struct addrinfo hint;
     int err;
 
@@ -326,11 +337,16 @@ static int server_connect(char *server)
                 }
             if (connect(fd, aip->ai_addr, aip->ai_addrlen) != 0)
                 {
+                    freeaddrinfo(aip);
+                    if (close(fd) != 0)
+                        {
+                            // avoid warning
+                        }
                     return -1;
                 }
             break;
         }
-
+    freeaddrinfo(aip);
     return fd;
 }
 
@@ -461,7 +477,7 @@ static int pdu_make_ulp_pos_init(supl_ctx_t *ctx, supl_ulp_t *pdu)
     ulp->message.choice.msSUPLPOSINIT.sETCapabilities.posProtocol.rrlp = 1;
 
     //GNSS-SDR mod
-    // Use ctx->p.request to swith between a pre-defined set of assistence data request
+    // Use ctx->p.request to switch between a pre-defined set of assistance data request
     // reason: Some SUPL servers do not respond to Acquisition assistance depending on the status of other assistance flags
 
     switch (ctx->p.request)
@@ -672,7 +688,8 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
             loc = &hdr->refLocation->threeDLocation;
             if (loc->size == 14 && loc->buf[0] == 0x90)
                 {
-                    double lat, lon;
+                    double lat;
+                    double lon;
                     long l;
 
                     /* from 3GPP TS 23.032 V4.0.0 (2001-04) */
@@ -792,20 +809,20 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
                     if (ue)
                         {
 #if 0
-	assist->eph_x[i].L2P = ue->ephemL2Pflag;
-	assist->eph_x[i].fit = ue->ephemFitFlag;
+    assist->eph_x[i].L2P = ue->ephemL2Pflag;
+    assist->eph_x[i].fit = ue->ephemFitFlag;
 #endif
                             assist->eph[i].delta_n = ue->ephemDeltaN;
                             assist->eph[i].M0 = ue->ephemM0;
 #if 0
-	// this is needed for asn1c version 0.9.22
-	{
-	  long v;
-	  asn_INTEGER2long((INTEGER_t *)&ue->ephemE, &v);
-	  assist->eph[i].e = v;
-	  asn_INTEGER2long((INTEGER_t *)&ue->ephemAPowerHalf, &v);
-	  assist->eph[i].e = v;
-	}
+    // this is needed for asn1c version 0.9.22
+    {
+      long v;
+      asn_INTEGER2long((INTEGER_t *)&ue->ephemE, &v);
+      assist->eph[i].e = v;
+      asn_INTEGER2long((INTEGER_t *)&ue->ephemAPowerHalf, &v);
+      assist->eph[i].e = v;
+    }
 #else
                             assist->eph[i].e = ue->ephemE;
                             assist->eph[i].A_sqrt = ue->ephemAPowerHalf;
@@ -893,7 +910,7 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx)
 
 static int supl_more_rrlp(PDU_t *rrlp)
 {
-    long value;
+    int64_t value;
 
     return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
             rrlp->component.choice.assistanceData.moreAssDataToBeSent &&

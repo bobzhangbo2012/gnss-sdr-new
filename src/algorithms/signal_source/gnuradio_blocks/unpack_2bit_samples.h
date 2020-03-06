@@ -42,25 +42,14 @@
  * \author Cillian O'Driscoll cillian.odriscoll (at) gmail . com
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -70,12 +59,14 @@
 
 #include <gnuradio/sync_interpolator.h>
 #include <cstdint>
+#include <vector>
 
 class unpack_2bit_samples;
 
 using unpack_2bit_samples_sptr = boost::shared_ptr<unpack_2bit_samples>;
 
-unpack_2bit_samples_sptr make_unpack_2bit_samples(bool big_endian_bytes,
+unpack_2bit_samples_sptr make_unpack_2bit_samples(
+    bool big_endian_bytes,
     size_t item_size,
     bool big_endian_items,
     bool reverse_interleaving = false);
@@ -87,12 +78,25 @@ unpack_2bit_samples_sptr make_unpack_2bit_samples(bool big_endian_bytes,
  */
 class unpack_2bit_samples : public gr::sync_interpolator
 {
-private:
-    friend unpack_2bit_samples_sptr
-    make_unpack_2bit_samples_sptr(bool big_endian_bytes,
+public:
+    ~unpack_2bit_samples() = default;
+
+    unpack_2bit_samples(bool big_endian_bytes,
         size_t item_size,
         bool big_endian_items,
         bool reverse_interleaving);
+
+    int work(int noutput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items);
+
+private:
+    friend unpack_2bit_samples_sptr make_unpack_2bit_samples_sptr(
+        bool big_endian_bytes,
+        size_t item_size,
+        bool big_endian_items,
+        bool reverse_interleaving);
+
     bool big_endian_bytes_;
     size_t item_size_;
     bool big_endian_items_;
@@ -100,18 +104,6 @@ private:
     bool swap_endian_bytes_;
     bool reverse_interleaving_;
     std::vector<int8_t> work_buffer_;
-
-public:
-    unpack_2bit_samples(bool big_endian_bytes,
-        size_t item_size,
-        bool big_endian_items,
-        bool reverse_interleaving);
-
-    ~unpack_2bit_samples();
-
-    int work(int noutput_items,
-        gr_vector_const_void_star &input_items,
-        gr_vector_void_star &output_items);
 };
 
-#endif
+#endif  // GNSS_SDR_UNPACK_2BIT_SAMPLES_H
