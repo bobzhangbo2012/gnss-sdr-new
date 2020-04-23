@@ -151,9 +151,9 @@ endif()
 set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_API_COMPAT 0)
 if(${THIS_IS_A_RELEASE})
-    set(VERSION_INFO_MINOR_VERSION 11)
+    set(VERSION_INFO_MINOR_VERSION 12)
 else()
-    set(VERSION_INFO_MINOR_VERSION 11.git-${GIT_BRANCH}-${GIT_COMMIT_HASH})
+    set(VERSION_INFO_MINOR_VERSION 12.git-${GIT_BRANCH}-${GIT_COMMIT_HASH})
 endif()
 
 set(VERSION ${VERSION_INFO_MAJOR_VERSION}.${VERSION_INFO_API_COMPAT}.${VERSION_INFO_MINOR_VERSION})
@@ -296,7 +296,7 @@ set(GNSSSDR_PROTOBUF_MIN_VERSION "3.0.0")
 ################################################################################
 set(GNSSSDR_GFLAGS_LOCAL_VERSION "2.2.2")
 set(GNSSSDR_GLOG_LOCAL_VERSION "0.4.0")
-set(GNSSSDR_ARMADILLO_LOCAL_VERSION "9.800.x")
+set(GNSSSDR_ARMADILLO_LOCAL_VERSION "9.860.x")
 set(GNSSSDR_GTEST_LOCAL_VERSION "1.10.0")
 set(GNSSSDR_GNSS_SIM_LOCAL_VERSION "master")
 set(GNSSSDR_GPSTK_LOCAL_VERSION "3.0.0")
@@ -534,13 +534,17 @@ set(FILESYSTEM_FOUND FALSE)
 if(NOT (GNURADIO_VERSION VERSION_LESS 3.8) AND LOG4CPP_READY_FOR_CXX17)
     # Check if we have std::filesystem
     if(NOT (CMAKE_VERSION VERSION_LESS 3.8))
-        find_package(FILESYSTEM COMPONENTS Final Experimental)
-        set_package_properties(FILESYSTEM PROPERTIES
-            URL "https://en.cppreference.com/w/cpp/filesystem"
-            DESCRIPTION "Provides facilities for performing operations on file systems and their components"
-            PURPOSE "Work with paths, regular files, and directories."
-            TYPE OPTIONAL
-        )
+        if((NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+            OR NOT (ENABLE_UNIT_TESTING_EXTRA OR ENABLE_SYSTEM_TESTING_EXTRA OR ENABLE_FPGA))
+            # Fix for GPTSk
+            find_package(FILESYSTEM COMPONENTS Final Experimental)
+            set_package_properties(FILESYSTEM PROPERTIES
+                URL "https://en.cppreference.com/w/cpp/filesystem"
+                DESCRIPTION "Provides facilities for performing operations on file systems and their components"
+                PURPOSE "Work with paths, regular files, and directories."
+                TYPE OPTIONAL
+            )
+        endif()
         if(${FILESYSTEM_FOUND})
             if(CMAKE_VERSION VERSION_LESS 3.13)
                 set(CMAKE_CXX_STANDARD 17)
@@ -894,6 +898,7 @@ if(NOT VOLKGNSSSDR_FOUND)
     if(DEFINED ENV{OECORE_TARGET_SYSROOT})
         set(VOLK_GNSSSDR_CMAKE_ARGS ${VOLK_GNSSSDR_CMAKE_ARGS}
             -DCROSSCOMPILE_MULTILIB=TRUE
+            -DBOOST_ROOT=$ENV{OECORE_TARGET_SYSROOT}/usr
         )
         if(NOT CMAKE_TOOLCHAIN_FILE)
             set(VOLK_GNSSSDR_CMAKE_ARGS ${VOLK_GNSSSDR_CMAKE_ARGS}
@@ -1525,7 +1530,10 @@ if(NOT ARMADILLO_FOUND OR ENABLE_OWN_ARMADILLO)
     else()
         set(DARWIN_DISABLE_HDF5 "")
     endif()
-
+    set(ARMADILLO_CXX_VERSION "")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8.3)
+        set(ARMADILLO_CXX_VERSION -DCMAKE_CXX_FLAGS=-std=c++11)
+    endif()
     if(CMAKE_VERSION VERSION_LESS 3.2)
         ExternalProject_Add(armadillo-${armadillo_RELEASE}
             PREFIX ${CMAKE_CURRENT_BINARY_DIR}/armadillo-${armadillo_RELEASE}
@@ -1535,7 +1543,7 @@ if(NOT ARMADILLO_FOUND OR ENABLE_OWN_ARMADILLO)
             BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/armadillo-${armadillo_RELEASE}
             CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_CXX_FLAGS=-std=c++11
+                ${ARMADILLO_CXX_VERSION}
                 ${DARWIN_DISABLE_HDF5}
                 ${ARMADILLO_TOOLCHAIN_FILE}
                 -DCMAKE_BUILD_TYPE=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:RelWithDebInfo>:RelWithDebInfo>$<$<CONFIG:MinSizeRel>:MinSizeRel>$<$<CONFIG:NoOptWithASM>:Debug>$<$<CONFIG:Coverage>:Debug>$<$<CONFIG:O2WithASM>:RelWithDebInfo>$<$<CONFIG:O3WithASM>:RelWithDebInfo>$<$<CONFIG:ASAN>:Debug>
@@ -1555,7 +1563,7 @@ if(NOT ARMADILLO_FOUND OR ENABLE_OWN_ARMADILLO)
             BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/armadillo-${armadillo_RELEASE}
             CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -DBUILD_SHARED_LIBS=OFF
-                -DCMAKE_CXX_FLAGS=-std=c++11
+                ${ARMADILLO_CXX_VERSION}
                 ${DARWIN_DISABLE_HDF5}
                 ${ARMADILLO_TOOLCHAIN_FILE}
                 -DCMAKE_BUILD_TYPE=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:RelWithDebInfo>:RelWithDebInfo>$<$<CONFIG:MinSizeRel>:MinSizeRel>$<$<CONFIG:NoOptWithASM>:Debug>$<$<CONFIG:Coverage>:Debug>$<$<CONFIG:O2WithASM>:RelWithDebInfo>$<$<CONFIG:O3WithASM>:RelWithDebInfo>$<$<CONFIG:ASAN>:Debug>

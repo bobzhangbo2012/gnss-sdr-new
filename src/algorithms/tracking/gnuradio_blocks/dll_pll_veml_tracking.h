@@ -27,7 +27,6 @@
 #include "tracking_FLL_PLL_filter.h"  // for PLL/FLL filter
 #include "tracking_loop_filter.h"     // for DLL filter
 #include <boost/circular_buffer.hpp>
-#include <boost/shared_ptr.hpp>               // for boost::shared_ptr
 #include <gnuradio/block.h>                   // for block
 #include <gnuradio/gr_complex.h>              // for gr_complex
 #include <gnuradio/types.h>                   // for gr_vector_int, gr_vector...
@@ -37,11 +36,21 @@
 #include <fstream>                            // for string, ofstream
 #include <string>
 #include <utility>  // for pair
+#if GNURADIO_USES_STD_POINTERS
+#include <memory>
+#else
+#include <boost/shared_ptr.hpp>
+#endif
 
 class Gnss_Synchro;
 class dll_pll_veml_tracking;
 
+#if GNURADIO_USES_STD_POINTERS
+using dll_pll_veml_tracking_sptr = std::shared_ptr<dll_pll_veml_tracking>;
+#else
 using dll_pll_veml_tracking_sptr = boost::shared_ptr<dll_pll_veml_tracking>;
+#endif
+
 
 dll_pll_veml_tracking_sptr dll_pll_veml_make_tracking(const Dll_Pll_Conf &conf_);
 
@@ -72,6 +81,7 @@ private:
     bool acquire_secondary();
     void do_correlation_step(const gr_complex *input_samples);
     void run_dll_pll();
+    void check_carrier_phase_coherent_initialization();
     void update_tracking_vars();
     void clear_tracking_vars();
     void save_correlation_results();
@@ -107,6 +117,7 @@ private:
     boost::circular_buffer<float> d_dll_filt_history;
     // tracking state machine
     int32_t d_state;
+    bool d_acc_carrier_phase_initialized;
 
     // Integration period in samples
     int32_t d_correlation_length_ms;

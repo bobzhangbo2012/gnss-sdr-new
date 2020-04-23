@@ -529,6 +529,7 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_) : gr::bl
                 }
         }
     d_corrected_doppler = false;
+    d_acc_carrier_phase_initialized = false;
 }
 
 
@@ -757,6 +758,7 @@ void dll_pll_veml_tracking::start_tracking()
     d_pull_in_transitory = true;
     d_Prompt_circular_buffer.clear();
     d_corrected_doppler = false;
+    d_acc_carrier_phase_initialized = false;
 }
 
 
@@ -1017,6 +1019,16 @@ void dll_pll_veml_tracking::run_dll_pll()
                             d_dll_filt_history.clear();
                         }
                 }
+        }
+}
+
+
+void dll_pll_veml_tracking::check_carrier_phase_coherent_initialization()
+{
+    if (d_acc_carrier_phase_initialized == false)
+        {
+            d_acc_carrier_phase_rad = -d_rem_carr_phase_rad;
+            d_acc_carrier_phase_initialized = true;
         }
 }
 
@@ -1829,6 +1841,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                     {
                         run_dll_pll();
                         update_tracking_vars();
+                        check_carrier_phase_coherent_initialization();
                         if (d_current_data_symbol == 0)
                             {
                                 // enable write dump file this cycle (valid DLL/PLL cycle)

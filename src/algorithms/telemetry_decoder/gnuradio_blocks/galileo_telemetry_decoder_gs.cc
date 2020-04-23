@@ -36,7 +36,7 @@
 #include <cstdlib>          // for abs
 #include <exception>        // for exception
 #include <iostream>         // for cout
-#include <memory>           // for shared_ptr, make_shared
+#include <memory>           // for make_shared
 
 
 #define CRC_ERROR_LIMIT 6
@@ -756,6 +756,12 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
             current_symbol.TOW_at_current_symbol_ms = d_TOW_at_current_symbol_ms;
             // todo: Galileo to GPS time conversion should be moved to observable block.
             // current_symbol.TOW_at_current_symbol_ms -= delta_t;  // Galileo to GPS TOW
+
+            if (flag_PLL_180_deg_phase_locked == true)
+                {
+                    // correct the accumulated phase for the Costas loop phase shift, if required
+                    current_symbol.Carrier_phase_rads += GALILEO_PI;
+                }
 
             if (d_dump == true)
                 {
