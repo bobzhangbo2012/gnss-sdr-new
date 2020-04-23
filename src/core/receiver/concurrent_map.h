@@ -5,25 +5,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -31,8 +20,8 @@
 #ifndef GNSS_SDR_CONCURRENT_MAP_H
 #define GNSS_SDR_CONCURRENT_MAP_H
 
-#include <boost/thread/mutex.hpp>
 #include <map>
+#include <mutex>
 #include <utility>
 
 
@@ -46,14 +35,10 @@ template <typename Data>
 class Concurrent_Map
 {
     typedef typename std::map<int, Data>::iterator Data_iterator;  // iterator is scope dependent
-private:
-    std::map<int, Data> the_map;
-    boost::mutex the_mutex;
-
 public:
     void write(int key, Data const& data)
     {
-        boost::mutex::scoped_lock lock(the_mutex);
+        std::unique_lock<std::mutex> lock(the_mutex);
         Data_iterator data_iter;
         data_iter = the_map.find(key);
         if (data_iter != the_map.end())
@@ -69,7 +54,7 @@ public:
 
     std::map<int, Data> get_map_copy()
     {
-        boost::mutex::scoped_lock lock(the_mutex);
+        std::unique_lock<std::mutex> lock(the_mutex);
         std::map<int, Data> map_aux = the_map;
         lock.unlock();
         return map_aux;
@@ -77,7 +62,7 @@ public:
 
     size_t size()
     {
-        boost::mutex::scoped_lock lock(the_mutex);
+        std::unique_lock<std::mutex> lock(the_mutex);
         size_t size_ = the_map.size();
         lock.unlock();
         return size_;
@@ -85,7 +70,7 @@ public:
 
     bool read(int key, Data& p_data)
     {
-        boost::mutex::scoped_lock lock(the_mutex);
+        std::unique_lock<std::mutex> lock(the_mutex);
         Data_iterator data_iter;
         data_iter = the_map.find(key);
         if (data_iter != the_map.end())
@@ -97,6 +82,10 @@ public:
         lock.unlock();
         return false;
     }
+
+private:
+    std::map<int, Data> the_map;
+    mutable std::mutex the_mutex;
 };
 
-#endif
+#endif  // GNSS_SDR_CONCURRENT_MAP_H

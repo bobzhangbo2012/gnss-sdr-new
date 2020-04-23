@@ -6,38 +6,30 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H_
-#define GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H_
+#ifndef GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H
+#define GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H
 
+#include "concurrent_queue.h"
 #include "fpga_switch.h"
 #include "gnss_block_interface.h"
 #include <boost/shared_ptr.hpp>
-#include <gnuradio/msg_queue.h>
+#include <pmt/pmt.h>
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <thread>
 
 class ConfigurationInterface;
 
@@ -46,7 +38,7 @@ class Ad9361FpgaSignalSource : public GNSSBlockInterface
 public:
     Ad9361FpgaSignalSource(ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
-        unsigned int out_stream, boost::shared_ptr<gr::msg_queue> queue);
+        unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);
 
     ~Ad9361FpgaSignalSource();
 
@@ -77,16 +69,14 @@ private:
     std::string role_;
 
     // Front-end settings
-    std::string uri_;  // device direction
-    uint64_t freq_;    // frequency of local oscillator
+    uint64_t freq_;  // frequency of local oscillator
     uint64_t sample_rate_;
     uint64_t bandwidth_;
-    uint64_t buffer_size_;  // reception buffer
-    bool rx1_en_;
-    bool rx2_en_;
     bool quadrature_;
     bool rf_dc_;
     bool bb_dc_;
+    bool rx1_enable_;
+    bool rx2_enable_;
     std::string gain_mode_rx1_;
     std::string gain_mode_rx2_;
     double rf_gain_rx1_;
@@ -94,11 +84,16 @@ private:
     std::string rf_port_select_;
     std::string filter_file_;
     bool filter_auto_;
+    std::string filter_source_;
+    std::string filter_filename_;
+    float Fpass_;
+    float Fstop_;
 
     // DDS configuration for LO generation for external mixer
     bool enable_dds_lo_;
     uint64_t freq_rf_tx_hz_;
     uint64_t freq_dds_tx_hz_;
+    uint64_t tx_bandwidth_;
     double scale_dds_dbfs_;
     double phase_dds_deg_;
     double tx_attenuation_db_;
@@ -106,15 +101,20 @@ private:
     uint32_t in_stream_;
     uint32_t out_stream_;
 
-    std::string item_type_;
     size_t item_size_;
-    long samples_;
-    bool dump_;
-    std::string dump_filename_;
 
-    boost::shared_ptr<gr::msg_queue> queue_;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
 
     std::shared_ptr<Fpga_Switch> switch_fpga;
+    int32_t switch_position;
+
+    std::thread thread_file_to_dma;
+    std::string filename_rx1;
+    std::string filename_rx2;
+    std::string freq_band;
+
+    bool enable_DMA_;
+    bool rf_shutdown_;
 };
 
-#endif /*GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H_*/
+#endif  // GNSS_SDR_AD9361_FPGA_SIGNAL_SOURCE_H

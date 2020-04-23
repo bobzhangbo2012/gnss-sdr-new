@@ -1,19 +1,10 @@
-# Copyright (C) 2015-2018 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2015-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 if(DEFINED __INCLUDED_VOLK_PYTHON_CMAKE)
     return()
@@ -43,7 +34,7 @@ macro(VOLK_PYTHON_CHECK_MODULE_RAW desc python_code have)
 endmacro()
 
 macro(VOLK_PYTHON_CHECK_MODULE desc mod cmd have)
-    VOLK_PYTHON_CHECK_MODULE_RAW(
+    volk_python_check_module_raw(
         "${desc}" "
 #########################################
 try:
@@ -69,12 +60,13 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
         message(STATUS "User set python executable ${PYTHON_EXECUTABLE}")
         find_package(PythonInterp ${VOLK_PYTHON_MIN_VERSION} REQUIRED)
     else()
-        message(STATUS "PYTHON_EXECUTABLE not set - using default python2")
-        message(STATUS "Use -DPYTHON_EXECUTABLE=/path/to/python3 to build for python3.")
-        find_package(PythonInterp ${VOLK_PYTHON_MIN_VERSION})
+        message(STATUS "PYTHON_EXECUTABLE not set - trying by default python3")
+        message(STATUS "Use -DPYTHON_EXECUTABLE=/path/to/python to build for python 2.7")
+        set(Python_ADDITIONAL_VERSIONS 3.4 3.5 3.6 3.7 3.8 3.9)
+        find_package(PythonInterp ${VOLK_PYTHON_MIN3_VERSION})
         if(NOT PYTHONINTERP_FOUND)
-            message(STATUS "python2 not found - using python3")
-            find_package(PythonInterp ${VOLK_PYTHON3_MIN_VERSION} REQUIRED)
+            message(STATUS "python3 not found - trying with python2.7")
+            find_package(PythonInterp ${VOLK_PYTHON_MIN_VERSION} REQUIRED)
         endif()
     endif()
 else()
@@ -133,7 +125,7 @@ file(TO_CMAKE_PATH ${VOLK_PYTHON_DIR} VOLK_PYTHON_DIR)
 function(VOLK_UNIQUE_TARGET desc)
     file(RELATIVE_PATH reldir ${PROJECT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
     execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import re, hashlib
-unique = hashlib.md5(b'${reldir}${ARGN}').hexdigest()[:5]
+unique = hashlib.sha256(b'${reldir}${ARGN}').hexdigest()[:5]
 print(re.sub('\\W', '_', '${desc} ${reldir} ' + unique))"
     OUTPUT_VARIABLE _target OUTPUT_STRIP_TRAILING_WHITESPACE)
     add_custom_target(${_target} ALL DEPENDS ${ARGN})

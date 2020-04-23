@@ -13,25 +13,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -48,7 +37,7 @@ GlonassL1CaDllPllTracking::GlonassL1CaDllPllTracking(
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     DLOG(INFO) << "role " << role;
-    //################# CONFIGURATION PARAMETERS ########################
+    // ################# CONFIGURATION PARAMETERS ########################
     int fs_in;
     int vector_length;
     bool dump;
@@ -75,9 +64,9 @@ GlonassL1CaDllPllTracking::GlonassL1CaDllPllTracking(
     early_late_space_chips = configuration->property(role + ".early_late_space_chips", 0.5);
     std::string default_dump_filename = "./track_ch";
     dump_filename = configuration->property(role + ".dump_filename", default_dump_filename);
-    vector_length = std::round(fs_in / (GLONASS_L1_CA_CODE_RATE_HZ / GLONASS_L1_CA_CODE_LENGTH_CHIPS));
+    vector_length = std::round(fs_in / (GLONASS_L1_CA_CODE_RATE_CPS / GLONASS_L1_CA_CODE_LENGTH_CHIPS));
 
-    //################# MAKE TRACKING GNURadio object ###################
+    // ################# MAKE TRACKING GNURadio object ###################
     if (item_type == "gr_complex")
         {
             item_size_ = sizeof(gr_complex);
@@ -106,9 +95,6 @@ GlonassL1CaDllPllTracking::GlonassL1CaDllPllTracking(
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-GlonassL1CaDllPllTracking::~GlonassL1CaDllPllTracking() = default;
 
 
 void GlonassL1CaDllPllTracking::stop_tracking()
@@ -143,7 +129,7 @@ void GlonassL1CaDllPllTracking::connect(gr::top_block_sptr top_block)
     if (top_block)
         { /* top_block is not null */
         };
-    //nothing to connect, now the tracking uses gr_sync_decimator
+    // nothing to connect, now the tracking uses gr_sync_decimator
 }
 
 
@@ -152,7 +138,7 @@ void GlonassL1CaDllPllTracking::disconnect(gr::top_block_sptr top_block)
     if (top_block)
         { /* top_block is not null */
         };
-    //nothing to disconnect, now the tracking uses gr_sync_decimator
+    // nothing to disconnect, now the tracking uses gr_sync_decimator
 }
 
 

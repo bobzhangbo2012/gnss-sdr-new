@@ -5,34 +5,24 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_POSITION_TEST_FLAGS_H_
-#define GNSS_SDR_POSITION_TEST_FLAGS_H_
+#ifndef GNSS_SDR_POSITION_TEST_FLAGS_H
+#define GNSS_SDR_POSITION_TEST_FLAGS_H
 
 #include <gflags/gflags.h>
 #include <limits>
+#include <string>
 
 DEFINE_string(config_file_ptest, std::string(""), "File containing the configuration parameters for the position test.");
 DEFINE_bool(plot_position_test, false, "Plots results of with gnuplot");
@@ -47,4 +37,6 @@ DEFINE_double(accuracy_CEP, 2.0, "Static scenario 2D (East, North) accuracy Circ
 DEFINE_double(precision_SEP, 10.0, "Static scenario 3D (East, North, Up) precision Spherical Error Position (SEP) threshold [meters]");
 DEFINE_double(dynamic_3D_position_RMSE, 10.0, "Dynamic scenario 3D (ECEF) accuracy RMSE threshold [meters]");
 DEFINE_double(dynamic_3D_velocity_RMSE, 5.0, "Dynamic scenario 3D (ECEF) velocity accuracy RMSE threshold [meters/second]");
+DEFINE_bool(enable_carrier_smoothing, false, "Activates carrier smoothing of pseudoranges");
+
 #endif

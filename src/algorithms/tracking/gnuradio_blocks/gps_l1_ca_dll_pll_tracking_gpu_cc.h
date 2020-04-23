@@ -10,25 +10,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -44,6 +33,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <vector>
 
 
 class Gps_L1_Ca_Dll_Pll_Tracking_GPU_cc;
@@ -114,7 +104,7 @@ private:
     double d_early_late_spc_chips;
     int32_t d_n_correlator_taps;
 
-    //GPU HOST PINNED MEMORY IN/OUT VECTORS
+    // GPU HOST PINNED MEMORY IN/OUT VECTORS
     gr_complex *in_gpu;
     float *d_local_code_shift_chips;
     gr_complex *d_correlator_outs;
@@ -124,7 +114,6 @@ private:
     gr_complex *d_Early;
     gr_complex *d_Prompt;
     gr_complex *d_Late;
-
 
     // remaining code phase and carrier phase between tracking loops
     double d_rem_code_phase_samples;
@@ -148,16 +137,16 @@ private:
     double d_code_phase_samples;
     double d_pll_to_dll_assist_secs_Ti;
 
-    //Integration period in samples
+    // Integration period in samples
     int32_t d_correlation_length_samples;
 
-    //processing samples counters
+    // processing samples counters
     uint64_t d_sample_counter;
     uint64_t d_acq_sample_stamp;
 
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
-    gr_complex *d_Prompt_buffer;
+    std::vector<gr_complex> d_Prompt_buffer;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;
@@ -175,4 +164,4 @@ private:
     std::string sys;
 };
 
-#endif  //GNSS_SDR_GPS_L1_CA_DLL_PLL_TRACKING_GPU_CC_H
+#endif  // GNSS_SDR_GPS_L1_CA_DLL_PLL_TRACKING_GPU_CC_H

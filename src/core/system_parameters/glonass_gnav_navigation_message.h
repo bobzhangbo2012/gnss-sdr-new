@@ -7,32 +7,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GLONASS_GNAV_NAVIGATION_MESSAGE_H_
-#define GNSS_SDR_GLONASS_GNAV_NAVIGATION_MESSAGE_H_
+#ifndef GNSS_SDR_GLONASS_GNAV_NAVIGATION_MESSAGE_H
+#define GNSS_SDR_GLONASS_GNAV_NAVIGATION_MESSAGE_H
 
 
 #include "GLONASS_L1_L2_CA.h"
@@ -41,9 +30,9 @@
 #include "glonass_gnav_utc_model.h"
 #include <bitset>
 #include <cstdint>
-#include <utility>                   // for pair
-#include <vector>                    // for vector
 #include <string>
+#include <utility>  // for pair
+#include <vector>   // for vector
 
 
 /*!
@@ -53,12 +42,12 @@
  */
 class Glonass_Gnav_Navigation_Message
 {
-private:
-    uint64_t read_navigation_unsigned(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-    int64_t read_navigation_signed(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-    bool read_navigation_bool(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-
 public:
+    /*!
+     * Default constructor
+     */
+    Glonass_Gnav_Navigation_Message();
+
     bool flag_CRC_test;
     uint32_t d_frame_ID;
     uint32_t d_string_ID;
@@ -164,10 +153,10 @@ public:
      */
     int32_t string_decoder(const std::string& frame_string);
 
-    /*!
-     * Default constructor
-     */
-    Glonass_Gnav_Navigation_Message();
+private:
+    uint64_t read_navigation_unsigned(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
+    int64_t read_navigation_signed(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
+    bool read_navigation_bool(std::bitset<GLONASS_GNAV_STRING_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
 };
 
 #endif

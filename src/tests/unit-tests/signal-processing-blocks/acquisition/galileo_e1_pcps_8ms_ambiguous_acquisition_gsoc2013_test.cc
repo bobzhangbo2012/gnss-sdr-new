@@ -6,30 +6,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
+#include "concurrent_queue.h"
 #include "fir_filter.h"
 #include "galileo_e1_pcps_8ms_ambiguous_acquisition.h"
 #include "gen_signal_source.h"
@@ -43,8 +33,8 @@
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -67,7 +57,7 @@ class GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test_msg_rx : public gr::block
 private:
     friend GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test_msg_rx_sptr GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test_msg_rx_make(Concurrent_Queue<int>& queue);
     void msg_handler_events(pmt::pmt_t msg);
-    GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue);
+    explicit GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue);
     Concurrent_Queue<int>& channel_internal_queue;
 
 public:
@@ -134,7 +124,7 @@ protected:
     void stop_queue();
 
     Concurrent_Queue<int> channel_internal_queue;
-    gr::msg_queue::sptr queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     std::shared_ptr<GalileoE1Pcps8msAmbiguousAcquisition> acquisition;
     std::shared_ptr<GNSSBlockFactory> factory;
@@ -433,7 +423,7 @@ TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ConnectAndRun)
     std::chrono::duration<double> elapsed_seconds(0.0);
 
     config_1();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
 
     std::shared_ptr<GNSSBlockInterface> acq_ = factory->GetBlock(config, "Acquisition_1B", "Galileo_E1_PCPS_8ms_Ambiguous_Acquisition", 1, 0);
@@ -483,7 +473,7 @@ TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ConnectAndRun)
 TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ValidationOfResults)
 {
     config_1();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
 
     std::shared_ptr<GNSSBlockInterface> acq_ = factory->GetBlock(config, "Acquisition_1B", "Galileo_E1_PCPS_8ms_Ambiguous_Acquisition", 1, 0, queue);
@@ -542,7 +532,7 @@ TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ValidationOfResults)
                 }
 
             acquisition->set_local_code();
-            //acquisition->set_state(1);
+            // acquisition->set_state(1);
             start_queue();
 
             EXPECT_NO_THROW({
@@ -572,7 +562,7 @@ TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ValidationOfResults)
 TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ValidationOfResultsProbabilities)
 {
     config_2();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
     std::shared_ptr<GNSSBlockInterface> acq_ = factory->GetBlock(config, "Acquisition_1B", "Galileo_E1_PCPS_8ms_Ambiguous_Acquisition", 1, 0);
     acquisition = std::dynamic_pointer_cast<GalileoE1Pcps8msAmbiguousAcquisition>(acq_);
@@ -632,7 +622,7 @@ TEST_F(GalileoE1Pcps8msAmbiguousAcquisitionGSoC2013Test, ValidationOfResultsProb
                 }
 
             acquisition->set_local_code();
-            //acquisition->set_state(1);
+            // acquisition->set_state(1);
             start_queue();
 
             EXPECT_NO_THROW({

@@ -11,25 +11,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -40,18 +29,13 @@
 #include <iostream>    // for cout, endl
 #include <sys/mman.h>  // for mmap
 
-
-// constants
-const size_t PAGE_SIZE = 0x10000;
-const uint32_t TEST_REGISTER_TRACK_WRITEVAL = 0x55AA;
-
 Fpga_Switch::Fpga_Switch(const std::string &device_name)
 {
     if ((d_device_descriptor = open(device_name.c_str(), O_RDWR | O_SYNC)) == -1)
         {
             LOG(WARNING) << "Cannot open deviceio" << device_name;
         }
-    d_map_base = reinterpret_cast<volatile unsigned *>(mmap(nullptr, PAGE_SIZE,
+    d_map_base = reinterpret_cast<volatile unsigned *>(mmap(nullptr, FPGA_PAGE_SIZE,
         PROT_READ | PROT_WRITE, MAP_SHARED, d_device_descriptor, 0));
 
     if (d_map_base == reinterpret_cast<void *>(-1))
@@ -109,7 +93,7 @@ unsigned Fpga_Switch::fpga_switch_test_register(
 void Fpga_Switch::close_device()
 {
     auto *aux = const_cast<unsigned *>(d_map_base);
-    if (munmap(static_cast<void *>(aux), PAGE_SIZE) == -1)
+    if (munmap(static_cast<void *>(aux), FPGA_PAGE_SIZE) == -1)
         {
             std::cout << "Failed to unmap memory uio" << std::endl;
         }

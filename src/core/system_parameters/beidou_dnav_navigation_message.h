@@ -13,25 +13,14 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_BEIDOU_DNAV_NAVIGATION_MESSAGE_H_
-#define GNSS_SDR_BEIDOU_DNAV_NAVIGATION_MESSAGE_H_
+#ifndef GNSS_SDR_BEIDOU_DNAV_NAVIGATION_MESSAGE_H
+#define GNSS_SDR_BEIDOU_DNAV_NAVIGATION_MESSAGE_H
 
 
 #include "Beidou_B1I.h"
@@ -54,19 +43,6 @@
  */
 class Beidou_Dnav_Navigation_Message
 {
-private:
-    uint64_t read_navigation_unsigned(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-    int64_t read_navigation_signed(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-    bool read_navigation_bool(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
-    void print_beidou_word_bytes(uint32_t BEIDOU_word);
-    /*
-     * Accounts for the beginning or end of week crossover
-     *
-     * \param[in]  -  time in seconds
-     * \param[out] -  corrected time, in seconds
-     */
-    double check_t(double time);
-
 public:
     /*!
      * Default constructor
@@ -103,7 +79,7 @@ public:
     bool flag_sf1_p9;   //!< D2 NAV Message, Subframe 1, Page 9 decoded indicator
     bool flag_sf1_p10;  //!< D2 NAV Message, Subframe 1, Page 10 decoded indicator
 
-    //broadcast orbit 1
+    // broadcast orbit 1
     double d_SOW;      //!< Time of BeiDou Week of the ephemeris set (taken from subframes SOW) [s]
     double d_SOW_SF1;  //!< Time of BeiDou Week from HOW word of Subframe 1 [s]
     double d_SOW_SF2;  //!< Time of BeiDou Week from HOW word of Subframe 2 [s]
@@ -115,12 +91,14 @@ public:
     double d_Crs;      //!< Amplitude of the Sine Harmonic Correction Term to the Orbit Radius [m]
     double d_Delta_n;  //!< Mean Motion Difference From Computed Value [semi-circles/s]
     double d_M_0;      //!< Mean Anomaly at Reference Time [semi-circles]
-    //broadcast orbit 2
+
+    // broadcast orbit 2
     double d_Cuc;           //!< Amplitude of the Cosine Harmonic Correction Term to the Argument of Latitude [rad]
     double d_eccentricity;  //!< Eccentricity [dimensionless]
     double d_Cus;           //!< Amplitude of the Sine Harmonic Correction Term to the Argument of Latitude [rad]
     double d_sqrt_A;        //!< Square Root of the Semi-Major Axis [sqrt(m)]
-    //broadcast orbit 3
+
+    // broadcast orbit 3
     double d_Toe_sf2;  //!< Ephemeris data reference time of week in subframe 2, D1 Message
     double d_Toe_sf3;  //!< Ephemeris data reference time of week in subframe 3, D1 Message
     double d_Toe;      //!< Ephemeris data reference time of week in subframe 1, D2 Message
@@ -128,22 +106,26 @@ public:
     double d_Cic;      //!< Amplitude of the Cosine Harmonic Correction Term to the Angle of Inclination [rad]
     double d_OMEGA0;   //!< Longitude of Ascending Node of Orbit Plane at Weekly Epoch [semi-circles]
     double d_Cis;      //!< Amplitude of the Sine Harmonic Correction Term to the Angle of Inclination [rad]
-    //broadcast orbit 4
+
+    // broadcast orbit 4
     double d_i_0;        //!< Inclination Angle at Reference Time [semi-circles]
     double d_Crc;        //!< Amplitude of the Cosine Harmonic Correction Term to the Orbit Radius [m]
     double d_OMEGA;      //!< Argument of Perigee [semi-cicles]
     double d_OMEGA_DOT;  //!< Rate of Right Ascension [semi-circles/s]
-    //broadcast orbit 5
+
+    // broadcast orbit 5
     double d_IDOT;          //!< Rate of Inclination Angle [semi-circles/s]
     int32_t i_BEIDOU_week;  //!< BeiDou week number, aka WN [week]
-    //broadcast orbit 6
+
+    // broadcast orbit 6
     int32_t i_SV_accuracy;  //!< User Range Accuracy (URA) index of the SV
     int32_t i_SV_health;
     double d_TGD1;  //!< Estimated Group Delay Differential in B1 [s]
     double d_TGD2;  //!< Estimated Group Delay Differential in B2 [s]
     double d_AODC;  //!< Age of Data, Clock
-    //broadcast orbit 7
-    //    int32_t i_AODO;              //!< Age of Data Offset (AODO) term for the navigation message correction table (NMCT) contained in subframe 4 (reference paragraph 20.3.3.5.1.9) [s]
+
+    // broadcast orbit 7
+    // int32_t i_AODO;              //!< Age of Data Offset (AODO) term for the navigation message correction table (NMCT) contained in subframe 4 (reference paragraph 20.3.3.5.1.9) [s]
 
     bool b_fit_interval_flag;  //!< indicates the curve-fit interval used by the CS (Block II/IIA/IIR/IIR-M/IIF) and SS (Block IIIA) in determining the ephemeris parameters, as follows: 0 = 4 hours, 1 = greater than 4 hours.
     double d_spare1;
@@ -176,7 +158,7 @@ public:
     int32_t i_WN_A;                            //!< Modulo 256 of the GPS week number to which the almanac reference time (d_Toa) is referenced
     std::map<int32_t, int32_t> almanacHealth;  //!< Map that stores the health information stored in the almanac
 
-    std::map<int32_t, std::string> satelliteBlock;  //!< Map that stores to which block the PRN belongs http://www.navcen.uscg.gov/?Do=constellationStatus
+    std::map<int32_t, std::string> satelliteBlock;  //!< Map that stores to which block the PRN belongs
 
     // Flags
 
@@ -195,7 +177,7 @@ public:
     bool b_antispoofing_flag;  //!<  If true, the AntiSpoofing mode is ON in that SV
 
     // clock terms
-    //double d_master_clock;  // GPS transmission time
+    // double d_master_clock;  // GPS transmission time
     double d_satClkCorr;  // GPS clock error
     double d_dtr;         // relativistic clock correction term
     double d_satClkDrift;
@@ -207,11 +189,11 @@ public:
 
     // satellite identification info
     int32_t i_channel_ID;
-    int32_t i_signal_type;     //!< BDS: data source (0:unknown,1:B1I,2:B1Q,3:B2I,4:B2Q,5:B3I,6:B3Q)
+    int32_t i_signal_type;  //!< BDS: data source (0:unknown,1:B1I,2:B1Q,3:B2I,4:B2Q,5:B3I,6:B3Q)
     uint32_t i_satellite_PRN;
 
     // time synchro
-    double d_subframe_timestamp_ms;  //[ms]
+    double d_subframe_timestamp_ms;  // [ms]
 
     // Ionospheric parameters
     double d_alpha0;  //!< Coefficient 0 of a cubic equation representing the amplitude of the vertical delay [s]
@@ -302,25 +284,39 @@ public:
 
     bool satellite_validation();
 
-    /*
+    /*!
      * \brief Returns true if new Ephemeris has arrived. The flag is set to false when the function is executed
      */
     bool have_new_ephemeris();
 
-    /*
+    /*!
      * \brief Returns true if new Iono model has arrived. The flag is set to false when the function is executed
      */
     bool have_new_iono();
 
-    /*
+    /*!
      * \brief Returns true if new UTC model has arrived. The flag is set to false when the function is executed
      */
     bool have_new_utc_model();
 
-    /*
+    /*!
      * \brief Returns true if new UTC model has arrived. The flag is set to false when the function is executed
      */
     bool have_new_almanac();
+
+private:
+    uint64_t read_navigation_unsigned(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
+    int64_t read_navigation_signed(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
+    bool read_navigation_bool(std::bitset<BEIDOU_DNAV_SUBFRAME_DATA_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter);
+    void print_beidou_word_bytes(uint32_t BEIDOU_word);
+
+    /*
+     * Accounts for the beginning or end of week crossover
+     *
+     * \param[in]  -  time in seconds
+     * \param[out] -  corrected time, in seconds
+     */
+    double check_t(double time);
 };
 
 #endif

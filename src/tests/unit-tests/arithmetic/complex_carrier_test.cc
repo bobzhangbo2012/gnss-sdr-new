@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -32,6 +21,7 @@
 #include "GPS_L1_CA.h"
 #include "gnss_signal_processing.h"
 #include <armadillo>
+#include <gsl/gsl>
 #include <chrono>
 #include <complex>
 
@@ -120,7 +110,7 @@ TEST(ComplexCarrierTest, OwnComplexImplementation)
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
 
-    complex_exp_gen(output, _f, _fs, static_cast<unsigned int>(FLAGS_size_carrier_test));
+    complex_exp_gen(gsl::span<std::complex<float>>(output, static_cast<unsigned int>(FLAGS_size_carrier_test)), _f, _fs);
 
     end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;

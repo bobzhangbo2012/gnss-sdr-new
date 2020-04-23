@@ -7,47 +7,39 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_DLL_PLL_CONF_H_
-#define GNSS_SDR_DLL_PLL_CONF_H_
+#ifndef GNSS_SDR_DLL_PLL_CONF_H
+#define GNSS_SDR_DLL_PLL_CONF_H
 
+#include "configuration_interface.h"
 #include <cstdint>
 #include <string>
 
 class Dll_Pll_Conf
 {
 public:
-    /* DLL/PLL tracking configuration */
+    Dll_Pll_Conf();
+    void SetFromConfiguration(ConfigurationInterface *configuration, const std::string &role);
 
-    int fll_filter_order;
+    /* DLL/PLL tracking configuration */
+    int32_t fll_filter_order;
     bool enable_fll_pull_in;
     bool enable_fll_steady_state;
-    unsigned int pull_in_time_s;
-    int pll_filter_order;
-    int dll_filter_order;
-
+    uint32_t pull_in_time_s;
+    uint32_t bit_synchronization_time_limit_s;
+    int32_t pll_filter_order;
+    int32_t dll_filter_order;
     double fs_in;
     uint32_t vector_length;
     bool dump;
@@ -64,19 +56,27 @@ public:
     float very_early_late_space_chips;
     float early_late_space_narrow_chips;
     float very_early_late_space_narrow_chips;
+    float slope;
+    float spc;
+    float y_intercept;
     int32_t extend_correlation_symbols;
+    bool carrier_aiding;
     bool high_dyn;
+    std::string item_type;
     int32_t cn0_samples;
-    int32_t carrier_lock_det_mav_samples;
+    int32_t cn0_smoother_samples;
+    float cn0_smoother_alpha;
+    int32_t carrier_lock_test_smoother_samples;
+    float carrier_lock_test_smoother_alpha;
     int32_t cn0_min;
-    int32_t max_lock_fail;
+    int32_t max_code_lock_fail;
+    int32_t max_carrier_lock_fail;
     uint32_t smoother_length;
     double carrier_lock_th;
     bool track_pilot;
+    bool enable_doppler_correction;
     char system;
     char signal[3]{};
-
-    Dll_Pll_Conf();
 };
 
 #endif

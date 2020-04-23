@@ -2,30 +2,19 @@
  * \file gps_ephemeris.cc
  * \brief  Interface of a GPS EPHEMERIS storage and orbital model functions
  *
- * See http://www.gps.gov/technical/icwg/IS-GPS-200E.pdf Appendix II
+ * See https://www.gps.gov/technical/icwg/IS-GPS-200K.pdf Appendix II
  * \author Javier Arribas, 2013. jarribas(at)cttc.es
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -77,7 +66,7 @@ Gps_Ephemeris::Gps_Ephemeris()
 
     b_integrity_status_flag = false;
     b_alert_flag = false;         // If true, indicates  that the SV URA may be worse than indicated in d_SV_accuracy, use that SV at our own risk.
-    b_antispoofing_flag = false;  //  If true, the AntiSpoofing mode is ON in that SV
+    b_antispoofing_flag = false;  // If true, the AntiSpoofing mode is ON in that SV
 
     auto gnss_sat = Gnss_Satellite();
     std::string _system("GPS");
@@ -130,7 +119,7 @@ double Gps_Ephemeris::sv_clock_drift(double transmitTime)
     double dt;
     dt = check_t(transmitTime - d_Toc);
     d_satClkDrift = d_A_f0 + d_A_f1 * dt + d_A_f2 * (dt * dt) + sv_clock_relativistic_term(transmitTime);
-    //Correct satellite group delay
+    // Correct satellite group delay
     d_satClkDrift -= d_TGD;
 
     return d_satClkDrift;
@@ -163,7 +152,7 @@ double Gps_Ephemeris::sv_clock_relativistic_term(double transmitTime)
     M = d_M_0 + n * tk;
 
     // Reduce mean anomaly to between 0 and 2pi
-    //M = fmod((M + 2.0 * GPS_PI), (2.0 * GPS_PI));
+    // M = fmod((M + 2.0 * GPS_PI), (2.0 * GPS_PI));
 
     // Initial guess of eccentric anomaly
     E = M;
@@ -176,7 +165,7 @@ double Gps_Ephemeris::sv_clock_relativistic_term(double transmitTime)
             dE = fmod(E - E_old, 2.0 * GPS_PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }
@@ -222,7 +211,7 @@ double Gps_Ephemeris::satellitePosition(double transmitTime)
     M = d_M_0 + n * tk;
 
     // Reduce mean anomaly to between 0 and 2pi
-    //M = fmod((M + 2.0 * GPS_PI), (2.0 * GPS_PI));
+    // M = fmod((M + 2.0 * GPS_PI), (2.0 * GPS_PI));
 
     // Initial guess of eccentric anomaly
     E = M;
@@ -235,7 +224,7 @@ double Gps_Ephemeris::satellitePosition(double transmitTime)
             dE = fmod(E - E_old, 2.0 * GPS_PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }
@@ -249,7 +238,7 @@ double Gps_Ephemeris::satellitePosition(double transmitTime)
     phi = nu + d_OMEGA;
 
     // Reduce phi to between 0 and 2*pi rad
-    //phi = fmod((phi), (2.0 * GPS_PI));
+    // phi = fmod((phi), (2.0 * GPS_PI));
 
     // Correct argument of latitude
     u = phi + d_Cuc * cos(2.0 * phi) + d_Cus * sin(2.0 * phi);
@@ -264,7 +253,7 @@ double Gps_Ephemeris::satellitePosition(double transmitTime)
     Omega = d_OMEGA0 + (d_OMEGA_DOT - OMEGA_EARTH_DOT) * tk - OMEGA_EARTH_DOT * d_Toe;
 
     // Reduce to between 0 and 2*pi rad
-    //Omega = fmod((Omega + 2.0 * GPS_PI), (2.0 * GPS_PI));
+    // Omega = fmod((Omega + 2.0 * GPS_PI), (2.0 * GPS_PI));
 
     // --- Compute satellite coordinates in Earth-fixed coordinates
     d_satpos_X = cos(u) * r * cos(Omega) - sin(u) * r * cos(i) * sin(Omega);

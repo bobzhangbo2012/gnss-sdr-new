@@ -1,19 +1,10 @@
-# Copyright (C) 2011-2019 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 # FindMATIO
 #
@@ -62,23 +53,65 @@
 #=============================================================================
 #
 
+if(NOT COMMAND feature_summary)
+    include(FeatureSummary)
+endif()
+
+if(NOT MATIO_ROOT)
+    set(MATIO_ROOT_USER_DEFINED /usr)
+else()
+    set(MATIO_ROOT_USER_DEFINED ${MATIO_ROOT})
+endif()
+if(DEFINED ENV{MATIO_ROOT})
+    set(MATIO_ROOT_USER_DEFINED
+        ${MATIO_ROOT_USER_DEFINED}
+        $ENV{MATIO_ROOT}
+    )
+endif()
+
 # Look for the header file.
 find_path(MATIO_INCLUDE_DIR
     NAMES matio.h
-    HINTS
-      ${MATIO_ROOT}/include
-      $ENV{MATIO_ROOT}/include
+    PATHS
+        ${MATIO_ROOT_USER_DEFINED}/include
+        /usr/include
+        /usr/local/include
+        /opt/local/include
     DOC "The MATIO include directory"
 )
 
 # Look for the library.
 find_library(MATIO_LIBRARY
     NAMES matio
-    HINTS
-      ${MATIO_ROOT}/lib
-      $ENV{MATIO_ROOT}/lib
-      ${MATIO_ROOT}/lib64
-      $ENV{MATIO_ROOT}/lib64
+    PATHS
+      ${MATIO_ROOT_USER_DEFINED}/lib
+      ${MATIO_ROOT_USER_DEFINED}/lib64
+      /usr/lib
+      /usr/lib64
+      /usr/lib/alpha-linux-gnu
+      /usr/lib/x86_64-linux-gnu
+      /usr/lib/aarch64-linux-gnu
+      /usr/lib/arm-linux-gnueabi
+      /usr/lib/arm-linux-gnueabihf
+      /usr/lib/hppa-linux-gnu
+      /usr/lib/i386-linux-gnu
+      /usr/lib/m68k-linux-gnu
+      /usr/lib/mips-linux-gnu
+      /usr/lib/mips64el-linux-gnuabi64
+      /usr/lib/mipsel-linux-gnu
+      /usr/lib/powerpc-linux-gnuspe
+      /usr/lib/powerpc64-linux-gnu
+      /usr/lib/powerpc64le-linux-gnu
+      /usr/lib/riscv64-linux-gnu
+      /usr/lib/s390x-linux-gnu
+      /usr/lib/sh4-linux-gnu
+      /usr/lib/sparc64-linux-gnu
+      /usr/lib/x86_64-linux-gnux32
+      /usr/lib/x86_64-kfreebsd-gnu
+      /usr/lib/i386-kfreebsd-gnu
+      /usr/local/lib
+      /usr/local/lib64
+      /opt/local/lib
     DOC "The MATIO library"
 )
 
@@ -100,7 +133,6 @@ if(MATIO_INCLUDE_DIR)
     endif()
 
     if(MATIO_CONFIG_FILE)
-
         # Read and parse MATIO config header file for version number
         file(STRINGS "${MATIO_INCLUDE_DIR}/${MATIO_CONFIG_FILE}" _matio_HEADER_CONTENTS REGEX "#define MATIO_((MAJOR|MINOR)_VERSION)|(RELEASE_LEVEL) ")
 
@@ -130,6 +162,20 @@ else()
   set(MATIO_LIBRARIES)
   set(MATIO_INCLUDE_DIRS)
 endif()
+
+if(MATIO_FOUND AND MATIO_VERSION_STRING)
+    set_package_properties(MATIO PROPERTIES
+        DESCRIPTION "MATLAB MAT File I/O Library (found: v${MATIO_VERSION_STRING})"
+    )
+else()
+    set_package_properties(MATIO PROPERTIES
+        DESCRIPTION "MATLAB MAT File I/O Library"
+    )
+endif()
+
+set_package_properties(MATIO PROPERTIES
+    URL "https://github.com/tbeu/matio"
+)
 
 if(MATIO_FOUND AND NOT TARGET Matio::matio)
     add_library(Matio::matio SHARED IMPORTED)

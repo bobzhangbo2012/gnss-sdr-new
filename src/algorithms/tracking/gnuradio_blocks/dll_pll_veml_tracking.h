@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -38,14 +27,16 @@
 #include "tracking_FLL_PLL_filter.h"  // for PLL/FLL filter
 #include "tracking_loop_filter.h"     // for DLL filter
 #include <boost/circular_buffer.hpp>
-#include <boost/shared_ptr.hpp>   // for boost::shared_ptr
-#include <gnuradio/block.h>       // for block
-#include <gnuradio/gr_complex.h>  // for gr_complex
-#include <gnuradio/types.h>       // for gr_vector_int, gr_vector...
-#include <pmt/pmt.h>              // for pmt_t
-#include <cstdint>                // for int32_t
-#include <fstream>                // for string, ofstream
-#include <utility>                // for pair
+#include <boost/shared_ptr.hpp>               // for boost::shared_ptr
+#include <gnuradio/block.h>                   // for block
+#include <gnuradio/gr_complex.h>              // for gr_complex
+#include <gnuradio/types.h>                   // for gr_vector_int, gr_vector...
+#include <pmt/pmt.h>                          // for pmt_t
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
+#include <cstdint>                            // for int32_t
+#include <fstream>                            // for string, ofstream
+#include <string>
+#include <utility>  // for pair
 
 class Gnss_Synchro;
 class dll_pll_veml_tracking;
@@ -75,7 +66,7 @@ public:
 private:
     friend dll_pll_veml_tracking_sptr dll_pll_veml_make_tracking(const Dll_Pll_Conf &conf_);
     void msg_handler_telemetry_to_trk(const pmt::pmt_t &msg);
-    dll_pll_veml_tracking(const Dll_Pll_Conf &conf_);
+    explicit dll_pll_veml_tracking(const Dll_Pll_Conf &conf_);
 
     bool cn0_and_tracking_lock_status(double coh_integration_time_s);
     bool acquire_secondary();
@@ -84,7 +75,7 @@ private:
     void update_tracking_vars();
     void clear_tracking_vars();
     void save_correlation_results();
-    void log_data(bool integrating);
+    void log_data();
     int32_t save_matfile();
 
     // tracking configuration vars
@@ -96,23 +87,24 @@ private:
 
     // Signal parameters
     bool d_secondary;
-    bool interchange_iq;
     double d_signal_carrier_freq;
     double d_code_period;
     double d_code_chip_rate;
     uint32_t d_secondary_code_length;
+    uint32_t d_data_secondary_code_length;
     uint32_t d_code_length_chips;
     uint32_t d_code_samples_per_chip;  // All signals have 1 sample per chip code except Gal. E1 which has 2 (CBOC disabled) or 12 (CBOC enabled)
     int32_t d_symbols_per_bit;
     std::string systemName;
     std::string signal_type;
     std::string *d_secondary_code_string;
+    std::string *d_data_secondary_code_string;
     std::string signal_pretty_name;
 
-    int32_t *d_preambles_symbols;
     int32_t d_preamble_length_symbols;
-    boost::circular_buffer<float> d_symbol_history;
 
+    // dll filter buffer
+    boost::circular_buffer<float> d_dll_filt_history;
     // tracking state machine
     int32_t d_state;
 
@@ -120,18 +112,19 @@ private:
     int32_t d_correlation_length_ms;
     int32_t d_n_correlator_taps;
 
-    float *d_tracking_code;
-    float *d_data_code;
-    float *d_local_code_shift_chips;
+    volk_gnsssdr::vector<float> d_tracking_code;
+    volk_gnsssdr::vector<float> d_data_code;
+    volk_gnsssdr::vector<float> d_local_code_shift_chips;
     float *d_prompt_data_shift;
     Cpu_Multicorrelator_Real_Codes multicorrelator_cpu;
-    Cpu_Multicorrelator_Real_Codes correlator_data_cpu;  //for data channel
+    Cpu_Multicorrelator_Real_Codes correlator_data_cpu;  // for data channel
+
     /*  TODO: currently the multicorrelator does not support adding extra correlator
         with different local code, thus we need extra multicorrelator instance.
         Implement this functionality inside multicorrelator class
         as an enhancement to increase the performance
      */
-    gr_complex *d_correlator_outs;
+    volk_gnsssdr::vector<gr_complex> d_correlator_outs;
     gr_complex *d_Very_Early;
     gr_complex *d_Early;
     gr_complex *d_Prompt;
@@ -141,6 +134,7 @@ private:
     bool d_enable_extended_integration;
     int32_t d_extend_correlation_symbols_count;
     int32_t d_current_symbol;
+    int32_t d_current_data_symbol;
 
     gr_complex d_VE_accu;
     gr_complex d_E_accu;
@@ -149,7 +143,8 @@ private:
     gr_complex d_L_accu;
     gr_complex d_VL_accu;
 
-    gr_complex *d_Prompt_Data;
+    gr_complex d_P_data_accu;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_Data;
 
     double d_code_phase_step_chips;
     double d_code_phase_rate_step_chips;
@@ -157,6 +152,7 @@ private:
     double d_carrier_phase_step_rad;
     double d_carrier_phase_rate_step_rad;
     boost::circular_buffer<std::pair<double, double>> d_carr_ph_history;
+
     // remaining code phase and carrier phase between tracking loops
     double d_rem_code_phase_samples;
     float d_rem_carr_phase_rad;
@@ -170,6 +166,8 @@ private:
 
     // tracking vars
     bool d_pull_in_transitory;
+    bool d_corrected_doppler;
+    bool interchange_iq;
     double d_current_correlation_time_s;
     double d_carr_phase_error_hz;
     double d_carr_freq_error_hz;
@@ -193,13 +191,14 @@ private:
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
     int32_t d_carrier_lock_fail_counter;
+    int32_t d_code_lock_fail_counter;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;
     boost::circular_buffer<gr_complex> d_Prompt_circular_buffer;
-    gr_complex *d_Prompt_buffer;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     Exponential_Smoother d_cn0_smoother;
-
+    Exponential_Smoother d_carrier_lock_test_smoother;
     // file dump
     std::ofstream d_dump_file;
     std::string d_dump_filename;

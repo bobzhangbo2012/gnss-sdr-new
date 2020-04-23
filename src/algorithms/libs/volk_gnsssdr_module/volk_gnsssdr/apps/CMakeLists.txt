@@ -1,54 +1,21 @@
 #
-# Copyright (C) 2010-2018 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 ########################################################################
 # Setup profiler
 ########################################################################
-if(MSVC)
-    include_directories(${PROJECT_SOURCE_DIR}/cmake/msvc)
-endif()
-
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include
-    ${PROJECT_SOURCE_DIR}/lib
-    ${PROJECT_BINARY_DIR}/lib
-    ${Boost_INCLUDE_DIRS}
-)
-
-
-set(Clang_required_link "")
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        set(Clang_required_link "c++")
-    endif()
-endif()
-
-
 if(ORC_FOUND)
     set(orc_lib ${ORC_LIBRARIES})
 else()
     set(orc_lib "")
 endif()
-
 
 # allow 'large' files in 32 bit builds
 if(UNIX)
@@ -58,6 +25,11 @@ if(UNIX)
     )
 endif()
 
+# POSIX_MEMALIGN: If we have to fall back to `posix_memalign`.
+if(HAVE_POSIX_MEMALIGN)
+    message(STATUS "Use `posix_memalign` for aligned malloc!")
+    add_definitions(-DHAVE_POSIX_MEMALIGN)
+endif()
 
 # MAKE volk_gnsssdr_profile
 add_executable(volk_gnsssdr_profile
@@ -66,10 +38,41 @@ add_executable(volk_gnsssdr_profile
     ${CMAKE_CURRENT_SOURCE_DIR}/volk_gnsssdr_option_helpers.cc
 )
 
+if(MSVC)
+    target_include_directories(volk_gnsssdr_profile
+        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/cmake/msvc>
+    )
+endif()
+
+target_include_directories(volk_gnsssdr_profile
+    PRIVATE $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+    PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    PRIVATE $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/lib>
+    PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+if(NOT ${FILESYSTEM_FOUND})
+    target_include_directories(volk_gnsssdr_profile
+        PUBLIC ${Boost_INCLUDE_DIRS}
+    )
+    target_link_libraries(volk_gnsssdr_profile PRIVATE ${Boost_LIBRARIES})
+endif()
+
+
+if(${FILESYSTEM_FOUND})
+    add_definitions(-DHAS_STD_FILESYSTEM=1)
+    if(${find_experimental})
+        add_definitions(-DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
+    endif()
+    target_link_libraries(volk_gnsssdr_profile PRIVATE std::filesystem)
+endif()
+
 if(ENABLE_STATIC_LIBS)
-    target_link_libraries(volk_gnsssdr_profile volk_gnsssdr_static ${Boost_LIBRARIES} ${Clang_required_link} ${orc_lib})
+    target_link_libraries(volk_gnsssdr_profile PUBLIC volk_gnsssdr_static ${orc_lib})
 else()
-    target_link_libraries(volk_gnsssdr_profile volk_gnsssdr ${Boost_LIBRARIES} ${Clang_required_link} ${orc_lib})
+    target_link_libraries(volk_gnsssdr_profile PUBLIC volk_gnsssdr ${orc_lib})
     add_dependencies(volk_gnsssdr_profile volk_gnsssdr)
 endif()
 
@@ -77,7 +80,8 @@ endif()
 if(ENABLE_STRIP)
     if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND NOT WIN32)
         set_target_properties(volk_gnsssdr_profile
-            PROPERTIES LINK_FLAGS "-s")
+            PROPERTIES LINK_FLAGS "-s"
+        )
     endif()
 endif()
 
@@ -91,17 +95,20 @@ install(
 
 # MAKE volk_gnsssdr-config-info
 add_executable(volk_gnsssdr-config-info volk_gnsssdr-config-info.cc ${CMAKE_CURRENT_SOURCE_DIR}/volk_gnsssdr_option_helpers.cc)
+
+
 if(ENABLE_STATIC_LIBS)
-    target_link_libraries(volk_gnsssdr-config-info volk_gnsssdr_static ${Clang_required_link} ${orc_lib})
+    target_link_libraries(volk_gnsssdr-config-info volk_gnsssdr_static ${orc_lib})
 else()
-    target_link_libraries(volk_gnsssdr-config-info volk_gnsssdr ${Clang_required_link} ${orc_lib})
+    target_link_libraries(volk_gnsssdr-config-info volk_gnsssdr ${orc_lib})
     add_dependencies(volk_gnsssdr-config-info volk_gnsssdr)
 endif()
 
 if(ENABLE_STRIP)
     if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND NOT WIN32)
         set_target_properties(volk_gnsssdr-config-info
-            PROPERTIES LINK_FLAGS "-s")
+            PROPERTIES LINK_FLAGS "-s"
+        )
     endif()
 endif()
 

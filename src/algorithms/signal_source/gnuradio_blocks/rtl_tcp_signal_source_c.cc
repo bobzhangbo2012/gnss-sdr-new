@@ -4,28 +4,17 @@
  * \author Anthony Arnold, 2015. anthony.arnold(at)uqconnect.edu.au
  *
  * This module contains logic taken from gr-omsosdr
- * <http://git.osmocom.org/gr-osmosdr>
+ * <https://git.osmocom.org/gr-osmosdr>
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -48,12 +37,12 @@ enum
     RTL_TCP_PAYLOAD_SIZE = 1024 * 4   //  4 KB
 };
 
-rtl_tcp_signal_source_c_sptr
-rtl_tcp_make_signal_source_c(const std::string &address,
+rtl_tcp_signal_source_c_sptr rtl_tcp_make_signal_source_c(
+    const std::string &address,
     int16_t port,
     bool flip_iq)
 {
-    return gnuradio::get_initial_sptr(new rtl_tcp_signal_source_c(address,
+    return rtl_tcp_signal_source_c_sptr(new rtl_tcp_signal_source_c(address,
         port,
         flip_iq));
 }
@@ -76,7 +65,7 @@ rtl_tcp_signal_source_c::rtl_tcp_signal_source_c(const std::string &address,
     // 1. Setup lookup table
     for (unsigned i = 0; i < 0xff; i++)
         {
-            lookup_[i] = (static_cast<float>(i & 0xff) - 127.4f) * (1.0f / 128.0f);
+            lookup_[i] = (static_cast<float>(i & 0xff) - 127.4F) * (1.0F / 128.0F);
         }
 
     // 2. Set socket options
@@ -244,8 +233,8 @@ void rtl_tcp_signal_source_c::set_if_gain(int gain)
         {
             const range &r = ranges[i];
             double error = gain;
-
-            for (double g = r.start; g < r.stop; g += r.step)
+            double g = r.start;
+            while (g < r.stop)
                 {
                     double sum = 0;
                     for (int j = 0; j < static_cast<int>(gains.size()); j++)
@@ -265,12 +254,13 @@ void rtl_tcp_signal_source_c::set_if_gain(int gain)
                             error = err;
                             gains[i + 1] = g;
                         }
+                    g += r.step;
                 }
         }
-    for (unsigned stage = 1; stage <= gains.size(); stage++)
+    for (size_t stage = 1; stage <= gains.size(); stage++)
         {
             int stage_gain = static_cast<int>(gains[stage] * 10);
-            unsigned param = (stage << 16) | (stage_gain & 0xffff);
+            size_t param = (stage << 16) | (stage_gain & 0xffff);
             boost::system::error_code ec = rtl_tcp_command(RTL_TCP_SET_IF_GAIN, param, socket_);
             if (ec)
                 {

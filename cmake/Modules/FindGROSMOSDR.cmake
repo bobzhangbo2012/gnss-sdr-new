@@ -1,19 +1,10 @@
-# Copyright (C) 2011-2019 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 # Tries to find gr-osmosdr.
 #
@@ -38,62 +29,97 @@
 # Gnuradio::osmosdr
 #
 
+if(NOT COMMAND feature_summary)
+    include(FeatureSummary)
+endif()
 
-include(FindPkgConfig)
 pkg_check_modules(GROSMOSDR_PKG gnuradio-osmosdr)
 
+if(NOT GROSMOSDR_ROOT)
+    set(GROSMOSDR_ROOT_USER_DEFINED /usr)
+else()
+    set(GROSMOSDR_ROOT_USER_DEFINED ${GROSMOSDR_ROOT})
+endif()
+if(DEFINED ENV{GROSMOSDR_ROOT})
+    set(GROSMOSDR_ROOT_USER_DEFINED
+        ${GROSMOSDR_ROOT_USER_DEFINED}
+        $ENV{GROSMOSDR_ROOT}
+    )
+endif()
+
 find_path(GROSMOSDR_INCLUDE_DIR
-  NAMES
-    osmosdr/source.h
-    osmosdr/api.h
-  PATHS
-    ${GROSMOSDR_PKG_INCLUDE_DIRS}
-    /usr/include
-    /usr/local/include
-    /opt/local/include
-    ${GROSMOSDR_ROOT}/include
-    $ENV{GROSMOSDR_ROOT}/include
+    NAMES
+        osmosdr/source.h
+        osmosdr/api.h
+    HINTS
+        ${GROSMOSDR_PKG_INCLUDEDIR}
+    PATHS
+        ${GROSMOSDR_ROOT_USER_DEFINED}/include
+        /usr/include
+        /usr/local/include
+        /opt/local/include
 )
 
 find_library(GROSMOSDR_LIBRARIES
-  NAMES gnuradio-osmosdr
-  PATHS
-    ${GROSMOSDR_PKG_LIBRARY_DIRS}
-    /usr/lib
-    /usr/local/lib
-    /opt/local/lib
-    /usr/lib/x86_64-linux-gnu
-    /usr/lib/i386-linux-gnu
-    /usr/lib/arm-linux-gnueabihf
-    /usr/lib/arm-linux-gnueabi
-    /usr/lib/aarch64-linux-gnu
-    /usr/lib/mipsel-linux-gnu
-    /usr/lib/mips-linux-gnu
-    /usr/lib/mips64el-linux-gnuabi64
-    /usr/lib/powerpc-linux-gnu
-    /usr/lib/powerpc64-linux-gnu
-    /usr/lib/powerpc64le-linux-gnu
-    /usr/lib/powerpc-linux-gnuspe
-    /usr/lib/hppa-linux-gnu
-    /usr/lib/s390x-linux-gnu
-    /usr/lib/i386-gnu
-    /usr/lib/hppa-linux-gnu
-    /usr/lib/x86_64-kfreebsd-gnu
-    /usr/lib/i386-kfreebsd-gnu
-    /usr/lib/m68k-linux-gnu
-    /usr/lib/sh4-linux-gnu
-    /usr/lib/sparc64-linux-gnu
-    /usr/lib/x86_64-linux-gnux32
-    /usr/lib/alpha-linux-gnu
-    /usr/lib64
-    ${GROSMOSDR_ROOT}/lib
-    $ENV{GROSMOSDR_ROOT}/lib
-    ${GROSMOSDR_ROOT}/lib64
-    $ENV{GROSMOSDR_ROOT}/lib64
+    NAMES
+        gnuradio-osmosdr
+    HINTS
+        ${GROSMOSDR_PKG_LIBDIR}
+    PATHS
+        ${GROSMOSDR_ROOT_USER_DEFINED}/lib
+        ${GROSMOSDR_ROOT_USER_DEFINED}/lib64
+        /usr/lib
+        /usr/lib64
+        /usr/lib/x86_64-linux-gnu
+        /usr/lib/i386-linux-gnu
+        /usr/lib/arm-linux-gnueabihf
+        /usr/lib/arm-linux-gnueabi
+        /usr/lib/aarch64-linux-gnu
+        /usr/lib/mipsel-linux-gnu
+        /usr/lib/mips-linux-gnu
+        /usr/lib/mips64el-linux-gnuabi64
+        /usr/lib/powerpc-linux-gnu
+        /usr/lib/powerpc64-linux-gnu
+        /usr/lib/powerpc64le-linux-gnu
+        /usr/lib/powerpc-linux-gnuspe
+        /usr/lib/hppa-linux-gnu
+        /usr/lib/s390x-linux-gnu
+        /usr/lib/i386-gnu
+        /usr/lib/hppa-linux-gnu
+        /usr/lib/x86_64-kfreebsd-gnu
+        /usr/lib/i386-kfreebsd-gnu
+        /usr/lib/m68k-linux-gnu
+        /usr/lib/sh4-linux-gnu
+        /usr/lib/sparc64-linux-gnu
+        /usr/lib/x86_64-linux-gnux32
+        /usr/lib/riscv64-linux-gnu
+        /usr/lib/alpha-linux-gnu
+        /usr/local/lib
+        /usr/local/lib64
+        /opt/local/lib
 )
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GROSMOSDR DEFAULT_MSG GROSMOSDR_LIBRARIES GROSMOSDR_INCLUDE_DIR)
+
+if(GROSMOSDR_PKG_VERSION)
+    set(GROSMOSDR_VERSION_AUX ${GROSMOSDR_PKG_VERSION})
+    string(REGEX REPLACE "^v" "" GROSMOSDR_VERSION ${GROSMOSDR_VERSION_AUX})
+endif()
+
+set_package_properties(GROSMOSDR PROPERTIES
+    URL "https://osmocom.org/projects/gr-osmosdr/wiki"
+)
+
+if(GROSMOSDR_FOUND AND GROSMOSDR_VERSION)
+    set_package_properties(GROSMOSDR PROPERTIES
+        DESCRIPTION "osmocom GNU Radio blocks (found: v${GROSMOSDR_VERSION})"
+    )
+else()
+    set_package_properties(GROSMOSDR PROPERTIES
+        DESCRIPTION "osmocom GNU Radio blocks"
+    )
+endif()
 
 if(GROSMOSDR_FOUND AND NOT TARGET Gnuradio::osmosdr)
     add_library(Gnuradio::osmosdr SHARED IMPORTED)

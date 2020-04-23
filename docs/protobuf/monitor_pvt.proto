@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2018-2020 Carles Fernandez-Prades <carles.fernandez@cttc.es>
 syntax = "proto3";
 
 package gnss_sdr;
@@ -38,4 +40,6 @@ double gdop = 25;  // Geometric Dilution of Precision
 double pdop = 26;  // Position (3D) Dilution of Precision
 double hdop = 27;  // Horizontal Dilution of Precision
 double vdop = 28;  // Vertical Dilution of Precision
+
+double user_clk_drift_ppm = 29;  // User clock drift [ppm]
 }

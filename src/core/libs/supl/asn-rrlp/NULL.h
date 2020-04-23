@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2003 Lev Walkin <vlm@lionet.info>. All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
 #ifndef ASN_TYPE_NULL_H
 #define ASN_TYPE_NULL_H
@@ -13,9 +13,9 @@ extern "C"
 #endif
 
     /*
- * The value of the NULL type is meaningless: see BOOLEAN if you want to
- * carry true/false semantics.
- */
+     * The value of the NULL type is meaningless: see BOOLEAN if you want to
+     * carry true/false semantics.
+     */
     typedef int NULL_t;
 
     extern asn_TYPE_descriptor_t asn_DEF_NULL;

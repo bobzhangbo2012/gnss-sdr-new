@@ -9,25 +9,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -79,13 +68,13 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_generic(lv_16sc_t* ou
             // Regenerate phase
             if (i % 512 == 0)
                 {
-                    //printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+                    // printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
 #ifdef __cplusplus
                     (*phase) /= std::abs((*phase));
 #else
                     (*phase) /= hypotf(lv_creal(*phase), lv_cimag(*phase));
 #endif
-                    //printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+                    // printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
                 }
         }
 }
@@ -112,13 +101,13 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_generic_reload(lv_16s
                     (*phase) *= phase_inc;
                 }
                 // Regenerate phase
-                //printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+                // printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
 #ifdef __cplusplus
             (*phase) /= std::abs((*phase));
 #else
             (*phase) /= hypotf(lv_creal(*phase), lv_cimag(*phase));
 #endif
-            //printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+            // printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
         }
     for (j = 0; j < num_points % ROTATOR_RELOAD; j++)
         {
@@ -161,8 +150,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3(lv_16sc_t* out
 
     for (number = 0; number < sse_iters; number++)
         {
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -171,7 +160,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3(lv_16sc_t* out
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -179,11 +168,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3(lv_16sc_t* out
             tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
             two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-            //next two samples
+            // next two samples
             _in += 2;
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
             __VOLK_GNSSSDR_PREFETCH(_in + 8);
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -192,7 +181,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3(lv_16sc_t* out
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -214,7 +203,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3(lv_16sc_t* out
                     two_phase_acc_reg = _mm_div_ps(two_phase_acc_reg, tmp2);
                 }
 
-            //next two samples
+            // next two samples
             _in += 2;
             _out += 4;
         }
@@ -268,8 +257,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
         {
             for (j = 0; j < ROTATOR_RELOAD; j++)
                 {
-                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-                    //complex 32fc multiplication b=a*two_phase_acc_reg
+                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+                    // complex 32fc multiplication b=a*two_phase_acc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -278,7 +267,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
                     b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
                     c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-                    //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+                    // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -286,11 +275,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
                     tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
                     two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-                    //next two samples
+                    // next two samples
                     _in += 2;
-                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
                     __VOLK_GNSSSDR_PREFETCH(_in + 8);
-                    //complex 32fc multiplication b=a*two_phase_acc_reg
+                    // complex 32fc multiplication b=a*two_phase_acc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -299,7 +288,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
                     b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
                     c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-                    //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+                    // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -311,7 +300,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
                     result = _mm_packs_epi32(c1, c2);  // convert from 32ic to 16ic
                     _mm_store_si128((__m128i*)_out, result);
 
-                    //next two samples
+                    // next two samples
                     _in += 2;
                     _out += 4;
                 }
@@ -325,8 +314,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
 
     for (j = 0; j < sse_iters % ROTATOR_RELOAD; j++)
         {
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -335,7 +324,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -343,11 +332,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
             tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
             two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-            //next two samples
+            // next two samples
             _in += 2;
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
             __VOLK_GNSSSDR_PREFETCH(_in + 8);
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -356,7 +345,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -368,7 +357,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_a_sse3_reload(lv_16sc
             result = _mm_packs_epi32(c1, c2);  // convert from 32ic to 16ic
             _mm_store_si128((__m128i*)_out, result);
 
-            //next two samples
+            // next two samples
             _in += 2;
             _out += 4;
         }
@@ -418,8 +407,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3(lv_16sc_t* out
 
     for (number = 0; number < sse_iters; number++)
         {
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -428,7 +417,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3(lv_16sc_t* out
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -436,11 +425,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3(lv_16sc_t* out
             tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
             two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-            //next two samples
+            // next two samples
             _in += 2;
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
             __VOLK_GNSSSDR_PREFETCH(_in + 8);
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -449,7 +438,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3(lv_16sc_t* out
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -471,7 +460,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3(lv_16sc_t* out
                     two_phase_acc_reg = _mm_div_ps(two_phase_acc_reg, tmp2);
                 }
 
-            //next two samples
+            // next two samples
             _in += 2;
             _out += 4;
         }
@@ -525,8 +514,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
         {
             for (j = 0; j < ROTATOR_RELOAD; j++)
                 {
-                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-                    //complex 32fc multiplication b=a*two_phase_acc_reg
+                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+                    // complex 32fc multiplication b=a*two_phase_acc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -535,7 +524,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
                     b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
                     c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-                    //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+                    // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -543,11 +532,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
                     tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
                     two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-                    //next two samples
+                    // next two samples
                     _in += 2;
-                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+                    a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
                     __VOLK_GNSSSDR_PREFETCH(_in + 8);
-                    //complex 32fc multiplication b=a*two_phase_acc_reg
+                    // complex 32fc multiplication b=a*two_phase_acc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -556,7 +545,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
                     b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
                     c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-                    //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+                    // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
                     yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
                     yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
                     tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -568,7 +557,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
                     result = _mm_packs_epi32(c1, c2);  // convert from 32ic to 16ic
                     _mm_storeu_si128((__m128i*)_out, result);
 
-                    //next two samples
+                    // next two samples
                     _in += 2;
                     _out += 4;
                 }
@@ -582,8 +571,8 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
 
     for (j = 0; j < sse_iters % ROTATOR_RELOAD; j++)
         {
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -592,7 +581,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c1 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -600,11 +589,11 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
             tmp2 = _mm_mul_ps(tmp3, yh);                                        // tmp2 = ai*ci,ar*ci,bi*di,br*di
             two_phase_acc_reg = _mm_addsub_ps(tmp1, tmp2);                      // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
 
-            //next two samples
+            // next two samples
             _in += 2;
-            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // //load (2 byte imag, 2 byte real) x 2 into 128 bits reg
+            a = _mm_set_ps((float)(lv_cimag(_in[1])), (float)(lv_creal(_in[1])), (float)(lv_cimag(_in[0])), (float)(lv_creal(_in[0])));  // // load (2 byte imag, 2 byte real) x 2 into 128 bits reg
             __VOLK_GNSSSDR_PREFETCH(_in + 8);
-            //complex 32fc multiplication b=a*two_phase_acc_reg
+            // complex 32fc multiplication b=a*two_phase_acc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);  // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(a, yl);                 // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -613,7 +602,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
             b = _mm_addsub_ps(tmp1, tmp2);            // ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di
             c2 = _mm_cvtps_epi32(b);                  // convert from 32fc to 32ic
 
-            //complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
+            // complex 32fc multiplication two_phase_acc_reg=two_phase_acc_reg*two_phase_inc_reg
             yl = _mm_moveldup_ps(two_phase_acc_reg);                            // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(two_phase_acc_reg);                            // Load yh with ci,ci,di,di
             tmp1 = _mm_mul_ps(two_phase_inc_reg, yl);                           // tmp1 = ar*cr,ai*cr,br*dr,bi*dr
@@ -625,7 +614,7 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_u_sse3_reload(lv_16sc
             result = _mm_packs_epi32(c1, c2);  // convert from 32ic to 16ic
             _mm_storeu_si128((__m128i*)_out, result);
 
-            //next two samples
+            // next two samples
             _in += 2;
             _out += 4;
         }
@@ -746,9 +735,9 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_neon(lv_16sc_t* outVe
                     // Regenerate phase
                     if ((i % 512) == 0)
                         {
-                            //printf("Computed phase:  %f\n", cos(cargf(lv_cmake(_phase_real[0],_phase_imag[0]))));
+                            // printf("Computed phase:  %f\n", cos(cargf(lv_cmake(_phase_real[0],_phase_imag[0]))));
                             phase_est = arg_phase0 + (i + 1) * 4 * arg_phase_inc;
-                            //printf("Estimated phase: %f\n\n", cos(phase_est));
+                            // printf("Estimated phase: %f\n\n", cos(phase_est));
 
                             *phase = lv_cmake(cos(phase_est), sin(phase_est));
                             phase2 = (lv_32fc_t)(*phase) * phase_inc;
@@ -887,9 +876,9 @@ static inline void volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_neon_reload(lv_16sc_t
                             _out += 4;
                         }
                     // Regenerate phase
-                    //printf("Computed phase:  %f\n", cos(cargf(lv_cmake(_phase_real[0],_phase_imag[0]))));
+                    // printf("Computed phase:  %f\n", cos(cargf(lv_cmake(_phase_real[0],_phase_imag[0]))));
                     phase_est = arg_phase0 + (n + 1) * ROTATOR_RELOAD * 4 * arg_phase_inc;
-                    //printf("Estimated phase: %f\n\n", cos(phase_est));
+                    // printf("Estimated phase: %f\n\n", cos(phase_est));
                     *phase = lv_cmake(cos(phase_est), sin(phase_est));
                     phase2 = (lv_32fc_t)(*phase) * phase_inc;
                     phase3 = phase2 * phase_inc;

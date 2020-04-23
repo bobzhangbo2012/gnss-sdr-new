@@ -1,25 +1,17 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-
+set(OPT_DRIVER_SOURCES "")
+set(OPT_DRIVER_HEADERS "")
 if(ENABLE_RAW_UDP AND PCAP_FOUND)
-    set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} gr_complex_ip_packet_source.cc)
-    set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} gr_complex_ip_packet_source.h)
+    set(OPT_DRIVER_SOURCES gr_complex_ip_packet_source.cc)
+    set(OPT_DRIVER_HEADERS gr_complex_ip_packet_source.h)
 endif()
 
 
@@ -60,13 +52,18 @@ add_library(signal_source_gr_blocks
 
 target_link_libraries(signal_source_gr_blocks
     PUBLIC
+        signal_source_libs
         Boost::thread
         Gnuradio::runtime
-        signal_source_libs
     PRIVATE
-        core_receiver
+        core_libs
         Gflags::gflags
         Glog::glog
+)
+
+target_include_directories(signal_source_gr_blocks
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/core/receiver
 )
 
 if(ENABLE_RAW_UDP AND PCAP_FOUND)
@@ -76,16 +73,24 @@ if(ENABLE_RAW_UDP AND PCAP_FOUND)
     )
 endif()
 
-if(OS_IS_MACOSX)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_definitions(signal_source_gr_blocks
-            PUBLIC
-                -DBOOST_ASIO_HAS_STD_STRING_VIEW
-        )
+# Fix for Boost Asio < 1.70
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND (Boost_VERSION_STRING VERSION_LESS 1.70.0))
+        if(${has_string_view})
+            target_compile_definitions(signal_source_gr_blocks
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=1
+            )
+        else()
+            target_compile_definitions(signal_source_gr_blocks
+                PUBLIC
+                    -DBOOST_ASIO_HAS_STD_STRING_VIEW=0
+            )
+        endif()
     endif()
 endif()
 
-if(Boost_VERSION VERSION_GREATER "106599")
+if(Boost_VERSION_STRING VERSION_GREATER 1.65.99)
     target_compile_definitions(signal_source_gr_blocks
         PUBLIC
             -DBOOST_GREATER_1_65

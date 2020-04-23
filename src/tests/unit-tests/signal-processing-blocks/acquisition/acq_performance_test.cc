@@ -6,29 +6,19 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
+#include "GPS_L1_CA.h"
 #include "acquisition_dump_reader.h"
 #include "display.h"
 #include "file_configuration.h"
@@ -47,13 +37,30 @@
 #include "test_flags.h"
 #include "tracking_true_obs_reader.h"
 #include "true_observables_reader.h"
-#include <boost/filesystem.hpp>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/interleaved_char_to_complex.h>
 #include <gnuradio/blocks/skiphead.h>
 #include <gnuradio/top_block.h>
+#include <pmt/pmt.h>
 #include <thread>
 #include <utility>
+
+#if HAS_STD_FILESYSTEM
+#include <system_error>
+namespace errorlib = std;
+#if HAS_STD_FILESYSTEM_EXPERIMENTAL
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#else
+#include <boost/filesystem.hpp>
+#include <boost/system/error_code.hpp>  // for error_code
+namespace fs = boost::filesystem;
+namespace errorlib = boost::system;
+#endif
 
 
 DEFINE_string(config_file_ptest, std::string(""), "File containing alternative configuration parameters for the acquisition performance test.");
@@ -64,7 +71,6 @@ DEFINE_int32(acq_test_doppler_max, 5000, "Maximum Doppler, in Hz");
 DEFINE_int32(acq_test_doppler_step, 125, "Doppler step, in Hz.");
 DEFINE_int32(acq_test_coherent_time_ms, 1, "Acquisition coherent time, in ms");
 DEFINE_int32(acq_test_max_dwells, 1, "Number of non-coherent integrations.");
-DEFINE_bool(acq_test_use_CFAR_algorithm, true, "Use CFAR algorithm.");
 DEFINE_bool(acq_test_bit_transition_flag, false, "Bit transition flag.");
 DEFINE_bool(acq_test_make_two_steps, false, "Perform second step in a thinner grid.");
 DEFINE_int32(acq_test_second_nbins, 4, "If --acq_test_make_two_steps is set to true, this parameter sets the number of bins done in the acquisition refinement stage.");
@@ -103,7 +109,7 @@ class AcqPerfTest_msg_rx : public gr::block
 private:
     friend AcqPerfTest_msg_rx_sptr AcqPerfTest_msg_rx_make(Concurrent_Queue<int>& queue);
     void msg_handler_events(pmt::pmt_t msg);
-    AcqPerfTest_msg_rx(Concurrent_Queue<int>& queue);
+    explicit AcqPerfTest_msg_rx(Concurrent_Queue<int>& queue);
     Concurrent_Queue<int>& channel_internal_queue;
 
 public:
@@ -277,7 +283,7 @@ protected:
 
         num_thresholds = pfa_vector.size();
 
-        int aux2 = ((generated_signal_duration_s * 1000 - (FLAGS_acq_test_coherent_time_ms * FLAGS_acq_test_max_dwells)) / (FLAGS_acq_test_coherent_time_ms * FLAGS_acq_test_max_dwells));
+        int aux2 = ((generated_signal_duration_s * 900 - (FLAGS_acq_test_coherent_time_ms * FLAGS_acq_test_max_dwells)) / (FLAGS_acq_test_coherent_time_ms * FLAGS_acq_test_max_dwells));
         if ((FLAGS_acq_test_num_meas > 0) and (FLAGS_acq_test_num_meas < aux2))
             {
                 num_of_measurements = static_cast<unsigned int>(FLAGS_acq_test_num_meas);
@@ -326,7 +332,7 @@ protected:
 
     Concurrent_Queue<int> channel_internal_queue;
 
-    gr::msg_queue::sptr queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     std::shared_ptr<AcquisitionInterface> acquisition;
     std::shared_ptr<InMemoryConfiguration> config;
@@ -497,18 +503,10 @@ int AcquisitionPerformanceTest::configure_receiver(double cn0, float pfa, unsign
             config->set_property("Acquisition.doppler_step", std::to_string(doppler_step));
 
             config->set_property("Acquisition.threshold", std::to_string(pfa));
-            //if (FLAGS_acq_test_pfa_init > 0.0) config->supersede_property("Acquisition.pfa", std::to_string(pfa));
+            // if (FLAGS_acq_test_pfa_init > 0.0) config->supersede_property("Acquisition.pfa", std::to_string(pfa));
             if (FLAGS_acq_test_pfa_init > 0.0)
                 {
                     config->supersede_property("Acquisition.pfa", std::to_string(pfa));
-                }
-            if (FLAGS_acq_test_use_CFAR_algorithm)
-                {
-                    config->set_property("Acquisition.use_CFAR_algorithm", "true");
-                }
-            else
-                {
-                    config->set_property("Acquisition.use_CFAR_algorithm", "false");
                 }
 
             config->set_property("Acquisition.coherent_integration_time_ms", std::to_string(coherent_integration_time_ms));
@@ -582,7 +580,7 @@ int AcquisitionPerformanceTest::run_receiver()
     boost::shared_ptr<AcqPerfTest_msg_rx> msg_rx = AcqPerfTest_msg_rx_make(channel_internal_queue);
     gr::blocks::skiphead::sptr skiphead = gr::blocks::skiphead::make(sizeof(gr_complex), FLAGS_acq_test_skiphead);
 
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     gnss_synchro = Gnss_Synchro();
     init();
 
@@ -692,8 +690,8 @@ void AcquisitionPerformanceTest::plot_results()
                 {
                     try
                         {
-                            boost::filesystem::path p(gnuplot_executable);
-                            boost::filesystem::path dir = p.parent_path();
+                            fs::path p(gnuplot_executable);
+                            fs::path dir = p.parent_path();
                             const std::string& gnuplot_path = dir.native();
                             Gnuplot::set_GNUPlotPath(gnuplot_path);
 
@@ -782,12 +780,12 @@ TEST_F(AcquisitionPerformanceTest, ROC)
 {
     Tracking_True_Obs_Reader true_trk_data;
 
-    if (boost::filesystem::exists(path_str))
+    if (fs::exists(path_str))
         {
-            boost::filesystem::remove_all(path_str);
+            fs::remove_all(path_str);
         }
-    boost::system::error_code ec;
-    ASSERT_TRUE(boost::filesystem::create_directory(path_str, ec)) << "Could not create the " << path_str << " folder.";
+    errorlib::error_code ec;
+    ASSERT_TRUE(fs::create_directory(path_str, ec)) << "Could not create the " << path_str << " folder.";
 
     unsigned int cn0_index = 0;
     for (double it : cn0_vector)
@@ -883,15 +881,15 @@ TEST_F(AcquisitionPerformanceTest, ROC)
                                             acq_dump.read_binary_acq();
                                             if (acq_dump.positive_acq)
                                                 {
-                                                    //std::cout << "Meas acq_delay_samples: " << acq_dump.acq_delay_samples << " chips: " << acq_dump.acq_delay_samples / (baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD / GPS_L1_CA_CODE_LENGTH_CHIPS) << std::endl;
+                                                    // std::cout << "Meas acq_delay_samples: " << acq_dump.acq_delay_samples << " chips: " << acq_dump.acq_delay_samples / (baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S / GPS_L1_CA_CODE_LENGTH_CHIPS) << std::endl;
                                                     meas_timestamp_s(execution - 1) = acq_dump.sample_counter / baseband_sampling_freq;
                                                     meas_doppler(execution - 1) = acq_dump.acq_doppler_hz;
-                                                    meas_acq_delay_chips(execution - 1) = acq_dump.acq_delay_samples / (baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD / GPS_L1_CA_CODE_LENGTH_CHIPS);
+                                                    meas_acq_delay_chips(execution - 1) = acq_dump.acq_delay_samples / (baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S / GPS_L1_CA_CODE_LENGTH_CHIPS);
                                                     positive_acq(execution - 1) = acq_dump.positive_acq;
                                                 }
                                             else
                                                 {
-                                                    //std::cout << "Failed acquisition." << std::endl;
+                                                    // std::cout << "Failed acquisition." << std::endl;
                                                     meas_timestamp_s(execution - 1) = arma::datum::inf;
                                                     meas_doppler(execution - 1) = arma::datum::inf;
                                                     meas_acq_delay_chips(execution - 1) = arma::datum::inf;
@@ -924,7 +922,7 @@ TEST_F(AcquisitionPerformanceTest, ROC)
                                             true_prn_delay_chips(epoch_counter) = GPS_L1_CA_CODE_LENGTH_CHIPS - true_trk_data.prn_delay_chips;
                                             true_tow_s(epoch_counter) = true_trk_data.tow;
                                             epoch_counter++;
-                                            //std::cout << "True PRN_Delay chips = " << GPS_L1_CA_CODE_LENGTH_CHIPS - true_trk_data.prn_delay_chips << " at " << true_trk_data.signal_timestamp_s << std::endl;
+                                            // std::cout << "True PRN_Delay chips = " << GPS_L1_CA_CODE_LENGTH_CHIPS - true_trk_data.prn_delay_chips << " at " << true_trk_data.signal_timestamp_s << std::endl;
                                         }
 
                                     // Process results
@@ -939,7 +937,7 @@ TEST_F(AcquisitionPerformanceTest, ROC)
                                             interp1(true_timestamp_s, true_prn_delay_chips, meas_timestamp_s, true_interpolated_prn_delay_chips);
 
                                             arma::vec doppler_estimation_error = true_interpolated_doppler - meas_doppler;
-                                            arma::vec delay_estimation_error = true_interpolated_prn_delay_chips - (meas_acq_delay_chips - ((1.0 / baseband_sampling_freq) / GPS_L1_CA_CHIP_PERIOD));  // compensate 1 sample delay
+                                            arma::vec delay_estimation_error = true_interpolated_prn_delay_chips - (meas_acq_delay_chips - ((1.0 / baseband_sampling_freq) / GPS_L1_CA_CHIP_PERIOD_S));  // compensate 1 sample delay
 
                                             // Cut measurements without reference
                                             for (int i = 0; i < num_executions; i++)
@@ -1011,7 +1009,7 @@ TEST_F(AcquisitionPerformanceTest, ROC)
                                         }
                                     else
                                         {
-                                            //std::cout << "No reference data has been found. Maybe a non-present satellite?" << num_executions << std::endl;
+                                            // std::cout << "No reference data has been found. Maybe a non-present satellite?" << num_executions << std::endl;
                                             if (k == 1)
                                                 {
                                                     double wrongly_detected = arma::accu(positive_acq);

@@ -7,31 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_FREQ_XLATING_FIR_FILTER_H_
-#define GNSS_SDR_FREQ_XLATING_FIR_FILTER_H_
+#ifndef GNSS_SDR_FREQ_XLATING_FIR_FILTER_H
+#define GNSS_SDR_FREQ_XLATING_FIR_FILTER_H
 
 #include "complex_float_to_complex_byte.h"
 #include "gnss_block_interface.h"
@@ -59,7 +48,7 @@ class ConfigurationInterface;
  * translation that shifts intermediate_freq_ down to zero Hz. The frequency
  * translation logically comes before the filtering operation.
  *
- * See Parks-McClellan FIR filter design, http://en.wikipedia.org/wiki/Parks-McClellan_filter_design_algorithm
+ * See Parks-McClellan FIR filter design, https://en.wikipedia.org/wiki/Parks-McClellan_filter_design_algorithm
  * Calculates the optimal (in the Chebyshev/minimax sense) FIR filter impulse response
  * given a set of band edges, the desired response on those bands, and the weight given
  * to the error in those bands.
@@ -71,7 +60,7 @@ public:
         std::string role, unsigned int in_streams,
         unsigned int out_streams);
 
-    virtual ~FreqXlatingFirFilter();
+    ~FreqXlatingFirFilter() = default;
 
     inline std::string role() override
     {
@@ -121,4 +110,4 @@ private:
     complex_float_to_complex_byte_sptr complex_to_complex_byte_;
 };
 
-#endif  // GNSS_SDR_FREQ_XLATING_FIR_FILTER_H_
+#endif  // GNSS_SDR_FREQ_XLATING_FIR_FILTER_H

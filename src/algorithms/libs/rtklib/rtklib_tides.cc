@@ -25,28 +25,7 @@
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *----------------------------------------------------------------------------*/
 
@@ -55,12 +34,27 @@
 
 
 /* solar/lunar tides (ref [2] 7) ---------------------------------------------*/
-//#ifndef IERS_MODEL
+// #ifndef IERS_MODEL
 void tide_pl(const double *eu, const double *rp, double GMp,
     const double *pos, double *dr)
 {
-    const double H3 = 0.292, L3 = 0.015;
-    double r, ep[3], latp, lonp, p, K2, K3, a, H2, L2, dp, du, cosp, sinl, cosl;
+    const double H3 = 0.292;
+    const double L3 = 0.015;
+    double r;
+    double ep[3];
+    double latp;
+    double lonp;
+    double p;
+    double K2;
+    double K3;
+    double a;
+    double H2;
+    double L2;
+    double dp;
+    double du;
+    double cosp;
+    double sinl;
+    double cosl;
     int i;
 
     trace(4, "tide_pl : pos=%.3f %.3f\n", pos[0] * R2D, pos[1] * R2D);
@@ -112,7 +106,13 @@ void tide_solid(const double *rsun, const double *rmoon,
     const double *pos, const double *E, double gmst, int opt,
     double *dr)
 {
-    double dr1[3], dr2[3], eu[3], du, dn, sinl, sin2l;
+    double dr1[3] = {0.0, 0.0, 0.0};
+    double dr2[3] = {0.0, 0.0, 0.0};
+    double eu[3];
+    double du;
+    double dn;
+    double sinl;
+    double sin2l;
 
     trace(3, "tide_solid: pos=%.3f %.3f opt=%d\n", pos[0] * R2D, pos[1] * R2D, opt);
 
@@ -143,7 +143,7 @@ void tide_solid(const double *rsun, const double *rmoon,
         }
     trace(5, "tide_solid: dr=%.3f %.3f %.3f\n", dr[0], dr[1], dr[2]);
 }
-//#endif /* !IERS_MODEL */
+// #endif /* !IERS_MODEL */
 
 
 /* displacement by ocean tide loading (ref [2] 7) ----------------------------*/
@@ -163,8 +163,17 @@ void tide_oload(gtime_t tut, const double *odisp, double *denu)
         {0.03982E-5, 2.0, 0.0, 0.0, 0.00}    /* Ssa */
     };
     const double ep1975[] = {1975, 1, 1, 0, 0, 0};
-    double ep[6], fday, days, t, t2, t3, a[5], ang, dp[3] = {0};
-    int i, j;
+    double ep[6];
+    double fday;
+    double days;
+    double t;
+    double t2;
+    double t3;
+    double a[5];
+    double ang;
+    double dp[3] = {0};
+    int i;
+    int j;
 
     trace(3, "tide_oload:\n");
 
@@ -208,7 +217,9 @@ void tide_oload(gtime_t tut, const double *odisp, double *denu)
 void iers_mean_pole(gtime_t tut, double *xp_bar, double *yp_bar)
 {
     const double ep2000[] = {2000, 1, 1, 0, 0, 0};
-    double y, y2, y3;
+    double y;
+    double y2;
+    double y3;
 
     y = timediff(tut, epoch2time(ep2000)) / 86400.0 / 365.25;
 
@@ -231,7 +242,12 @@ void iers_mean_pole(gtime_t tut, double *xp_bar, double *yp_bar)
 void tide_pole(gtime_t tut, const double *pos, const double *erpv,
     double *denu)
 {
-    double xp_bar, yp_bar, m1, m2, cosl, sinl;
+    double xp_bar;
+    double yp_bar;
+    double m1;
+    double m2;
+    double cosl;
+    double sinl;
 
     trace(3, "tide_pole: pos=%.3f %.3f\n", pos[0] * R2D, pos[1] * R2D);
 
@@ -257,7 +273,7 @@ void tide_pole(gtime_t tut, const double *pos, const double *erpv,
  * displacements by earth tides
  * args   : gtime_t tutc     I   time in utc
  *          double *rr       I   site position (ecef) (m)
- *          int    opt       I   options (or of the followings)
+ *          int    opt       I   options (one of the following)
  *                                 1: solid earth tide
  *                                 2: ocean tide loading
  *                                 4: pole tide
@@ -282,7 +298,14 @@ void tidedisp(gtime_t tutc, const double *rr, int opt, const erp_t *erp,
     const double *odisp, double *dr)
 {
     gtime_t tut;
-    double pos[2], E[9], drt[3], denu[3], rs[3], rm[3], gmst, erpv[5] = {0};
+    double pos[2];
+    double E[9];
+    double drt[3];
+    double denu[3];
+    double rs[3];
+    double rm[3];
+    double gmst;
+    double erpv[5] = {0};
     int i;
 #ifdef IERS_MODEL
     double ep[6], fhr;
@@ -311,15 +334,14 @@ void tidedisp(gtime_t tutc, const double *rr, int opt, const erp_t *erp,
 
     if (opt & 1)
         { /* solid earth tides */
-
             /* sun and moon position in ecef */
             sunmoonpos(tutc, erpv, rs, rm, &gmst);
 
 #ifdef IERS_MODEL
             time2epoch(tutc, ep);
-            year = (int)ep[0];
-            mon = (int)ep[1];
-            day = (int)ep[2];
+            year = static_cast<int>(ep[0]);
+            mon = static_cast<int>(ep[1]);
+            day = static_cast<int>(ep[2]);
             fhr = ep[3] + ep[4] / 60.0 + ep[5] / 3600.0;
 
             /* call DEHANTTIDEINEL */

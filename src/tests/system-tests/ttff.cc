@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -293,7 +282,6 @@ void receive_msg()
                         }
                 }
         }
-    return;
 }
 
 
@@ -450,7 +438,8 @@ TEST_F(TtffTest /*unused*/, ColdStart /*unused*/)
 
             // record startup time
             std::cout << "Starting measurement " << num_measurements + 1 << " / " << FLAGS_num_measurements << std::endl;
-            std::chrono::time_point<std::chrono::system_clock> start, end;
+            std::chrono::time_point<std::chrono::system_clock> start;
+            std::chrono::time_point<std::chrono::system_clock> end;
             start = std::chrono::system_clock::now();
             // start receiver
             try
@@ -499,7 +488,7 @@ TEST_F(TtffTest /*unused*/, ColdStart /*unused*/)
         {
             print_TTFF_report(TTFF_v, config2);
         }
-    std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(5));  //let the USRP some time to rest before the next test
+    std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(5));  // let the USRP some time to rest before the next test
 }
 
 
@@ -533,7 +522,8 @@ TEST_F(TtffTest /*unused*/, HotStart /*unused*/)
                 }
             // record startup time
             std::cout << "Starting measurement " << num_measurements + 1 << " / " << FLAGS_num_measurements << std::endl;
-            std::chrono::time_point<std::chrono::system_clock> start, end;
+            std::chrono::time_point<std::chrono::system_clock> start;
+            std::chrono::time_point<std::chrono::system_clock> end;
             start = std::chrono::system_clock::now();
 
             // start receiver

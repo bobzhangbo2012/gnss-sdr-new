@@ -5,46 +5,36 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #include "raw_array_signal_source.h"
+#include "concurrent_queue.h"
 #include "configuration_interface.h"
 #include <glog/logging.h>
 #include <gnuradio/blocks/file_sink.h>
-#include <gnuradio/msg_queue.h>
+#include <pmt/pmt.h>
 #include <dbfcttc/raw_array.h>
 
 
 RawArraySignalSource::RawArraySignalSource(ConfigurationInterface* configuration,
-    std::string role, unsigned int in_stream, unsigned int out_stream, gr::msg_queue::sptr queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(queue)
+    std::string role, unsigned int in_stream, unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(queue)
 {
     std::string default_item_type = "gr_complex";
     std::string default_dump_file = "./data/raw_array_source.dat";
     item_type_ = configuration->property(role + ".item_type", default_item_type);
 
-    //dump_ = configuration->property(role + ".dump", false);
-    //dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
+    // dump_ = configuration->property(role + ".dump", false);
+    // dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
     dump_ = false;
 
     std::string default_ethernet_dev = "eth0";
@@ -82,7 +72,7 @@ RawArraySignalSource::RawArraySignalSource(ConfigurationInterface* configuration
         }
     if (dump_)
         {
-            //TODO: multichannel recorder
+            // TODO: multichannel recorder
             DLOG(INFO) << "Dumping output into file " << dump_filename_;
             file_sink_ = gr::blocks::file_sink::make(item_size_, dump_filename_.c_str());
         }
@@ -93,14 +83,11 @@ RawArraySignalSource::RawArraySignalSource(ConfigurationInterface* configuration
 }
 
 
-RawArraySignalSource::~RawArraySignalSource() = default;
-
-
 void RawArraySignalSource::connect(gr::top_block_sptr top_block)
 {
     if (dump_)
         {
-            //TODO: multichannel recorder
+            // TODO: multichannel recorder
             top_block->connect(raw_array_source_, 0, file_sink_, 0);
             DLOG(INFO) << "connected raw_array_source_ to file sink";
         }
@@ -115,7 +102,7 @@ void RawArraySignalSource::disconnect(gr::top_block_sptr top_block)
 {
     if (dump_)
         {
-            //TODO: multichannel recorder
+            // TODO: multichannel recorder
             top_block->disconnect(raw_array_source_, 0, file_sink_, 0);
         }
 }

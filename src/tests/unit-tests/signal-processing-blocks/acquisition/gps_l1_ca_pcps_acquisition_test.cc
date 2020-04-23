@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -33,6 +22,7 @@
 
 #include "GPS_L1_CA.h"
 #include "acquisition_dump_reader.h"
+#include "concurrent_queue.h"
 #include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
 #include "gnss_sdr_valve.h"
@@ -41,21 +31,33 @@
 #include "gps_l1_ca_pcps_acquisition.h"
 #include "in_memory_configuration.h"
 #include "test_flags.h"
-#include <boost/filesystem.hpp>
 #include <boost/make_shared.hpp>
 #include <glog/logging.h>
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
 #include <chrono>
 #include <utility>
+
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
+#endif
+
+#if HAS_STD_FILESYSTEM
+#if HAS_STD_FILESYSTEM_EXPERIMENTAL
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#else
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 #endif
 
 
@@ -70,12 +72,12 @@ class GpsL1CaPcpsAcquisitionTest_msg_rx : public gr::block
 {
 private:
     friend GpsL1CaPcpsAcquisitionTest_msg_rx_sptr GpsL1CaPcpsAcquisitionTest_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_events(const pmt::pmt_t &msg);
     GpsL1CaPcpsAcquisitionTest_msg_rx();
 
 public:
     int rx_message;
-    ~GpsL1CaPcpsAcquisitionTest_msg_rx();  //!< Default destructor
+    ~GpsL1CaPcpsAcquisitionTest_msg_rx() override;  //!< Default destructor
 };
 
 
@@ -85,11 +87,11 @@ GpsL1CaPcpsAcquisitionTest_msg_rx_sptr GpsL1CaPcpsAcquisitionTest_msg_rx_make()
 }
 
 
-void GpsL1CaPcpsAcquisitionTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL1CaPcpsAcquisitionTest_msg_rx::msg_handler_events(const pmt::pmt_t &msg)
 {
     try
         {
-            int64_t message = pmt::to_long(std::move(msg));
+            int64_t message = pmt::to_long(msg);
             rx_message = message;
         }
     catch (boost::bad_any_cast &e)
@@ -126,7 +128,7 @@ protected:
         doppler_step = 100;
     }
 
-    ~GpsL1CaPcpsAcquisitionTest() = default;
+    ~GpsL1CaPcpsAcquisitionTest() override = default;
 
     void init();
     void plot_grid();
@@ -166,17 +168,17 @@ void GpsL1CaPcpsAcquisitionTest::init()
     config->set_property("Acquisition_1C.doppler_max", std::to_string(doppler_max));
     config->set_property("Acquisition_1C.doppler_step", std::to_string(doppler_step));
     config->set_property("Acquisition_1C.repeat_satellite", "false");
-    //config->set_property("Acquisition_1C.pfa", "0.0");
+    // config->set_property("Acquisition_1C.pfa", "0.0");
 }
 
 
 void GpsL1CaPcpsAcquisitionTest::plot_grid()
 {
-    //load the measured values
+    // load the measured values
     std::string basename = "./tmp-acq-gps1/acquisition_G_1C";
     auto sat = static_cast<unsigned int>(gnss_synchro.PRN);
 
-    auto samples_per_code = static_cast<unsigned int>(round(4000000 / (GPS_L1_CA_CODE_RATE_HZ / GPS_L1_CA_CODE_LENGTH_CHIPS)));  // !!
+    auto samples_per_code = static_cast<unsigned int>(round(4000000 / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));  // !!
     Acquisition_Dump_Reader acq_dump(basename, sat, doppler_max, doppler_step, samples_per_code, 1);
 
     if (!acq_dump.read_binary_acq())
@@ -186,7 +188,7 @@ void GpsL1CaPcpsAcquisitionTest::plot_grid()
 
     std::vector<int> *doppler = &acq_dump.doppler;
     std::vector<unsigned int> *samples = &acq_dump.samples;
-    std::vector<std::vector<float> > *mag = &acq_dump.mag;
+    std::vector<std::vector<float>> *mag = &acq_dump.mag;
 
     const std::string gnuplot_executable(FLAGS_gnuplot_executable);
     if (gnuplot_executable.empty())
@@ -200,8 +202,8 @@ void GpsL1CaPcpsAcquisitionTest::plot_grid()
             std::cout << "Plotting the acquisition grid. This can take a while..." << std::endl;
             try
                 {
-                    boost::filesystem::path p(gnuplot_executable);
-                    boost::filesystem::path dir = p.parent_path();
+                    fs::path p(gnuplot_executable);
+                    fs::path dir = p.parent_path();
                     const std::string &gnuplot_path = dir.native();
                     Gnuplot::set_GNUPlotPath(gnuplot_path);
 
@@ -217,7 +219,7 @@ void GpsL1CaPcpsAcquisitionTest::plot_grid()
                     g1.set_title("GPS L1 C/A signal acquisition for satellite PRN #" + std::to_string(gnss_synchro.PRN));
                     g1.set_xlabel("Doppler [Hz]");
                     g1.set_ylabel("Sample");
-                    //g1.cmd("set view 60, 105, 1, 1");
+                    // g1.cmd("set view 60, 105, 1, 1");
                     g1.plot_grid3d(*doppler, *samples, *mag);
 
                     g1.savetops("GPS_L1_acq_grid");
@@ -229,27 +231,28 @@ void GpsL1CaPcpsAcquisitionTest::plot_grid()
                 }
         }
     std::string data_str = "./tmp-acq-gps1";
-    if (boost::filesystem::exists(data_str))
+    if (fs::exists(data_str))
         {
-            boost::filesystem::remove_all(data_str);
+            fs::remove_all(data_str);
         }
 }
 
 
-TEST_F(GpsL1CaPcpsAcquisitionTest, Instantiate)
+TEST_F(GpsL1CaPcpsAcquisitionTest /*unused*/, Instantiate /*unused*/)
 {
     init();
     boost::shared_ptr<GpsL1CaPcpsAcquisition> acquisition = boost::make_shared<GpsL1CaPcpsAcquisition>(config.get(), "Acquisition_1C", 1, 0);
 }
 
 
-TEST_F(GpsL1CaPcpsAcquisitionTest, ConnectAndRun)
+TEST_F(GpsL1CaPcpsAcquisitionTest /*unused*/, ConnectAndRun /*unused*/)
 {
     int fs_in = 4000000;
     int nsamples = 4000;
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0);
-    gr::msg_queue::sptr queue = gr::msg_queue::make(0);
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
 
     top_block = gr::make_top_block("Acquisition test");
     init();
@@ -276,9 +279,10 @@ TEST_F(GpsL1CaPcpsAcquisitionTest, ConnectAndRun)
 }
 
 
-TEST_F(GpsL1CaPcpsAcquisitionTest, ValidationOfResults)
+TEST_F(GpsL1CaPcpsAcquisitionTest /*unused*/, ValidationOfResults /*unused*/)
 {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::time_point<std::chrono::system_clock> start;
+    std::chrono::time_point<std::chrono::system_clock> end;
     std::chrono::duration<double> elapsed_seconds(0.0);
     top_block = gr::make_top_block("Acquisition test");
 
@@ -290,11 +294,11 @@ TEST_F(GpsL1CaPcpsAcquisitionTest, ValidationOfResults)
     if (FLAGS_plot_acq_grid == true)
         {
             std::string data_str = "./tmp-acq-gps1";
-            if (boost::filesystem::exists(data_str))
+            if (fs::exists(data_str))
                 {
-                    boost::filesystem::remove_all(data_str);
+                    fs::remove_all(data_str);
                 }
-            boost::filesystem::create_directory(data_str);
+            fs::create_directory(data_str);
         }
 
     std::shared_ptr<GpsL1CaPcpsAcquisition> acquisition = std::make_shared<GpsL1CaPcpsAcquisition>(config.get(), "Acquisition_1C", 1, 0);

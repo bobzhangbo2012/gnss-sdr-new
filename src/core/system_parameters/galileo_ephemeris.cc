@@ -5,25 +5,14 @@
  * \author Mara Branzanti 2013. mara.branzanti(at)gmail.com
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -135,7 +124,7 @@ double Galileo_Ephemeris::sv_clock_drift(double transmitTime)
     // Satellite Time Correction Algorithm, ICD 5.1.4
     double dt;
     dt = transmitTime - t0c_4;
-    Galileo_satClkDrift = af0_4 + af1_4 * dt + af2_4 * (dt * dt) + sv_clock_relativistic_term(transmitTime);  //+Galileo_dtr;
+    Galileo_satClkDrift = af0_4 + af1_4 * dt + af2_4 * (dt * dt) + sv_clock_relativistic_term(transmitTime);  // +Galileo_dtr;
     return Galileo_satClkDrift;
 }
 
@@ -158,7 +147,7 @@ double Galileo_Ephemeris::sv_clock_relativistic_term(double transmitTime)  // Sa
     n0 = sqrt(GALILEO_GM / (a * a * a));
 
     // Time from ephemeris reference epoch
-    //t = WN_5*86400*7 + TOW_5; //WN_5*86400*7 are the second from the origin of the Galileo time
+    // t = WN_5*86400*7 + TOW_5; //WN_5*86400*7 are the second from the origin of the Galileo time
     tk = transmitTime - t0e_1;
 
     // Corrected mean motion
@@ -181,7 +170,7 @@ double Galileo_Ephemeris::sv_clock_relativistic_term(double transmitTime)  // Sa
             dE = fmod(E - E_old, 2 * GALILEO_PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }
@@ -241,7 +230,7 @@ void Galileo_Ephemeris::satellitePosition(double transmitTime)
             dE = fmod(E - E_old, 2 * GALILEO_PI);
             if (fabs(dE) < 1e-12)
                 {
-                    //Necessary precision is reached, exit from the loop
+                    // Necessary precision is reached, exit from the loop
                     break;
                 }
         }

@@ -1,9 +1,9 @@
 /*-
- * Copyright (c) 2003 Lev Walkin <vlm@lionet.info>. All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
-#ifndef _BOOLEAN_H_
-#define _BOOLEAN_H_
+#ifndef _BOOLEAN_H
+#define _BOOLEAN_H
 
 #include <asn_application.h>
 
@@ -13,10 +13,10 @@ extern "C"
 #endif
 
     /*
- * The underlying integer may contain various values, but everything
- * non-zero is capped to 0xff by the DER encoder. The BER decoder may
- * yield non-zero values different from 1, beware.
- */
+     * The underlying integer may contain various values, but everything
+     * non-zero is capped to 0xff by the DER encoder. The BER decoder may
+     * yield non-zero values different from 1, beware.
+     */
     typedef int BOOLEAN_t;
 
     extern asn_TYPE_descriptor_t asn_DEF_BOOLEAN;

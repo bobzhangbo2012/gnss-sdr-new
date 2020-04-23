@@ -7,30 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
+#include "concurrent_queue.h"
 #include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
 #include "gnss_sdr_valve.h"
@@ -42,7 +32,6 @@
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
 #include <gnuradio/blocks/skiphead.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
 #include <chrono>
@@ -123,7 +112,7 @@ protected:
 
     void init();
 
-    gr::msg_queue::sptr queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     std::shared_ptr<GNSSBlockFactory> factory;
     std::shared_ptr<InMemoryConfiguration> config;
@@ -160,7 +149,7 @@ TEST_F(GpsL2MDllPllTrackingTest, ValidationOfResults)
     int nsamples = fs_in * 9;
 
     init();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Tracking test");
     std::shared_ptr<TrackingInterface> tracking = std::make_shared<GpsL2MDllPllTracking>(config.get(), "Tracking_2S", 1, 1);
     boost::shared_ptr<GpsL2MDllPllTrackingTest_msg_rx> msg_rx = GpsL2MDllPllTrackingTest_msg_rx_make();
@@ -182,7 +171,7 @@ TEST_F(GpsL2MDllPllTrackingTest, ValidationOfResults)
     }) << "Failure connecting tracking to the top_block.";
 
     ASSERT_NO_THROW({
-        //gr::analog::sig_source_c::sptr source = gr::analog::sig_source_c::make(fs_in, gr::analog::GR_SIN_WAVE, 1000, 1, gr_complex(0));
+        // gr::analog::sig_source_c::sptr source = gr::analog::sig_source_c::make(fs_in, gr::analog::GR_SIN_WAVE, 1000, 1, gr_complex(0));
         std::string path = std::string(TEST_PATH);
         std::string file = path + "signal_samples/gps_l2c_m_prn7_5msps.dat";
         const char* file_name = file.c_str();

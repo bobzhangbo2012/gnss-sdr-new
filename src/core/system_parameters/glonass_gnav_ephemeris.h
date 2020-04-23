@@ -7,32 +7,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GLONASS_GNAV_EPHEMERIS_H_
-#define GNSS_SDR_GLONASS_GNAV_EPHEMERIS_H_
+#ifndef GNSS_SDR_GLONASS_GNAV_EPHEMERIS_H
+#define GNSS_SDR_GLONASS_GNAV_EPHEMERIS_H
 
 
 #include <boost/date_time/posix_time/ptime.hpp>  // for ptime
@@ -46,17 +35,12 @@
  */
 class Glonass_Gnav_Ephemeris
 {
-private:
-    /*
-     * Accounts for the beginning or end of week crossover
-     *
-     * See paragraph 20.3.3.3.3.1 (IS-GPS-200E)
-     * \param[in]  -  time in seconds
-     * \param[out] -  corrected time, in seconds
-     */
-    double check_t(double time);
-
 public:
+    /*!
+     * Default constructor
+     */
+    Glonass_Gnav_Ephemeris();
+
     double d_m;            //!< String number within frame [dimensionless]
     double d_t_k;          //!< GLONASS Time (UTC(SU) + 3 h) referenced to the beginning of the frame within the current day [s]
     double d_t_b;          //!< Reference ephemeris relative time in GLONASS Time (UTC(SU) + 3 h). Index of a time interval within current day according to UTC(SU) + 03 hours 00 min. [s]
@@ -99,6 +83,38 @@ public:
     double d_TOW;                      //!< GLONASST IN GPST seconds of week
     double d_WN;                       //!< GLONASST IN GPST week number of the start of frame
     double d_tod;                      //!< Time of Day since ephemeris where decoded
+
+    /*!
+     * \brief Sets (\a d_satClkDrift)and returns the clock drift in seconds according to the User Algorithm for SV Clock Correction
+     *  (IS-GPS-200K,  20.3.3.3.3.1)
+     */
+    double sv_clock_drift(double transmitTime, double timeCorrUTC);
+
+    /*!
+     *  \brief Computes the GLONASS System Time and returns a boost::posix_time::ptime object
+     * \ param offset_time Is the start of day offset to compute the time
+     */
+    boost::posix_time::ptime compute_GLONASS_time(const double offset_time) const;
+
+    /*!
+     * \brief Converts from GLONASST to UTC
+     * \details The function simply adjust for the 6 hrs offset between GLONASST and UTC
+     * \param[in] offset_time Is the start of day offset
+     * \param[in] glot2utc_corr Correction from GLONASST to UTC
+     * \returns UTC time as a boost::posix_time::ptime object
+     */
+    boost::posix_time::ptime glot_to_utc(const double offset_time, const double glot2utc_corr) const;
+
+    /*!
+     * \brief Converts from GLONASST to GPST
+     * \details Converts from GLONASST to GPST in time of week (TOW) and week number (WN) format
+     * \param[in] tod_offset Is the start of day offset
+     * \param[in] glot2utc_corr Correction from GLONASST to UTC
+     * \param[in] glot2gpst_corr Correction from GLONASST to GPST
+     * \param[out] WN Week Number, not in mod(1024) format
+     * \param[out] TOW Time of Week in seconds of week
+     */
+    void glot_to_gpst(double tod_offset, double glot2utc_corr, double glot2gpst_corr, double* WN, double* TOW) const;
 
     template <class Archive>
 
@@ -145,42 +161,15 @@ public:
         archive& make_nvp("d_l5th_n", d_l5th_n);            //!< Health flag for nth satellite; ln = 0 indicates the n-th satellite is helthy, ln = 1 indicates malfunction of this nth satellite [dimensionless]
     }
 
-    /*!
-     * \brief Sets (\a d_satClkDrift)and returns the clock drift in seconds according to the User Algorithm for SV Clock Correction
-     *  (IS-GPS-200E,  20.3.3.3.3.1)
+private:
+    /*
+     * Accounts for the beginning or end of week crossover
+     *
+     * See paragraph 20.3.3.3.3.1 (IS-GPS-200K)
+     * \param[in]  -  time in seconds
+     * \param[out] -  corrected time, in seconds
      */
-    double sv_clock_drift(double transmitTime, double timeCorrUTC);
-
-    /*!
-     *  \brief Computes the GLONASS System Time and returns a boost::posix_time::ptime object
-     * \ param offset_time Is the start of day offset to compute the time
-     */
-    boost::posix_time::ptime compute_GLONASS_time(const double offset_time) const;
-
-    /*!
-     * \brief Converts from GLONASST to UTC
-     * \details The function simply adjust for the 6 hrs offset between GLONASST and UTC
-     * \param[in] offset_time Is the start of day offset
-     * \param[in] glot2utc_corr Correction from GLONASST to UTC
-     * \returns UTC time as a boost::posix_time::ptime object
-     */
-    boost::posix_time::ptime glot_to_utc(const double offset_time, const double glot2utc_corr) const;
-
-    /*!
-     * \brief Converts from GLONASST to GPST
-     * \details Converts from GLONASST to GPST in time of week (TOW) and week number (WN) format
-     * \param[in] tod_offset Is the start of day offset
-     * \param[in] glot2utc_corr Correction from GLONASST to UTC
-     * \param[in] glot2gpst_corr Correction from GLONASST to GPST
-     * \param[out] WN Week Number, not in mod(1024) format
-     * \param[out] TOW Time of Week in seconds of week
-     */
-    void glot_to_gpst(double tod_offset, double glot2utc_corr, double glot2gpst_corr, double* WN, double* TOW) const;
-
-    /*!
-     * Default constructor
-     */
-    Glonass_Gnav_Ephemeris();
+    double check_t(double time);
 };
 
 #endif

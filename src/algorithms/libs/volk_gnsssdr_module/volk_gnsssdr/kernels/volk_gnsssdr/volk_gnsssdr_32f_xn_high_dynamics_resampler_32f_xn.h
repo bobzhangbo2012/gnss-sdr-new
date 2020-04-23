@@ -14,25 +14,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -83,7 +72,7 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_generic(fl
     int local_code_chip_index;
     int current_correlator_tap;
     unsigned int n;
-    //first correlator
+    // first correlator
     for (n = 0; n < num_points; n++)
         {
             // resample code for first tap
@@ -94,7 +83,7 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_generic(fl
             result[0][n] = local_code[local_code_chip_index];
         }
 
-    //adjacent correlators
+    // adjacent correlators
     unsigned int shift_samples = 0;
     for (current_correlator_tap = 1; current_correlator_tap < num_out_vectors; current_correlator_tap++)
         {
@@ -618,11 +607,11 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_u_avx(floa
 #endif
 //
 //
-//#ifdef LV_HAVE_NEONV7
-//#include <arm_neon.h>
+// #ifdef LV_HAVE_NEONV7
+// #include <arm_neon.h>
 //
-//static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_neon(float** result, const float* local_code, float rem_code_phase_chips, float code_phase_step_chips, float* shifts_chips, unsigned int code_length_chips, int num_out_vectors, unsigned int num_points)
-//{
+// static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_neon(float** result, const float* local_code, float rem_code_phase_chips, float code_phase_step_chips, float* shifts_chips, unsigned int code_length_chips, int num_out_vectors, unsigned int num_points)
+// {
 //    float** _result = result;
 //    const unsigned int neon_iters = num_points / 4;
 //    int current_correlator_tap;
@@ -662,7 +651,7 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_u_avx(floa
 //                    aux = vmulq_f32(code_phase_step_chips_reg, indexn);
 //                    aux = vaddq_f32(aux, aux2);
 //
-//                    //floor
+//                    // floor
 //                    i = vcvtq_s32_f32(aux);
 //                    fi = vcvtq_f32_s32(i);
 //                    igx = vcgtq_f32(fi, aux);
@@ -700,8 +689,8 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_u_avx(floa
 //                    _result[current_correlator_tap][n] = local_code[local_code_chip_index_];
 //                }
 //        }
-//}
+// }
 //
-//#endif
+// #endif
 
-#endif /*INCLUDED_volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_H*/
+#endif /* INCLUDED_volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_H */

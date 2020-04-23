@@ -8,31 +8,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H_
-#define GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H_
+#ifndef GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H
+#define GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H
 
 #include "channel_fsm.h"
 #include "complex_byte_to_float_x2.h"
@@ -40,9 +29,10 @@
 #include "pcps_acquisition.h"
 #include <gnuradio/blocks/float_to_complex.h>
 #include <gnuradio/blocks/stream_to_vector.h>
-#include <volk_gnsssdr/volk_gnsssdr.h>
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <vector>
 
 
 class ConfigurationInterface;
@@ -58,7 +48,7 @@ public:
         const std::string& role, unsigned int in_streams,
         unsigned int out_streams);
 
-    virtual ~BeidouB1iPcpsAcquisition();
+    ~BeidouB1iPcpsAcquisition() = default;
 
     inline std::string role() override
     {
@@ -100,14 +90,13 @@ public:
     }
 
     /*!
-      * \brief Set channel fsm associated to this acquisition instance
-      */
+     * \brief Set channel fsm associated to this acquisition instance
+     */
     inline void set_channel_fsm(std::weak_ptr<ChannelFsm> channel_fsm) override
     {
         channel_fsm_ = channel_fsm;
         acquisition_->set_channel_fsm(channel_fsm);
     }
-
 
     /*!
      * \brief Set statistics threshold of PCPS algorithm
@@ -159,37 +148,29 @@ public:
      */
     void set_resampler_latency(uint32_t latency_samples) override;
 
-
 private:
     ConfigurationInterface* configuration_;
     pcps_acquisition_sptr acquisition_;
-    gr::blocks::stream_to_vector::sptr stream_to_vector_;
+    Acq_Conf acq_parameters_;
     gr::blocks::float_to_complex::sptr float_to_complex_;
     complex_byte_to_float_x2_sptr cbyte_to_float_x2_;
     size_t item_size_;
     std::string item_type_;
-    uint32_t vector_length_;
-    uint32_t code_length_;
-    bool bit_transition_flag_;
-    bool use_CFAR_algorithm_flag_;
-    uint32_t channel_;
+    unsigned int vector_length_;
+    unsigned int code_length_;
+    unsigned int channel_;
     std::weak_ptr<ChannelFsm> channel_fsm_;
     float threshold_;
-    uint32_t doppler_max_;
-    uint32_t doppler_step_;
-    uint32_t sampled_ms_;
-    uint32_t max_dwells_;
+    unsigned int doppler_max_;
+    unsigned int doppler_step_;
     int64_t fs_in_;
-    bool dump_;
-    bool blocking_;
     std::string dump_filename_;
-    std::complex<float>* code_;
+    std::vector<std::complex<float>> code_;
     Gnss_Synchro* gnss_synchro_;
     std::string role_;
-    uint32_t in_streams_;
-    uint32_t out_streams_;
-
-    float calculate_threshold(float pfa);
+    unsigned int num_codes_;
+    unsigned int in_streams_;
+    unsigned int out_streams_;
 };
 
-#endif /* GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H_ */
+#endif  // GNSS_SDR_BEIDOU_B1I_PCPS_ACQUISITION_H

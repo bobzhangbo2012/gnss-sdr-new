@@ -9,25 +9,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -313,7 +302,7 @@ static inline void volk_gnsssdr_8i_max_s8i_a_avx2(char* target, const char* src0
                 {
                     currentValues = _mm256_load_si256((__m256i*)inputPtr);
                     compareResults = _mm256_max_epi8(maxValues, currentValues);
-                    maxValues = compareResults;  //_mm256_blendv_epi8(currentValues, maxValues, compareResults);
+                    maxValues = compareResults;  // _mm256_blendv_epi8(currentValues, maxValues, compareResults);
                     inputPtr += 32;
                 }
 
@@ -370,17 +359,17 @@ static inline void volk_gnsssdr_8i_max_s8i_a_sse2(char* target, const char* src0
                         {
                             _mm_store_si128((__m128i*)&currentValuesBuffer, currentValues);
                             mask = ~mask;
-                            int i = 0;
+                            int i32 = 0;
                             while (mask > 0)
                                 {
                                     if ((mask & 1) == 1)
                                         {
-                                            if (currentValuesBuffer[i] > max)
+                                            if (currentValuesBuffer[i32] > max)
                                                 {
-                                                    max = currentValuesBuffer[i];
+                                                    max = currentValuesBuffer[i32];
                                                 }
                                         }
-                                    i++;
+                                    i32++;
                                     mask >>= 1;
                                 }
                             maxValues = _mm_set1_epi8(max);

@@ -1,29 +1,17 @@
 /*!
  * \file gps_l2c_telemetry_decoder_gs.h
- * \brief Interface of a CNAV message demodulator block based on
- * Kay Borre book MATLAB-based GPS receiver
+ * \brief Interface of a CNAV message demodulator block
  * \author Javier Arribas, 2015. jarribas(at)cttc.es
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -41,7 +29,8 @@
 #include <fstream>
 #include <string>
 
-extern "C" {
+extern "C"
+{
 #include "cnav_msg.h"
 }
 
@@ -50,12 +39,12 @@ class gps_l2c_telemetry_decoder_gs;
 
 using gps_l2c_telemetry_decoder_gs_sptr = boost::shared_ptr<gps_l2c_telemetry_decoder_gs>;
 
-gps_l2c_telemetry_decoder_gs_sptr
-gps_l2c_make_telemetry_decoder_gs(const Gnss_Satellite &satellite, bool dump);
+gps_l2c_telemetry_decoder_gs_sptr gps_l2c_make_telemetry_decoder_gs(
+    const Gnss_Satellite &satellite,
+    bool dump);
 
 /*!
- * \brief This class implements a block that decodes the SBAS integrity and corrections data defined in RTCA MOPS DO-229
- *
+ * \brief This class implements a block that decodes CNAV data defined in IS-GPS-200K
  */
 class gps_l2c_telemetry_decoder_gs : public gr::block
 {
@@ -64,6 +53,7 @@ public:
     void set_satellite(const Gnss_Satellite &satellite);  //!< Set satellite PRN
     void set_channel(int32_t channel);                    //!< Set receiver's channel
     void reset();
+
     /*!
      * \brief This is where all signal processing takes place
      */
@@ -71,8 +61,10 @@ public:
         gr_vector_const_void_star &input_items, gr_vector_void_star &output_items);
 
 private:
-    friend gps_l2c_telemetry_decoder_gs_sptr
-    gps_l2c_make_telemetry_decoder_gs(const Gnss_Satellite &satellite, bool dump);
+    friend gps_l2c_telemetry_decoder_gs_sptr gps_l2c_make_telemetry_decoder_gs(
+        const Gnss_Satellite &satellite,
+        bool dump);
+
     gps_l2c_telemetry_decoder_gs(const Gnss_Satellite &satellite, bool dump);
 
     bool d_dump;
@@ -99,4 +91,4 @@ private:
 };
 
 
-#endif
+#endif  // GNSS_SDR_GPS_L2C_TELEMETRY_DECODER_GS_H

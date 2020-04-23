@@ -12,18 +12,7 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -95,13 +84,17 @@ TEST(Protobuf, Works)
     Gnss_Synchro gs_read = vgs_read[0];
     uint32_t prn_read = gs_read.PRN;
     uint32_t prn_read2 = vgs_read[1].PRN;
+    std::string system_read(1, gs_read.System);
+    std::string signal_read(gs_read.Signal);
 
     // or without the need of gnss_synchro:
     int obs_size = obs.observable_size();
     uint32_t prn_read3 = obs.observable(0).prn();
 
-    EXPECT_EQ(prn_true, prn_read);
+    EXPECT_EQ(sig, signal_read);
+    EXPECT_EQ(sys, system_read);
     EXPECT_EQ(prn_true2, prn_read2);
     EXPECT_EQ(prn_true, prn_read3);
+    EXPECT_EQ(prn_read, prn_read3);
     EXPECT_EQ(2, obs_size);
 }

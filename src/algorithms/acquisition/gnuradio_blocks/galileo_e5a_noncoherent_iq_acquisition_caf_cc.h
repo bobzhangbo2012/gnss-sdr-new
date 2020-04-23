@@ -12,31 +12,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H_
-#define GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H_
+#ifndef GNSS_SDR_GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H
+#define GNSS_SDR_GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H
 
 #include "channel_fsm.h"
 #include "gnss_synchro.h"
@@ -44,21 +33,23 @@
 #include <gnuradio/fft/fft.h>
 #include <gnuradio/gr_complex.h>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 class galileo_e5a_noncoherentIQ_acquisition_caf_cc;
 
 using galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr = boost::shared_ptr<galileo_e5a_noncoherentIQ_acquisition_caf_cc>;
 
-galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr
-galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(unsigned int sampled_ms,
+galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(
+    unsigned int sampled_ms,
     unsigned int max_dwells,
     unsigned int doppler_max, int64_t fs_in,
     int samples_per_ms, int samples_per_code,
     bool bit_transition_flag,
     bool dump,
-    std::string dump_filename,
+    const std::string& dump_filename,
     bool both_signal_components_,
     int CAF_window_hz_,
     int Zero_padding_);
@@ -71,88 +62,6 @@ galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(unsigned int sampled_ms,
  */
 class galileo_e5a_noncoherentIQ_acquisition_caf_cc : public gr::block
 {
-private:
-    friend galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr
-    galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(
-        unsigned int sampled_ms,
-        unsigned int max_dwells,
-        unsigned int doppler_max, int64_t fs_in,
-        int samples_per_ms, int samples_per_code,
-        bool bit_transition_flag,
-        bool dump,
-        std::string dump_filename,
-        bool both_signal_components_,
-        int CAF_window_hz_,
-        int Zero_padding_);
-
-    galileo_e5a_noncoherentIQ_acquisition_caf_cc(
-        unsigned int sampled_ms,
-        unsigned int max_dwells,
-        unsigned int doppler_max, int64_t fs_in,
-        int samples_per_ms, int samples_per_code,
-        bool bit_transition_flag,
-        bool dump,
-        std::string dump_filename,
-        bool both_signal_components_,
-        int CAF_window_hz_,
-        int Zero_padding_);
-
-    void calculate_magnitudes(gr_complex* fft_begin, int doppler_shift,
-        int doppler_offset);
-    float estimate_input_power(gr_complex* in);
-
-    std::weak_ptr<ChannelFsm> d_channel_fsm;
-    int64_t d_fs_in;
-    int d_samples_per_ms;
-    int d_sampled_ms;
-    int d_samples_per_code;
-    unsigned int d_doppler_resolution;
-    float d_threshold;
-    std::string d_satellite_str;
-    unsigned int d_doppler_max;
-    unsigned int d_doppler_step;
-    unsigned int d_max_dwells;
-    unsigned int d_well_count;
-    unsigned int d_fft_size;
-    uint64_t d_sample_counter;
-    gr_complex** d_grid_doppler_wipeoffs;
-    unsigned int d_num_doppler_bins;
-    gr_complex* d_fft_code_I_A;
-    gr_complex* d_fft_code_I_B;
-    gr_complex* d_fft_code_Q_A;
-    gr_complex* d_fft_code_Q_B;
-    gr_complex* d_inbuffer;
-    gr::fft::fft_complex* d_fft_if;
-    gr::fft::fft_complex* d_ifft;
-    Gnss_Synchro* d_gnss_synchro;
-    unsigned int d_code_phase;
-    float d_doppler_freq;
-    float d_mag;
-    float* d_magnitudeIA;
-    float* d_magnitudeIB;
-    float* d_magnitudeQA;
-    float* d_magnitudeQB;
-    float d_input_power;
-    float d_test_statistics;
-    bool d_bit_transition_flag;
-    std::ofstream d_dump_file;
-    bool d_active;
-    int d_state;
-    bool d_dump;
-    bool d_both_signal_components;
-    //    bool d_CAF_filter;
-    int d_CAF_window_hz;
-    float* d_CAF_vector;
-    float* d_CAF_vector_I;
-    float* d_CAF_vector_Q;
-    //    double* d_CAF_vector;
-    //    double* d_CAF_vector_I;
-    //    double* d_CAF_vector_Q;
-    unsigned int d_channel;
-    std::string d_dump_filename;
-    unsigned int d_buffer_count;
-    unsigned int d_gr_stream_buffer;
-
 public:
     /*!
      * \brief Default destructor.
@@ -256,5 +165,85 @@ public:
     int general_work(int noutput_items, gr_vector_int& ninput_items,
         gr_vector_const_void_star& input_items,
         gr_vector_void_star& output_items);
+
+private:
+    friend galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr
+    galileo_e5a_noncoherentIQ_make_acquisition_caf_cc(
+        unsigned int sampled_ms,
+        unsigned int max_dwells,
+        unsigned int doppler_max, int64_t fs_in,
+        int samples_per_ms, int samples_per_code,
+        bool bit_transition_flag,
+        bool dump,
+        const std::string& dump_filename,
+        bool both_signal_components_,
+        int CAF_window_hz_,
+        int Zero_padding_);
+
+    galileo_e5a_noncoherentIQ_acquisition_caf_cc(
+        unsigned int sampled_ms,
+        unsigned int max_dwells,
+        unsigned int doppler_max, int64_t fs_in,
+        int samples_per_ms, int samples_per_code,
+        bool bit_transition_flag,
+        bool dump,
+        const std::string& dump_filename,
+        bool both_signal_components_,
+        int CAF_window_hz_,
+        int Zero_padding_);
+
+    void calculate_magnitudes(gr_complex* fft_begin, int doppler_shift,
+        int doppler_offset);
+
+    float estimate_input_power(gr_complex* in);
+
+    std::weak_ptr<ChannelFsm> d_channel_fsm;
+    int64_t d_fs_in;
+    int d_samples_per_ms;
+    int d_sampled_ms;
+    int d_samples_per_code;
+    unsigned int d_doppler_resolution;
+    float d_threshold;
+    std::string d_satellite_str;
+    unsigned int d_doppler_max;
+    unsigned int d_doppler_step;
+    unsigned int d_max_dwells;
+    unsigned int d_well_count;
+    unsigned int d_fft_size;
+    uint64_t d_sample_counter;
+    std::vector<std::vector<gr_complex>> d_grid_doppler_wipeoffs;
+    unsigned int d_num_doppler_bins;
+    std::vector<gr_complex> d_fft_code_I_A;
+    std::vector<gr_complex> d_fft_code_I_B;
+    std::vector<gr_complex> d_fft_code_Q_A;
+    std::vector<gr_complex> d_fft_code_Q_B;
+    std::vector<gr_complex> d_inbuffer;
+    std::shared_ptr<gr::fft::fft_complex> d_fft_if;
+    std::shared_ptr<gr::fft::fft_complex> d_ifft;
+    Gnss_Synchro* d_gnss_synchro;
+    unsigned int d_code_phase;
+    float d_doppler_freq;
+    float d_mag;
+    std::vector<float> d_magnitudeIA;
+    std::vector<float> d_magnitudeIB;
+    std::vector<float> d_magnitudeQA;
+    std::vector<float> d_magnitudeQB;
+    float d_input_power;
+    float d_test_statistics;
+    bool d_bit_transition_flag;
+    std::ofstream d_dump_file;
+    bool d_active;
+    int d_state;
+    bool d_dump;
+    bool d_both_signal_components;
+    int d_CAF_window_hz;
+    std::vector<float> d_CAF_vector;
+    std::vector<float> d_CAF_vector_I;
+    std::vector<float> d_CAF_vector_Q;
+    unsigned int d_channel;
+    std::string d_dump_filename;
+    unsigned int d_buffer_count;
+    unsigned int d_gr_stream_buffer;
 };
-#endif /* GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H_ */
+
+#endif  // GNSS_SDR_GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_CC_H

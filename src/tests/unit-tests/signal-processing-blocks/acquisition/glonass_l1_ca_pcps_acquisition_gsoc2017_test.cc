@@ -7,30 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
+#include "concurrent_queue.h"
 #include "configuration_interface.h"
 #include "freq_xlating_fir_filter.h"
 #include "gen_signal_source.h"
@@ -46,9 +36,9 @@
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -71,12 +61,12 @@ class GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx : public gr::block
 private:
     friend GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_sptr GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_make(Concurrent_Queue<int>& queue);
     void msg_handler_events(pmt::pmt_t msg);
-    GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx(Concurrent_Queue<int>& queue);
+    explicit GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx(Concurrent_Queue<int>& queue);
     Concurrent_Queue<int>& channel_internal_queue;
 
 public:
     int rx_message;
-    ~GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx();  //!< Default destructor
+    ~GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx();  // Default destructor
 };
 
 
@@ -140,7 +130,7 @@ protected:
 
     Concurrent_Queue<int> channel_internal_queue;
 
-    gr::msg_queue::sptr queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     GlonassL1CaPcpsAcquisition* acquisition;
     std::shared_ptr<InMemoryConfiguration> config;
@@ -253,7 +243,8 @@ void GlonassL1CaPcpsAcquisitionGSoC2017Test::config_1()
         std::to_string(integration_time_ms));
     config->set_property("Acquisition.max_dwells", "1");
     config->set_property("Acquisition.implementation", "GLONASS_L1_CA_PCPS_Acquisition");
-    config->set_property("Acquisition.threshold", "0.8");
+    // config->set_property("Acquisition.threshold", "2.5");
+    config->set_property("Acquisition.pfa", "0.001");
     config->set_property("Acquisition.doppler_max", "10000");
     config->set_property("Acquisition.doppler_step", "250");
     config->set_property("Acquisition.bit_transition_flag", "false");
@@ -342,7 +333,7 @@ void GlonassL1CaPcpsAcquisitionGSoC2017Test::config_2()
         std::to_string(integration_time_ms));
     config->set_property("Acquisition.max_dwells", "1");
     config->set_property("Acquisition.implementation", "GLONASS_L1_CA_PCPS_Acquisition");
-    //config->set_property("Acquisition.pfa", "0.1");
+    config->set_property("Acquisition.pfa", "0.001");
     config->set_property("Acquisition.doppler_max", "10000");
     config->set_property("Acquisition.doppler_step", "250");
     config->set_property("Acquisition.bit_transition_flag", "false");
@@ -442,7 +433,7 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ConnectAndRun)
     int nsamples = floor(fs_in * integration_time_ms * 1e-3);
     std::chrono::time_point<std::chrono::system_clock> begin, end;
     std::chrono::duration<double> elapsed_seconds(0);
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
 
     config_1();
@@ -474,7 +465,7 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ConnectAndRun)
 TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResults)
 {
     config_1();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
 
     acquisition = new GlonassL1CaPcpsAcquisition(config.get(), "Acquisition", 1, 0);
@@ -495,10 +486,6 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResults)
     ASSERT_NO_THROW({
         acquisition->set_doppler_step(500);
     }) << "Failure setting doppler_step.";
-
-    ASSERT_NO_THROW({
-        acquisition->set_threshold(0.05);
-    }) << "Failure setting threshold.";
 
     ASSERT_NO_THROW({
         acquisition->connect(top_block);
@@ -563,7 +550,7 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResults)
 TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResultsProbabilities)
 {
     config_2();
-    queue = gr::msg_queue::make(0);
+    queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
     top_block = gr::make_top_block("Acquisition test");
     acquisition = new GlonassL1CaPcpsAcquisition(config.get(), "Acquisition", 1, 0);
     boost::shared_ptr<GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx> msg_rx = GlonassL1CaPcpsAcquisitionGSoC2017Test_msg_rx_make(channel_internal_queue);
@@ -583,10 +570,6 @@ TEST_F(GlonassL1CaPcpsAcquisitionGSoC2017Test, ValidationOfResultsProbabilities)
     ASSERT_NO_THROW({
         acquisition->set_doppler_step(config->property("Acquisition.doppler_step", 500));
     }) << "Failure setting doppler_step.";
-
-    ASSERT_NO_THROW({
-        acquisition->set_threshold(config->property("Acquisition.threshold", 0.0));
-    }) << "Failure setting threshold.";
 
     ASSERT_NO_THROW({
         acquisition->connect(top_block);

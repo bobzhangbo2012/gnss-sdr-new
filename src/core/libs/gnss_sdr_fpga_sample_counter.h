@@ -7,31 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H_
-#define GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H_
+#ifndef GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H
+#define GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H
 
 #include <boost/shared_ptr.hpp>
 #include <gnuradio/block.h>
@@ -47,7 +36,17 @@ gnss_sdr_fpga_sample_counter_sptr gnss_sdr_make_fpga_sample_counter(double _fs, 
 
 class gnss_sdr_fpga_sample_counter : public gr::block
 {
+public:
+    ~gnss_sdr_fpga_sample_counter();
+    int general_work(int noutput_items,
+        gr_vector_int &ninput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items);
+
 private:
+    static const uint32_t page_size = 0x10000;             // default page size for the multicorrelator memory map
+    static const uint32_t test_reg_sanity_check = 0x55AA;  // value to check the presence of the test register (to detect the hw)
+
     friend gnss_sdr_fpga_sample_counter_sptr gnss_sdr_make_fpga_sample_counter(double _fs, int32_t _interval_ms);
     gnss_sdr_fpga_sample_counter(double _fs, int32_t _interval_ms);
     uint32_t test_register(uint32_t writeval);
@@ -80,13 +79,6 @@ private:
     volatile uint32_t *map_base;            // driver memory map
     std::string device_name = "/dev/uio2";  // HW device name
     bool is_open;
-
-public:
-    ~gnss_sdr_fpga_sample_counter();
-    int general_work(int noutput_items,
-        gr_vector_int &ninput_items,
-        gr_vector_const_void_star &input_items,
-        gr_vector_void_star &output_items);
 };
 
-#endif  // GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H_
+#endif  // GNSS_SDR_GNSS_SDR_FPGA_SAMPLE_COUNTER_H

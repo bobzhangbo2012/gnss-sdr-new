@@ -1,7 +1,11 @@
 # Doxyfile 1.8.10
 
+#
+# SPDX-FileCopyrightText: 2011-2020 Carles Fernandez-Prades <carles.fernandez(at)cttc.es>
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 # This file describes the settings to be used by the documentation system
-# doxygen (www.doxygen.org) for a project.
+# doxygen (www.doxygen.nl) for a project.
 #
 # All text after a double hash (##) is considered a comment and is placed in
 # front of the TAG it is preceding.
@@ -654,7 +658,7 @@ EXCLUDE                = @top_srcdir@/docs/html \
                          @top_srcdir@/cmake \
                          @top_srcdir@/data \
                          @top_srcdir@/src/core/libs/supl \
-						 @top_srcdir@/src/algorithms/libs/volk_gnsssdr_module/volk_gnsssdr \
+                         @top_srcdir@/src/algorithms/libs/volk_gnsssdr_module/volk_gnsssdr \
 
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or
@@ -1147,14 +1151,14 @@ MATHJAX_FORMAT         = HTML-CSS
 # MathJax, but it is strongly recommended to install a local copy of MathJax
 # before deployment.
 
-MATHJAX_RELPATH        = https://cdnjs.com/libraries/mathjax/
+MATHJAX_RELPATH        = https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML
 
 # The MATHJAX_EXTENSIONS tag can be used to specify one or more MathJax
 # extension names that should be enabled during MathJax rendering. For example
 # MATHJAX_EXTENSIONS = TeX/AMSmath TeX/AMSsymbols
 # This tag requires that the tag USE_MATHJAX is set to YES.
 
-MATHJAX_EXTENSIONS     =
+MATHJAX_EXTENSIONS     = TeX/AMSmath TeX/AMSsymbols
 
 # The MATHJAX_CODEFILE tag can be used to specify a file with javascript pieces
 # of code that will be used on startup of the MathJax code. See the MathJax site
@@ -1608,10 +1612,6 @@ ALLEXTERNALS           = NO
 
 EXTERNAL_GROUPS        = YES
 
-# The PERL_PATH should be the absolute path and name of the perl script
-# interpreter (i.e. the result of `which perl').
-
-PERL_PATH              = /usr/bin/perl
 
 #---------------------------------------------------------------------------
 # Configuration options related to the dot tool
@@ -1624,15 +1624,6 @@ PERL_PATH              = /usr/bin/perl
 # install and use dot, since it yields more powerful graphs.
 
 CLASS_DIAGRAMS         = YES
-
-# You can define message sequence charts within doxygen comments using the \msc
-# command. Doxygen will then run the mscgen tool (see
-# http://www.mcternan.me.uk/mscgen/) to produce the chart and insert it in the
-# documentation. The MSCGEN_PATH tag allows you to specify the directory where
-# the mscgen tool resides. If left empty the tool is assumed to be found in the
-# default search path.
-
-MSCGEN_PATH            =
 
 # If set to YES, the inheritance and collaboration graphs will hide
 # inheritance and usage relations if the target is undocumented

@@ -11,37 +11,27 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GNSS_FLOWGRAPH_H_
-#define GNSS_SDR_GNSS_FLOWGRAPH_H_
+#ifndef GNSS_SDR_GNSS_FLOWGRAPH_H
+#define GNSS_SDR_GNSS_FLOWGRAPH_H
 
+#include "channel_status_msg_receiver.h"
+#include "concurrent_queue.h"
 #include "gnss_sdr_sample_counter.h"
 #include "gnss_signal.h"
 #include "pvt_interface.h"
-#include <gnuradio/blocks/null_sink.h>  //for null_sink
-#include <gnuradio/msg_queue.h>         // for msg_queue, msg_queue::sptr
+#include <gnuradio/blocks/null_sink.h>  // for null_sink
 #include <gnuradio/runtime_types.h>     // for basic_block_sptr, top_block_sptr
 #include <pmt/pmt.h>                    // for pmt_t
 #include <list>                         // for list
@@ -71,17 +61,21 @@ public:
     /*!
      * \brief Constructor that initializes the receiver flow graph
      */
-    GNSSFlowgraph(std::shared_ptr<ConfigurationInterface> configuration, const gr::msg_queue::sptr queue);  // NOLINT(performance-unnecessary-value-param)
+    GNSSFlowgraph(std::shared_ptr<ConfigurationInterface> configuration, const std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);  // NOLINT(performance-unnecessary-value-param)
 
     /*!
      * \brief Destructor
      */
     ~GNSSFlowgraph();
 
-    //! \brief Start the flow graph
+    /*!
+     * \brief Start the flow graph
+     */
     void start();
 
-    //! \brief Stop the flow graph
+    /*!
+     * \brief Stop the flow graph
+     */
     void stop();
 
     /*!
@@ -91,14 +85,27 @@ public:
      */
     void connect();
 
+    /*!
+     * \brief Disconnect the blocks in the flow graph
+     */
     void disconnect();
 
+    /*!
+     * \brief Wait for a flowgraph to complete.
+     *
+     * Flowgraphs complete when either
+     * (1) all blocks indicate that they are done, or
+     * (2) after stop() has been called to request shutdown.
+     */
     void wait();
-#ifdef ENABLE_FPGA
-    void start_acquisition_helper();
 
-    void perform_hw_reset();
-#endif
+    /*!
+     * \brief Manage satellite acquisition
+     *
+     * \param[in] who   Channel ID
+     */
+    void acquisition_manager(unsigned int who);
+
     /*!
      * \brief Applies an action to the flow graph
      *
@@ -107,12 +114,10 @@ public:
      */
     void apply_action(unsigned int who, unsigned int what);
 
-    void set_configuration(std::shared_ptr<ConfigurationInterface> configuration);
-
-    unsigned int applied_actions() const
-    {
-        return applied_actions_;
-    }
+    /*!
+     * \brief Set flow graph configuratiob
+     */
+    void set_configuration(const std::shared_ptr<ConfigurationInterface>& configuration);
 
     bool connected() const
     {
@@ -125,7 +130,7 @@ public:
     }
 
     /*!
-     * \brief Sends a GNURadio asynchronous message from telemetry to PVT
+     * \brief Sends a GNU Radio asynchronous message from telemetry to PVT
      *
      * It is used to assist the receiver with external ephemeris data
      */
@@ -142,22 +147,39 @@ public:
     /*!
      * \brief Priorize visible satellites in the specified vector
      */
-    void priorize_satellites(std::vector<std::pair<int, Gnss_Satellite>> visible_satellites);
+    void priorize_satellites(const std::vector<std::pair<int, Gnss_Satellite>>& visible_satellites);
+
+#ifdef ENABLE_FPGA
+    void start_acquisition_helper();
+
+    void perform_hw_reset();
+#endif
 
 private:
     void init();  // Populates the SV PRN list available for acquisition and tracking
     void set_signals_list();
     void set_channels_state();  // Initializes the channels state (start acquisition or keep standby)
                                 // using the configuration parameters (number of channels and max channels in acquisition)
-    Gnss_Signal search_next_signal(const std::string& searched_signal, bool pop, bool tracked = false);
+    Gnss_Signal search_next_signal(const std::string& searched_signal,
+        const bool pop,
+        bool& is_primary_frequency,
+        bool& assistance_available,
+        float& estimated_doppler,
+        double& RX_time);
+
+    void push_back_signal(const Gnss_Signal& gs);
+    void remove_signal(const Gnss_Signal& gs);
+
+    double project_doppler(const std::string& searched_signal, double primary_freq_doppler_hz);
+    bool is_multiband() const;
     bool connected_;
     bool running_;
+    bool multiband_;
     int sources_count_;
 
     unsigned int channels_count_;
     unsigned int acq_channels_count_;
     unsigned int max_acq_channels_;
-    unsigned int applied_actions_;
     std::string config_file_;
     std::shared_ptr<ConfigurationInterface> configuration_;
 
@@ -175,7 +197,7 @@ private:
     gnss_sdr_fpga_sample_counter_sptr ch_out_fpga_sample_counter;
 #endif
     gr::top_block_sptr top_block_;
-    gr::msg_queue::sptr queue_;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
 
     std::list<Gnss_Signal> available_GPS_1C_signals_;
     std::list<Gnss_Signal> available_GPS_2S_signals_;
@@ -203,6 +225,7 @@ private:
     std::map<std::string, StringValue> mapStringValues_;
 
     std::vector<unsigned int> channels_state_;
+    channel_status_msg_receiver_sptr channels_status_;  // class that receives and stores the current status of the receiver channels
     std::mutex signal_list_mutex;
 
     bool enable_monitor_;
@@ -210,4 +233,4 @@ private:
     std::vector<std::string> split_string(const std::string& s, char delim);
 };
 
-#endif /*GNSS_SDR_GNSS_FLOWGRAPH_H_*/
+#endif  // GNSS_SDR_GNSS_FLOWGRAPH_H

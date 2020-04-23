@@ -32,7 +32,7 @@
  */
 
 #include "gnss_sdr_valve.h"
-#include "control_message_factory.h"  // for ControlMessageFactory
+// #include "control_message_factory.h"  // for ControlMessageFactory
 #include <glog/logging.h>             // for LOG
 #include <gnuradio/io_signature.h>    // for io_signature
 #include <algorithm>                  // for min

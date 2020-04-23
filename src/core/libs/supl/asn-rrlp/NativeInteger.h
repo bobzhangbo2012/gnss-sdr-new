@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
- * Redistribution and modifications are permitted subject to BSD license.
+ * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
+ * SPDX-License-Identifier: BSD-1-Clause
  */
 /*
  * This type differs from the standard INTEGER in that it is modelled using
@@ -9,11 +9,11 @@
  * will do).
  * This type may be used when integer range is limited by subtype constraints.
  */
-#ifndef _NativeInteger_H_
-#define _NativeInteger_H_
+#ifndef _NativeInteger_H
+#define _NativeInteger_H
 
-#include <asn_application.h>
 #include <INTEGER.h>
+#include <asn_application.h>
 
 #ifdef __cplusplus
 extern "C"

@@ -15,31 +15,21 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H_
-#define GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H_
+#ifndef GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H
+#define GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H
 
 #include "channel_fsm.h"
 #include "pcps_acquisition_fpga.h"
 #include <gnuradio/runtime_types.h>  // for basic_block_sptr, top_block_sptr
-#include <volk/volk_complex.h>       // for lv_16sc_t
 #include <cstddef>                   // for size_t
+#include <memory>                    // for weak_ptr
 #include <string>                    // for string
+#include <vector>
 
 class Gnss_Synchro;
 class ConfigurationInterface;
@@ -56,7 +46,7 @@ public:
         unsigned int in_streams,
         unsigned int out_streams);
 
-    virtual ~GpsL2MPcpsAcquisitionFpga();
+    ~GpsL2MPcpsAcquisitionFpga() = default;
 
     inline std::string role() override
     {
@@ -73,7 +63,7 @@ public:
 
     inline size_t item_size() override
     {
-        return sizeof(lv_16sc_t);
+        return sizeof(float);
     }
 
     void connect(gr::top_block_sptr top_block) override;
@@ -98,8 +88,8 @@ public:
     }
 
     /*!
-      * \brief Set channel fsm associated to this acquisition instance
-      */
+     * \brief Set channel fsm associated to this acquisition instance
+     */
     inline void set_channel_fsm(std::weak_ptr<ChannelFsm> channel_fsm) override
     {
         channel_fsm_ = channel_fsm;
@@ -154,6 +144,13 @@ public:
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
 private:
+    static const uint32_t NUM_PRNs = 32;
+    static const uint32_t QUANT_BITS_LOCAL_CODE = 16;
+    static const uint32_t SELECT_LSBits = 0x0000FFFF;         // Select the 10 LSbits out of a 20-bit word
+    static const uint32_t SELECT_MSBbits = 0xFFFF0000;        // Select the 10 MSbits out of a 20-bit word
+    static const uint32_t SELECT_ALL_CODE_BITS = 0xFFFFFFFF;  // Select a 20 bit word
+    static const uint32_t SHL_CODE_BITS = 65536;              // shift left by 10 bits
+
     ConfigurationInterface* configuration_;
     pcps_acquisition_fpga_sptr acquisition_fpga_;
     std::string item_type_;
@@ -168,10 +165,7 @@ private:
     std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-
-    uint32_t* d_all_fft_codes_;  // memory that contains all the code ffts
-
-    //float calculate_threshold(float pfa);
+    std::vector<uint32_t> d_all_fft_codes_;  // memory that contains all the code ffts
 };
 
-#endif /* GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H_ */
+#endif  // GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H

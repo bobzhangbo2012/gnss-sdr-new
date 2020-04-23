@@ -26,42 +26,40 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_PCPS_ACQUISITION_H_
-#define GNSS_SDR_PCPS_ACQUISITION_H_
+#ifndef GNSS_SDR_PCPS_ACQUISITION_H
+#define GNSS_SDR_PCPS_ACQUISITION_H
+
+#if ARMA_NO_BOUND_CHECKING
+#define ARMA_NO_DEBUG 1
+#endif
 
 #include "acq_conf.h"
 #include "channel_fsm.h"
 #include <armadillo>
+#include <glog/logging.h>
 #include <gnuradio/block.h>
 #include <gnuradio/fft/fft.h>
-#include <gnuradio/gr_complex.h>     // for gr_complex
-#include <gnuradio/thread/thread.h>  // for scoped_lock
-#include <gnuradio/types.h>          // for gr_vector_const_void_star
-#include <volk/volk_complex.h>       // for lv_16sc_t
+#include <gnuradio/gr_complex.h>              // for gr_complex
+#include <gnuradio/thread/thread.h>           // for scoped_lock
+#include <gnuradio/types.h>                   // for gr_vector_const_void_star
+#include <gsl/gsl>                            // for Guidelines Support Library
+#include <volk/volk_complex.h>                // for lv_16sc_t
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
+#include <complex>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -70,8 +68,7 @@ class pcps_acquisition;
 
 using pcps_acquisition_sptr = boost::shared_ptr<pcps_acquisition>;
 
-pcps_acquisition_sptr
-pcps_make_acquisition(const Acq_Conf& conf_);
+pcps_acquisition_sptr pcps_make_acquisition(const Acq_Conf& conf_);
 
 /*!
  * \brief This class implements a Parallel Code Phase Search Acquisition.
@@ -81,77 +78,8 @@ pcps_make_acquisition(const Acq_Conf& conf_);
  */
 class pcps_acquisition : public gr::block
 {
-private:
-    friend pcps_acquisition_sptr
-    pcps_make_acquisition(const Acq_Conf& conf_);
-
-    pcps_acquisition(const Acq_Conf& conf_);
-
-    void update_local_carrier(gr_complex* carrier_vector, int32_t correlator_length_samples, float freq);
-    void update_grid_doppler_wipeoffs();
-    void update_grid_doppler_wipeoffs_step2();
-    bool is_fdma();
-
-    void acquisition_core(uint64_t samp_count);
-
-    void send_negative_acquisition();
-
-    void send_positive_acquisition();
-
-    void dump_results(int32_t effective_fft_size);
-
-    float first_vs_second_peak_statistic(uint32_t& indext, int32_t& doppler, uint32_t num_doppler_bins, int32_t doppler_max, int32_t doppler_step);
-    float max_to_input_power_statistic(uint32_t& indext, int32_t& doppler, float input_power, uint32_t num_doppler_bins, int32_t doppler_max, int32_t doppler_step);
-
-    bool start();
-
-
-    Acq_Conf acq_parameters;
-    bool d_active;
-    bool d_worker_active;
-    bool d_cshort;
-    bool d_step_two;
-    bool d_use_CFAR_algorithm_flag;
-    int32_t d_positive_acq;
-    float d_threshold;
-    float d_mag;
-    float d_input_power;
-    float d_test_statistics;
-    float* d_magnitude;
-    float** d_magnitude_grid;
-    float* d_tmp_buffer;
-    gr_complex* d_input_signal;
-    uint32_t d_samplesPerChip;
-    int64_t d_old_freq;
-    int32_t d_state;
-    uint32_t d_channel;
-    std::weak_ptr<ChannelFsm> d_channel_fsm;
-    uint32_t d_doppler_step;
-    float d_doppler_center_step_two;
-    uint32_t d_num_noncoherent_integrations_counter;
-    uint32_t d_fft_size;
-    uint32_t d_consumed_samples;
-    uint32_t d_num_doppler_bins;
-    uint64_t d_sample_counter;
-    gr_complex** d_grid_doppler_wipeoffs;
-    gr_complex** d_grid_doppler_wipeoffs_step_two;
-    gr_complex* d_fft_codes;
-    gr_complex* d_data_buffer;
-    lv_16sc_t* d_data_buffer_sc;
-    gr::fft::fft_complex* d_fft_if;
-    gr::fft::fft_complex* d_ifft;
-    Gnss_Synchro* d_gnss_synchro;
-    arma::fmat grid_;
-    arma::fmat narrow_grid_;
-    uint32_t d_num_doppler_bins_step2;
-    int64_t d_dump_number;
-    uint32_t d_dump_channel;
-    uint32_t d_buffer_count;
-    bool d_dump;
-    std::string d_dump_filename;
-
 public:
-    ~pcps_acquisition();
+    ~pcps_acquisition() = default;
 
     /*!
      * \brief Set acquisition/tracking common Gnss_Synchro object pointer
@@ -249,6 +177,20 @@ public:
         d_doppler_step = doppler_step;
     }
 
+    /*!
+     * \brief Set Doppler center frequency for the grid search. It will refresh the Doppler grid.
+     * \param doppler_center - Frequency center of the search grid [Hz].
+     */
+    inline void set_doppler_center(int32_t doppler_center)
+    {
+        gr::thread::scoped_lock lock(d_setlock);  // require mutex with work function called by the scheduler
+        if (doppler_center != d_doppler_center)
+            {
+                DLOG(INFO) << " Doppler assistance for Channel: " << d_channel << " => Doppler: " << doppler_center << "[Hz]";
+                d_doppler_center = doppler_center;
+                update_grid_doppler_wipeoffs();
+            }
+    }
 
     void set_resampler_latency(uint32_t latency_samples);
 
@@ -258,6 +200,65 @@ public:
     int general_work(int noutput_items, gr_vector_int& ninput_items,
         gr_vector_const_void_star& input_items,
         gr_vector_void_star& output_items);
+
+private:
+    friend pcps_acquisition_sptr pcps_make_acquisition(const Acq_Conf& conf_);
+    explicit pcps_acquisition(const Acq_Conf& conf_);
+    bool d_active;
+    bool d_worker_active;
+    bool d_cshort;
+    bool d_step_two;
+    bool d_use_CFAR_algorithm_flag;
+    bool d_dump;
+    int32_t d_state;
+    int32_t d_positive_acq;
+    uint32_t d_channel;
+    uint32_t d_samplesPerChip;
+    uint32_t d_doppler_step;
+    int32_t d_doppler_center;
+    int32_t d_doppler_bias;
+    uint32_t d_num_noncoherent_integrations_counter;
+    uint32_t d_fft_size;
+    uint32_t d_consumed_samples;
+    uint32_t d_num_doppler_bins;
+    uint32_t d_num_doppler_bins_step2;
+    uint32_t d_dump_channel;
+    uint32_t d_buffer_count;
+    uint64_t d_sample_counter;
+    int64_t d_dump_number;
+    float d_threshold;
+    float d_mag;
+    float d_input_power;
+    float d_test_statistics;
+    float d_doppler_center_step_two;
+    std::string d_dump_filename;
+    volk_gnsssdr::vector<volk_gnsssdr::vector<float>> d_magnitude_grid;
+    volk_gnsssdr::vector<float> d_tmp_buffer;
+    volk_gnsssdr::vector<std::complex<float>> d_input_signal;
+    volk_gnsssdr::vector<volk_gnsssdr::vector<std::complex<float>>> d_grid_doppler_wipeoffs;
+    volk_gnsssdr::vector<volk_gnsssdr::vector<std::complex<float>>> d_grid_doppler_wipeoffs_step_two;
+    volk_gnsssdr::vector<std::complex<float>> d_fft_codes;
+    volk_gnsssdr::vector<std::complex<float>> d_data_buffer;
+    volk_gnsssdr::vector<lv_16sc_t> d_data_buffer_sc;
+    std::shared_ptr<gr::fft::fft_complex> d_fft_if;
+    std::shared_ptr<gr::fft::fft_complex> d_ifft;
+    std::weak_ptr<ChannelFsm> d_channel_fsm;
+    Acq_Conf acq_parameters;
+    Gnss_Synchro* d_gnss_synchro;
+    arma::fmat grid_;
+    arma::fmat narrow_grid_;
+    void update_local_carrier(gsl::span<gr_complex> carrier_vector, float freq);
+    void update_grid_doppler_wipeoffs();
+    void update_grid_doppler_wipeoffs_step2();
+    void acquisition_core(uint64_t samp_count);
+    void send_negative_acquisition();
+    void send_positive_acquisition();
+    void dump_results(int32_t effective_fft_size);
+    bool is_fdma();
+    bool start();
+    void calculate_threshold(void);
+    float first_vs_second_peak_statistic(uint32_t& indext, int32_t& doppler, uint32_t num_doppler_bins, int32_t doppler_max, int32_t doppler_step);
+    float max_to_input_power_statistic(uint32_t& indext, int32_t& doppler, uint32_t num_doppler_bins, int32_t doppler_max, int32_t doppler_step);
 };
 
-#endif /* GNSS_SDR_PCPS_ACQUISITION_H_*/
+#endif  // GNSS_SDR_PCPS_ACQUISITION_H

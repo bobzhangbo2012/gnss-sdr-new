@@ -6,31 +6,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H_
-#define GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H_
+#ifndef GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H
+#define GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H
 
 #include <boost/shared_ptr.hpp>
 #include <gnuradio/sync_decimator.h>
@@ -50,9 +39,22 @@ gnss_sdr_sample_counter_sptr gnss_sdr_make_sample_counter(
 
 class gnss_sdr_sample_counter : public gr::sync_decimator
 {
+public:
+    ~gnss_sdr_sample_counter() = default;
+    int work(int noutput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items);
+
 private:
-    friend gnss_sdr_sample_counter_sptr gnss_sdr_make_sample_counter(double _fs, int32_t _interval_ms, size_t _size);
-    gnss_sdr_sample_counter(double _fs, int32_t _interval_ms, size_t _size);
+    friend gnss_sdr_sample_counter_sptr gnss_sdr_make_sample_counter(
+        double _fs,
+        int32_t _interval_ms,
+        size_t _size);
+
+    gnss_sdr_sample_counter(double _fs,
+        int32_t _interval_ms,
+        size_t _size);
+
     uint32_t samples_per_output;
     double fs;
     uint64_t sample_counter;
@@ -67,12 +69,6 @@ private:
     uint32_t current_days;    // Receiver time in days since the beginning of the run
     int32_t report_interval_ms;
     bool flag_enable_send_msg;
-
-public:
-    ~gnss_sdr_sample_counter();
-    int work(int noutput_items,
-        gr_vector_const_void_star &input_items,
-        gr_vector_void_star &output_items);
 };
 
-#endif /*GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H_*/
+#endif  // GNSS_SDR_GNSS_SDR_SAMPLE_COUNTER_H

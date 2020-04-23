@@ -1,19 +1,10 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 
@@ -27,10 +18,6 @@ target_link_libraries(front_end_cal_lib
     PUBLIC
         Armadillo::armadillo
         Threads::Threads
-        Volkgnsssdr::volkgnsssdr ${ORC_LIBRARIES}
-        signal_source_adapters
-        signal_source_gr_blocks
-        signal_source_libs
         acquisition_adapters
         gnss_sdr_flags
         channel_libs
@@ -38,7 +25,7 @@ target_link_libraries(front_end_cal_lib
         core_receiver
         core_libs
     PRIVATE
-        Boost::boost
+        Boost::headers
         Gflags::gflags
         Glog::glog
         Gnuradio::blocks
@@ -56,15 +43,24 @@ endif()
 
 add_executable(front-end-cal ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
 
+if(${FILESYSTEM_FOUND})
+    target_compile_definitions(front-end-cal PRIVATE -DHAS_STD_FILESYSTEM=1)
+    if(${find_experimental})
+        target_compile_definitions(front-end-cal PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
+    endif()
+    target_link_libraries(front-end-cal PRIVATE std::filesystem)
+else()
+    target_link_libraries(front-end-cal PRIVATE Boost::filesystem Boost::system)
+endif()
+
 target_link_libraries(front-end-cal
     PUBLIC
-        Volkgnsssdr::volkgnsssdr ${ORC_LIBRARIES}
         core_libs
         core_receiver
         front_end_cal_lib
         gnss_sdr_flags
+        Boost::headers
     PRIVATE
-        Boost::filesystem
         Gflags::gflags
         Glog::glog
 )

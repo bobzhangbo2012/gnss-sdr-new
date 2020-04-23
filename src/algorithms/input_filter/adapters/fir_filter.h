@@ -7,31 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_FIR_FILTER_H_
-#define GNSS_SDR_FIR_FILTER_H_
+#ifndef GNSS_SDR_FIR_FILTER_H
+#define GNSS_SDR_FIR_FILTER_H
 
 #include "byte_x2_to_complex_byte.h"
 #include "complex_byte_to_float_x2.h"
@@ -58,7 +47,7 @@ class ConfigurationInterface;
 /*!
  * \brief This class adapts a GNU Radio gr_fir_filter designed with pm_remez
  *
- * See Parks-McClellan FIR filter design, http://en.wikipedia.org/wiki/Parks-McClellan_filter_design_algorithm
+ * See Parks-McClellan FIR filter design, https://en.wikipedia.org/wiki/Parks-McClellan_filter_design_algorithm
  * Calculates the optimal (in the Chebyshev/minimax sense) FIR filter impulse response
  * given a set of band edges, the desired response on those bands, and the weight given
  * to the error in those bands.
@@ -73,7 +62,7 @@ public:
         unsigned int out_streams);
 
     //! Destructor
-    virtual ~FirFilter();
+    ~FirFilter() = default;
 
     inline std::string role() override
     {

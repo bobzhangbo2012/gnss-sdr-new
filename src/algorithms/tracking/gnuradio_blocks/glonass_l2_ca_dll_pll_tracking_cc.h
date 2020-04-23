@@ -11,25 +11,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -42,6 +31,7 @@
 #include "tracking_2nd_DLL_filter.h"
 #include "tracking_2nd_PLL_filter.h"
 #include <gnuradio/block.h>
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
 #include <fstream>
 #include <map>
 #include <string>
@@ -54,7 +44,7 @@ glonass_l2_ca_dll_pll_tracking_cc_sptr
 glonass_l2_ca_dll_pll_make_tracking_cc(
     int64_t fs_in, uint32_t vector_length,
     bool dump,
-    std::string dump_filename,
+    const std::string& dump_filename,
     float pll_bw_hz,
     float dll_bw_hz,
     float early_late_space_chips);
@@ -82,7 +72,7 @@ private:
     glonass_l2_ca_dll_pll_make_tracking_cc(
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float pll_bw_hz,
         float dll_bw_hz,
         float early_late_space_chips);
@@ -90,7 +80,7 @@ private:
     Glonass_L2_Ca_Dll_Pll_Tracking_cc(
         int64_t fs_in, uint32_t vector_length,
         bool dump,
-        std::string dump_filename,
+        const std::string& dump_filename,
         float pll_bw_hz,
         float dll_bw_hz,
         float early_late_space_chips);
@@ -121,11 +111,11 @@ private:
     double d_acq_carrier_doppler_hz;
     // correlator
     int32_t d_n_correlator_taps;
-    gr_complex* d_ca_code;
-    float* d_local_code_shift_chips;
-    gr_complex* d_correlator_outs;
-    Cpu_Multicorrelator multicorrelator_cpu;
 
+    volk_gnsssdr::vector<gr_complex> d_ca_code;
+    volk_gnsssdr::vector<float> d_local_code_shift_chips;
+    volk_gnsssdr::vector<gr_complex> d_correlator_outs;
+    Cpu_Multicorrelator multicorrelator_cpu;
 
     // tracking vars
     double d_code_freq_chips;
@@ -137,16 +127,16 @@ private:
     double d_acc_carrier_phase_rad;
     double d_code_phase_samples;
 
-    //PRN period in samples
+    // PRN period in samples
     int32_t d_current_prn_length_samples;
 
-    //processing samples counters
+    // processing samples counters
     uint64_t d_sample_counter;
     uint64_t d_acq_sample_stamp;
 
     // CN0 estimation and lock detector
     int32_t d_cn0_estimation_counter;
-    gr_complex* d_Prompt_buffer;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;
@@ -166,4 +156,4 @@ private:
     int32_t save_matfile();
 };
 
-#endif  //GNSS_SDR_GLONASS_L2_CA_DLL_PLL_TRACKING_CC_H
+#endif  // GNSS_SDR_GLONASS_L2_CA_DLL_PLL_TRACKING_CC_H

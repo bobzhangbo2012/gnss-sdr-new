@@ -6,29 +6,18 @@
  *
  * This implementation has a text file as the source for the values of the parameters.
  * The file is in the INI format, containing sections and pairs of names and values.
- * For more information about the INI format, see http://en.wikipedia.org/wiki/INI_file
+ * For more information about the INI format, see https://en.wikipedia.org/wiki/INI_file
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -38,7 +27,7 @@
 #include "in_memory_configuration.h"
 #include "string_converter.h"
 #include <glog/logging.h>
-#include <string>
+#include <utility>
 
 
 FileConfiguration::FileConfiguration(std::string filename)
@@ -52,12 +41,6 @@ FileConfiguration::FileConfiguration()
 {
     filename_ = "./default_config_file.txt";
     init();
-}
-
-
-FileConfiguration::~FileConfiguration()
-{
-    LOG(INFO) << "Destructor called";
 }
 
 
@@ -178,7 +161,7 @@ void FileConfiguration::set_property(std::string property_name, std::string valu
 
 void FileConfiguration::init()
 {
-    std::unique_ptr<StringConverter> converter_(new StringConverter);
+    converter_ = std::make_shared<StringConverter>();
     overrided_ = std::make_shared<InMemoryConfiguration>();
     ini_reader_ = std::make_shared<INIReader>(filename_);
     error_ = ini_reader_->ParseError();

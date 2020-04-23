@@ -7,25 +7,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -60,8 +49,8 @@ TEST(MultiplyTest, StandardCDoubleImplementation)
               << " doubles in standard C finished in " << elapsed_seconds.count() * 1e6
               << " microseconds" << std::endl;
 
-    double acc = 0;
-    double expected = 0;
+    double acc = 0.0;
+    double expected = 0.0;
     for (int i = 0; i < FLAGS_size_multiply_test; i++)
         {
             acc += output[i];
@@ -112,8 +101,8 @@ TEST(MultiplyTest, StandardCComplexImplementation)
               << " complex<float> in standard C finished in " << elapsed_seconds.count() * 1e6
               << " microseconds" << std::endl;
 
-    std::complex<float> expected(0, 0);
-    std::complex<float> result(0, 0);
+    std::complex<float> expected(0.0, 0.0);
+    std::complex<float> result(0.0, 0.0);
     for (int i = 0; i < FLAGS_size_multiply_test; i++)
         {
             result += output[i];
@@ -146,7 +135,7 @@ TEST(MultiplyTest, C11ComplexImplementation)
               << " microseconds" << std::endl;
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
 
-    std::complex<float> expected(0, 0);
+    std::complex<float> expected(0.0, 0.0);
     auto result = std::inner_product(output.begin(), output.end(), output.begin(), expected);
     ASSERT_EQ(expected, result);
 }
@@ -193,14 +182,43 @@ TEST(MultiplyTest, VolkComplexImplementation)
     auto* mag = static_cast<float*>(volk_gnsssdr_malloc(FLAGS_size_multiply_test * sizeof(float), volk_gnsssdr_get_alignment()));
     volk_32fc_magnitude_32f(mag, output, FLAGS_size_multiply_test);
 
-    auto* result = new float(0);
+    auto* result = new float(0.0);
     volk_32f_accumulator_s32f(result, mag, FLAGS_size_multiply_test);
     // Comparing floating-point numbers is tricky.
     // Due to round-off errors, it is very unlikely that two floating-points will match exactly.
-    // See http://code.google.com/p/googletest/wiki/AdvancedGuide#Floating-Point_Comparison
-    float expected = 0;
+    // See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#floating-point-comparison
+    float expected = 0.0;
     ASSERT_FLOAT_EQ(expected, result[0]);
     volk_gnsssdr_free(input);
     volk_gnsssdr_free(output);
     volk_gnsssdr_free(mag);
+}
+
+
+TEST(MultiplyTest, VolkComplexImplementationAlloc)
+{
+    volk_gnsssdr::vector<std::complex<float>> input(FLAGS_size_multiply_test, std::complex<float>(0.0, 0.0));
+    volk_gnsssdr::vector<std::complex<float>> output(FLAGS_size_multiply_test);
+
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+
+    volk_32fc_x2_multiply_32fc(output.data(), input.data(), input.data(), FLAGS_size_multiply_test);
+
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "Element-wise multiplication of " << FLAGS_size_multiply_test
+              << "-length complex float vector using VOLK ALLOC finished in " << elapsed_seconds.count() * 1e6
+              << " microseconds" << std::endl;
+    ASSERT_LE(0, elapsed_seconds.count() * 1e6);
+    volk_gnsssdr::vector<float> mag(FLAGS_size_multiply_test);
+    volk_32fc_magnitude_32f(mag.data(), output.data(), FLAGS_size_multiply_test);
+
+    auto* result = new float(0.0);
+    volk_32f_accumulator_s32f(result, mag.data(), FLAGS_size_multiply_test);
+    // Comparing floating-point numbers is tricky.
+    // Due to round-off errors, it is very unlikely that two floating-points will match exactly.
+    // See https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#floating-point-comparison
+    float expected = 0.0;
+    ASSERT_FLOAT_EQ(expected, result[0]);
 }

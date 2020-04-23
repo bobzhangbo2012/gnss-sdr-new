@@ -12,25 +12,14 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_BEIDOU_DNAV_EPHEMERIS_H_
-#define GNSS_SDR_BEIDOU_DNAV_EPHEMERIS_H_
+#ifndef GNSS_SDR_BEIDOU_DNAV_EPHEMERIS_H
+#define GNSS_SDR_BEIDOU_DNAV_EPHEMERIS_H
 
 #include <boost/serialization/nvp.hpp>
 #include <map>
@@ -38,24 +27,21 @@
 
 
 /*!
- * \brief This class is a storage and orbital model functions for the GPS SV ephemeris data as described in IS-GPS-200E
+ * \brief This class is a storage and orbital model functions for the GPS SV ephemeris data as described in
+ * BeiDou Navigation Satellite System Signal In Space Interface Control Document
+ * Open Service Signal B1I (Version 3.0)
  *
- * See http://www.gps.gov/technical/icwg/IS-GPS-200E.pdf Appendix II
+ * See http://en.beidou.gov.cn/SYSTEMS/Officialdocument/201902/P020190227601370045731.pdf
  */
 class Beidou_Dnav_Ephemeris
 {
-private:
-    /*
-     * Accounts for the beginning or end of week crossover
-     *
-     * See paragraph 20.3.3.3.3.1 (IS-GPS-200E)
-     * \param[in]  -  time in seconds
-     * \param[out] -  corrected time, in seconds
-     */
-    double check_t(double time);
-
 public:
-    unsigned int i_satellite_PRN;  // SV PRN NUMBER
+    /*!
+     * Default constructor
+     */
+    Beidou_Dnav_Ephemeris();
+
+    unsigned int i_satellite_PRN;  //!< SV PRN NUMBER
     double d_TOW;                  //!< Time of BEIDOU Week of the ephemeris set (taken from subframes TOW) [s]
     double d_Crs;                  //!< Amplitude of the Sine Harmonic Correction Term to the Orbit Radius [m]
     double d_Delta_n;              //!< Mean Motion Difference From Computed Value [semi-circles/s]
@@ -64,8 +50,8 @@ public:
     double d_eccentricity;         //!< Eccentricity [dimensionless]
     double d_Cus;                  //!< Amplitude of the Sine Harmonic Correction Term to the Argument of Latitude [rad]
     double d_sqrt_A;               //!< Square Root of the Semi-Major Axis [sqrt(m)]
-    double d_Toe;                  //!< Ephemeris data reference time of week (Ref. 20.3.3.4.3 IS-GPS-200E) [s]
-    double d_Toc;                  //!< clock data reference time (Ref. 20.3.3.3.3.1 IS-GPS-200E) [s]
+    double d_Toe;                  //!< Ephemeris data reference time of week (Ref. 20.3.3.4.3 IS-GPS-200K) [s]
+    double d_Toc;                  //!< clock data reference time (Ref. 20.3.3.3.3.1 IS-GPS-200K) [s]
     double d_Cic;                  //!< Amplitude of the Cosine Harmonic Correction Term to the Angle of Inclination [rad]
     double d_OMEGA0;               //!< Longitude of Ascending Node of Orbit Plane at Weekly Epoch [semi-circles]
     double d_Cis;                  //!< Amplitude of the Sine Harmonic Correction Term to the Angle of Inclination [rad]
@@ -75,7 +61,7 @@ public:
     double d_OMEGA_DOT;            //!< Rate of Right Ascension [semi-circles/s]
     double d_IDOT;                 //!< Rate of Inclination Angle [semi-circles/s]
     int i_BEIDOU_week;             //!< BEIDOU week number, aka WN [week]
-    int i_SV_accuracy;             //!< User Range Accuracy (URA) index of the SV (reference paragraph 6.2.1) for the standard positioning service user (Ref 20.3.3.3.1.3 IS-GPS-200E)
+    int i_SV_accuracy;             //!< User Range Accuracy (URA) index of the SV (reference paragraph 6.2.1) for the standard positioning service user (Ref 20.3.3.3.1.3 IS-GPS-200K)
     int i_SV_health;
     double d_TGD1;  //!< Estimated Group Delay Differential on B1I [s]
     double d_TGD2;  //!< Estimated Group Delay Differential on B2I [s]
@@ -122,7 +108,26 @@ public:
     double d_satvel_Y;  //!< Earth-fixed velocity coordinate y of the satellite [m]
     double d_satvel_Z;  //!< Earth-fixed velocity coordinate z of the satellite [m]
 
-    std::map<int, std::string> satelliteBlock;  //!< Map that stores to which block the PRN belongs http://www.navcen.uscg.gov/?Do=constellationStatus
+    std::map<int, std::string> satelliteBlock;  //!< Map that stores to which block the PRN belongs
+
+    /*!
+     * \brief Compute the ECEF SV coordinates and ECEF velocity
+     * Implementation of Table 20-IV (IS-GPS-200K)
+     * and compute the clock bias term including relativistic effect (return value)
+     */
+    double satellitePosition(double transmitTime);
+
+    /*!
+     * \brief Sets (\a d_satClkDrift)and returns the clock drift in seconds according to the User Algorithm for SV Clock Correction
+     *  (IS-GPS-200K,  20.3.3.3.3.1)
+     */
+    double sv_clock_drift(double transmitTime);
+
+    /*!
+     * \brief Sets (\a d_dtr) and returns the clock relativistic correction term in seconds according to the User Algorithm for SV Clock Correction
+     *  (IS-GPS-200K,  20.3.3.3.3.1)
+     */
+    double sv_clock_relativistic_term(double transmitTime);
 
     template <class Archive>
 
@@ -146,8 +151,8 @@ public:
         archive& make_nvp("d_e_eccentricity", d_eccentricity);  //!< Eccentricity [dimensionless]
         archive& make_nvp("d_Cus", d_Cus);                      //!< Amplitude of the Sine Harmonic Correction Term to the Argument of Latitude [rad]
         archive& make_nvp("d_sqrt_A", d_sqrt_A);                //!< Square Root of the Semi-Major Axis [sqrt(m)]
-        archive& make_nvp("d_Toe", d_Toe);                      //!< Ephemeris data reference time of week (Ref. 20.3.3.4.3 IS-GPS-200E) [s]
-        archive& make_nvp("d_Toc", d_Toe);                      //!< clock data reference time (Ref. 20.3.3.3.3.1 IS-GPS-200E) [s]
+        archive& make_nvp("d_Toe", d_Toe);                      //!< Ephemeris data reference time of week (Ref. 20.3.3.4.3 IS-GPS-200K) [s]
+        archive& make_nvp("d_Toc", d_Toe);                      //!< clock data reference time (Ref. 20.3.3.3.3.1 IS-GPS-200K) [s]
         archive& make_nvp("d_Cic", d_Cic);                      //!< Amplitude of the Cosine Harmonic Correction Term to the Angle of Inclination [rad]
         archive& make_nvp("d_OMEGA0", d_OMEGA0);                //!< Longitude of Ascending Node of Orbit Plane at Weekly Epoch [semi-circles]
         archive& make_nvp("d_Cis", d_Cis);                      //!< Amplitude of the Sine Harmonic Correction Term to the Angle of Inclination [rad]
@@ -157,7 +162,7 @@ public:
         archive& make_nvp("d_OMEGA_DOT", d_OMEGA_DOT);          //!< Rate of Right Ascension [semi-circles/s]
         archive& make_nvp("d_IDOT", d_IDOT);                    //!< Rate of Inclination Angle [semi-circles/s]
         archive& make_nvp("i_BEIDOU_week", i_BEIDOU_week);      //!< GPS week number, aka WN [week]
-        archive& make_nvp("i_SV_accuracy", i_SV_accuracy);      //!< User Range Accuracy (URA) index of the SV (reference paragraph 6.2.1) for the standard positioning service user (Ref 20.3.3.3.1.3 IS-GPS-200E)
+        archive& make_nvp("i_SV_accuracy", i_SV_accuracy);      //!< User Range Accuracy (URA) index of the SV (reference paragraph 6.2.1) for the standard positioning service user (Ref 20.3.3.3.1.3 IS-GPS-200K)
         archive& make_nvp("i_SV_health", i_SV_health);
         archive& make_nvp("d_AODC", d_AODC);  //!< Issue of Data, Clock
         archive& make_nvp("d_TGD1", d_TGD1);  //!< Estimated Group Delay Differential: L1-L2 correction term only for the benefit of "L1 P(Y)" or "L2 P(Y)" s users [s]
@@ -177,30 +182,15 @@ public:
         archive& make_nvp("b_antispoofing_flag", b_antispoofing_flag);  //!<  If true, the AntiSpoofing mode is ON in that SV
     }
 
-    /*!
-     * \brief Compute the ECEF SV coordinates and ECEF velocity
-     * Implementation of Table 20-IV (IS-GPS-200E)
-     * and compute the clock bias term including relativistic effect (return value)
+private:
+    /*
+     * Accounts for the beginning or end of week crossover
+     *
+     * See paragraph 20.3.3.3.3.1 (IS-GPS-200K)
+     * \param[in]  -  time in seconds
+     * \param[out] -  corrected time, in seconds
      */
-    double satellitePosition(double transmitTime);
-
-    /*!
-     * \brief Sets (\a d_satClkDrift)and returns the clock drift in seconds according to the User Algorithm for SV Clock Correction
-     *  (IS-GPS-200E,  20.3.3.3.3.1)
-     */
-    double sv_clock_drift(double transmitTime);
-
-    /*!
-     * \brief Sets (\a d_dtr) and returns the clock relativistic correction term in seconds according to the User Algorithm for SV Clock Correction
-     *  (IS-GPS-200E,  20.3.3.3.3.1)
-     */
-    double sv_clock_relativistic_term(double transmitTime);
-
-
-    /*!
-     * Default constructor
-     */
-    Beidou_Dnav_Ephemeris();
+    double check_t(double time);
 };
 
 #endif

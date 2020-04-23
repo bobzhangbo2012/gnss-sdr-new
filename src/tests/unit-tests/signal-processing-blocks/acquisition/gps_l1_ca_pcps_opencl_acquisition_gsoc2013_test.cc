@@ -7,30 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
+#include "concurrent_queue.h"
 #include "configuration_interface.h"
 #include "fir_filter.h"
 #include "gen_signal_source.h"
@@ -45,7 +35,6 @@
 #include <gnuradio/analog/sig_source_waveform.h>
 #include <gnuradio/blocks/file_source.h>
 #include <gnuradio/blocks/null_sink.h>
-#include <gnuradio/msg_queue.h>
 #include <gnuradio/top_block.h>
 #include <chrono>
 #include <thread>
@@ -68,7 +57,7 @@ class GpsL1CaPcpsOpenClAcquisitionGSoC2013Test_msg_rx : public gr::block
 private:
     friend GpsL1CaPcpsOpenClAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsOpenClAcquisitionGSoC2013Test_msg_rx_make(Concurrent_Queue<int>& queue);
     void msg_handler_events(pmt::pmt_t msg);
-    GpsL1CaPcpsOpenClAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue);
+    explicit GpsL1CaPcpsOpenClAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue);
     Concurrent_Queue<int>& channel_internal_queue;
 
 public:
@@ -118,7 +107,7 @@ class GpsL1CaPcpsOpenClAcquisitionGSoC2013Test : public ::testing::Test
 protected:
     GpsL1CaPcpsOpenClAcquisitionGSoC2013Test()
     {
-        queue = gr::msg_queue::make(0);
+        queue = std::make_shared<Concurrent_Queue<pmt::pmt_t>>();
         top_block = gr::make_top_block("Acquisition test");
         item_size = sizeof(gr_complex);
         stop = false;
@@ -140,7 +129,7 @@ protected:
     void stop_queue();
 
     Concurrent_Queue<int> channel_internal_queue;
-    gr::msg_queue::sptr queue;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
     std::shared_ptr<GpsL1CaPcpsOpenClAcquisition> acquisition;
     std::shared_ptr<InMemoryConfiguration> config;
@@ -494,50 +483,57 @@ TEST_F(GpsL1CaPcpsOpenClAcquisitionGSoC2013Test, ValidationOfResults)
 
     acquisition->init();
 
-    ASSERT_NO_THROW({
-        boost::shared_ptr<GenSignalSource> signal_source;
-        SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
-        FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
-        signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
-        signal_source->connect(top_block);
-        top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
-        top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
-    }) << "Failure connecting the blocks of acquisition test.";
-
-    // i = 0 --> satellite in acquisition is visible
-    // i = 1 --> satellite in acquisition is not visible
-    for (unsigned int i = 0; i < 2; i++)
+    if (!acquisition->opencl_ready())
         {
-            init();
+            std::cout << "OpenCL Platform is not ready." << std::endl;
+        }
+    else
+        {
+            ASSERT_NO_THROW({
+                boost::shared_ptr<GenSignalSource> signal_source;
+                SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
+                FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
+                signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
+                signal_source->connect(top_block);
+                top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
+                top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
+            }) << "Failure connecting the blocks of acquisition test.";
 
-            if (i == 0)
+            // i = 0 --> satellite in acquisition is visible
+            // i = 1 --> satellite in acquisition is not visible
+            for (unsigned int i = 0; i < 2; i++)
                 {
-                    gnss_synchro.PRN = 10;  // This satellite is visible
-                }
-            else if (i == 1)
-                {
-                    gnss_synchro.PRN = 20;  // This satellite is not visible
-                }
+                    init();
 
-            acquisition->set_local_code();
-
-            start_queue();
-
-            EXPECT_NO_THROW({
-                top_block->run();  // Start threads and wait
-            }) << "Failure running the top_block.";
-
-            if (i == 0)
-                {
-                    EXPECT_EQ(1, message) << "Acquisition failure. Expected message: 1=ACQ SUCCESS.";
-                    if (message == 1)
+                    if (i == 0)
                         {
-                            EXPECT_EQ(static_cast<unsigned int>(1), correct_estimation_counter) << "Acquisition failure. Incorrect parameters estimation.";
+                            gnss_synchro.PRN = 10;  // This satellite is visible
                         }
-                }
-            else if (i == 1)
-                {
-                    EXPECT_EQ(2, message) << "Acquisition failure. Expected message: 2=ACQ FAIL.";
+                    else if (i == 1)
+                        {
+                            gnss_synchro.PRN = 20;  // This satellite is not visible
+                        }
+
+                    acquisition->set_local_code();
+
+                    start_queue();
+
+                    EXPECT_NO_THROW({
+                        top_block->run();  // Start threads and wait
+                    }) << "Failure running the top_block.";
+
+                    if (i == 0)
+                        {
+                            EXPECT_EQ(1, message) << "Acquisition failure. Expected message: 1=ACQ SUCCESS.";
+                            if (message == 1)
+                                {
+                                    EXPECT_EQ(static_cast<unsigned int>(1), correct_estimation_counter) << "Acquisition failure. Incorrect parameters estimation.";
+                                }
+                        }
+                    else if (i == 1)
+                        {
+                            EXPECT_EQ(2, message) << "Acquisition failure. Expected message: 2=ACQ FAIL.";
+                        }
                 }
         }
 }
@@ -575,52 +571,58 @@ TEST_F(GpsL1CaPcpsOpenClAcquisitionGSoC2013Test, ValidationOfResultsProbabilitie
     }) << "Failure connecting acquisition to the top_block.";
 
     acquisition->init();
-
-    ASSERT_NO_THROW({
-        boost::shared_ptr<GenSignalSource> signal_source;
-        SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
-        FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
-        signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
-        signal_source->connect(top_block);
-        top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
-        top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
-    }) << "Failure connecting the blocks of acquisition test.";
-
-    std::cout << "Probability of false alarm (target) = " << 0.1 << std::endl;
-
-    // i = 0 --> satellite in acquisition is visible (prob of detection and prob of detection with wrong estimation)
-    // i = 1 --> satellite in acquisition is not visible (prob of false detection)
-    for (unsigned int i = 0; i < 2; i++)
+    if (!acquisition->opencl_ready())
         {
-            init();
+            std::cout << "OpenCL Platform is not ready." << std::endl;
+        }
+    else
+        {
+            ASSERT_NO_THROW({
+                boost::shared_ptr<GenSignalSource> signal_source;
+                SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
+                FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
+                signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
+                signal_source->connect(top_block);
+                top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
+                top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
+            }) << "Failure connecting the blocks of acquisition test.";
 
-            if (i == 0)
+            std::cout << "Probability of false alarm (target) = " << 0.1 << std::endl;
+
+            // i = 0 --> satellite in acquisition is visible (prob of detection and prob of detection with wrong estimation)
+            // i = 1 --> satellite in acquisition is not visible (prob of false detection)
+            for (unsigned int i = 0; i < 2; i++)
                 {
-                    gnss_synchro.PRN = 10;  // This satellite is visible
-                }
-            else if (i == 1)
-                {
-                    gnss_synchro.PRN = 20;  // This satellite is not visible
-                }
+                    init();
 
-            acquisition->set_local_code();
+                    if (i == 0)
+                        {
+                            gnss_synchro.PRN = 10;  // This satellite is visible
+                        }
+                    else if (i == 1)
+                        {
+                            gnss_synchro.PRN = 20;  // This satellite is not visible
+                        }
 
-            start_queue();
+                    acquisition->set_local_code();
 
-            EXPECT_NO_THROW({
-                top_block->run();  // Start threads and wait
-            }) << "Failure running the top_block.";
+                    start_queue();
 
-            if (i == 0)
-                {
-                    std::cout << "Estimated probability of detection = " << Pd << std::endl;
-                    std::cout << "Estimated probability of false alarm (satellite present) = " << Pfa_p << std::endl;
-                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
-                }
-            else if (i == 1)
-                {
-                    std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << std::endl;
-                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
+                    EXPECT_NO_THROW({
+                        top_block->run();  // Start threads and wait
+                    }) << "Failure running the top_block.";
+
+                    if (i == 0)
+                        {
+                            std::cout << "Estimated probability of detection = " << Pd << std::endl;
+                            std::cout << "Estimated probability of false alarm (satellite present) = " << Pfa_p << std::endl;
+                            std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
+                        }
+                    else if (i == 1)
+                        {
+                            std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << std::endl;
+                            std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
+                        }
                 }
         }
 }

@@ -1,19 +1,10 @@
-# Copyright (C) 2011-2018 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 
 ########################################################################
@@ -71,12 +62,13 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
         gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)
         gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
     else()
-        message(STATUS "PYTHON_EXECUTABLE not set - trying by default python2")
-        message(STATUS "Use -DPYTHON_EXECUTABLE=/path/to/python3 to build for python3.")
-        find_package(PythonInterp ${GNSSSDR_PYTHON_MIN_VERSION})
+        message(STATUS "PYTHON_EXECUTABLE not set - trying by default python3")
+        message(STATUS "Use -DPYTHON_EXECUTABLE=/path/to/python to build for python 2.7")
+        set(Python_ADDITIONAL_VERSIONS 3.4 3.5 3.6 3.7 3.8 3.9)
+        find_package(PythonInterp ${GNSSSDR_PYTHON_MIN3_VERSION})
         if(NOT PYTHONINTERP_FOUND)
-            message(STATUS "python2 not found - trying with python3")
-            find_package(PythonInterp ${GNSSSDR_PYTHON3_MIN_VERSION} REQUIRED)
+            message(STATUS "python3 not found - trying with python2.7")
+            find_package(PythonInterp ${GNSSSDR_PYTHON_MIN_VERSION} REQUIRED)
         endif()
         gnsssdr_python_check_module("python >= ${GNSSSDR_PYTHON_MIN_VERSION}" sys "sys.version.split()[0] >= '${GNSSSDR_PYTHON_MIN_VERSION}'" PYTHON_MIN_VER_FOUND)
         gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)

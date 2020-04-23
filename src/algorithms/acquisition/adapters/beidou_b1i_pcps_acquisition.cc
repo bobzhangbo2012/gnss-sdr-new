@@ -8,25 +8,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -37,8 +26,9 @@
 #include "beidou_b1i_signal_processing.h"
 #include "configuration_interface.h"
 #include "gnss_sdr_flags.h"
-#include <boost/math/distributions/exponential.hpp>
 #include <glog/logging.h>
+#include <algorithm>
+#include <memory>
 
 
 BeidouB1iPcpsAcquisition::BeidouB1iPcpsAcquisition(
@@ -49,69 +39,29 @@ BeidouB1iPcpsAcquisition::BeidouB1iPcpsAcquisition(
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
-    Acq_Conf acq_parameters = Acq_Conf();
     configuration_ = configuration;
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_filename = "./data/acquisition.dat";
+    acq_parameters_.ms_per_code = 1;
+    acq_parameters_.SetFromConfiguration(configuration_, role, BEIDOU_B1I_CODE_RATE_CPS, 10e6);
 
-    DLOG(INFO) << "role " << role;
+    LOG(INFO) << "role " << role;
 
-    item_type_ = configuration_->property(role + ".item_type", default_item_type);
-    int64_t fs_in_deprecated = configuration_->property("GNSS-SDR.internal_fs_hz", 2048000);
-    fs_in_ = configuration_->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
-    acq_parameters.fs_in = fs_in_;
-    dump_ = configuration_->property(role + ".dump", false);
-    acq_parameters.dump = dump_;
-    blocking_ = configuration_->property(role + ".blocking", true);
-    acq_parameters.blocking = blocking_;
-    doppler_max_ = configuration_->property(role + ".doppler_max", 5000);
     if (FLAGS_doppler_max != 0)
         {
-            doppler_max_ = FLAGS_doppler_max;
+            acq_parameters_.doppler_max = FLAGS_doppler_max;
         }
-    acq_parameters.doppler_max = doppler_max_;
-    sampled_ms_ = configuration_->property(role + ".coherent_integration_time_ms", 1);
-    acq_parameters.sampled_ms = sampled_ms_;
-    bit_transition_flag_ = configuration_->property(role + ".bit_transition_flag", false);
-    acq_parameters.bit_transition_flag = bit_transition_flag_;
-    use_CFAR_algorithm_flag_ = configuration_->property(role + ".use_CFAR_algorithm", true);  //will be false in future versions
-    acq_parameters.use_CFAR_algorithm_flag = use_CFAR_algorithm_flag_;
-    max_dwells_ = configuration_->property(role + ".max_dwells", 1);
-    acq_parameters.max_dwells = max_dwells_;
-    dump_filename_ = configuration_->property(role + ".dump_filename", default_dump_filename);
-    acq_parameters.dump_filename = dump_filename_;
-    //--- Find number of samples per spreading code -------------------------
-    code_length_ = static_cast<uint32_t>(std::round(static_cast<double>(fs_in_) / (BEIDOU_B1I_CODE_RATE_HZ / BEIDOU_B1I_CODE_LENGTH_CHIPS)));
+    doppler_max_ = acq_parameters_.doppler_max;
+    doppler_step_ = acq_parameters_.doppler_step;
+    fs_in_ = acq_parameters_.fs_in;
+    item_type_ = acq_parameters_.item_type;
+    item_size_ = acq_parameters_.it_size;
 
-    vector_length_ = code_length_ * sampled_ms_;
+    num_codes_ = acq_parameters_.sampled_ms;
+    code_length_ = static_cast<unsigned int>(std::floor(static_cast<double>(fs_in_) / (BEIDOU_B1I_CODE_RATE_CPS / BEIDOU_B1I_CODE_LENGTH_CHIPS)));
+    vector_length_ = std::floor(acq_parameters_.sampled_ms * acq_parameters_.samples_per_ms) * (acq_parameters_.bit_transition_flag ? 2 : 1);
+    code_ = std::vector<std::complex<float>>(vector_length_);
 
-    if (bit_transition_flag_)
-        {
-            vector_length_ *= 2;
-        }
-
-    code_ = new gr_complex[vector_length_];
-
-    if (item_type_ == "cshort")
-        {
-            item_size_ = sizeof(lv_16sc_t);
-        }
-    else
-        {
-            item_size_ = sizeof(gr_complex);
-        }
-    acq_parameters.it_size = item_size_;
-    acq_parameters.sampled_ms = sampled_ms_;
-    acq_parameters.samples_per_ms = code_length_;
-    acq_parameters.samples_per_code = code_length_;
-    acq_parameters.num_doppler_bins_step2 = configuration_->property(role + ".second_nbins", 4);
-    acq_parameters.doppler_step2 = configuration_->property(role + ".second_doppler_step", 125.0);
-    acq_parameters.make_2_steps = configuration_->property(role + ".make_two_steps", false);
-    acquisition_ = pcps_make_acquisition(acq_parameters);
+    acquisition_ = pcps_make_acquisition(acq_parameters_);
     DLOG(INFO) << "acquisition(" << acquisition_->unique_id() << ")";
-
-    stream_to_vector_ = gr::blocks::stream_to_vector::make(item_size_, vector_length_);
-    DLOG(INFO) << "stream_to_vector(" << stream_to_vector_->unique_id() << ")";
 
     if (item_type_ == "cbyte")
         {
@@ -121,9 +71,8 @@ BeidouB1iPcpsAcquisition::BeidouB1iPcpsAcquisition(
 
     channel_ = 0;
     threshold_ = 0.0;
-    doppler_step_ = 0;
     gnss_synchro_ = nullptr;
-    
+
     if (in_streams_ > 1)
         {
             LOG(ERROR) << "This implementation only supports one input stream";
@@ -135,12 +84,6 @@ BeidouB1iPcpsAcquisition::BeidouB1iPcpsAcquisition(
 }
 
 
-BeidouB1iPcpsAcquisition::~BeidouB1iPcpsAcquisition()
-{
-    delete[] code_;
-}
-
-
 void BeidouB1iPcpsAcquisition::stop_acquisition()
 {
 }
@@ -148,18 +91,7 @@ void BeidouB1iPcpsAcquisition::stop_acquisition()
 
 void BeidouB1iPcpsAcquisition::set_threshold(float threshold)
 {
-    float pfa = configuration_->property(role_ + ".pfa", 0.0);
-
-    if (pfa == 0.0)
-        {
-            threshold_ = threshold;
-        }
-    else
-        {
-            threshold_ = calculate_threshold(pfa);
-        }
-
-    DLOG(INFO) << "Channel " << channel_ << " Threshold = " << threshold_;
+    threshold_ = threshold;
 
     acquisition_->set_threshold(threshold_);
 }
@@ -204,18 +136,17 @@ void BeidouB1iPcpsAcquisition::init()
 
 void BeidouB1iPcpsAcquisition::set_local_code()
 {
-    auto* code = new std::complex<float>[code_length_];
+    std::vector<std::complex<float>> code(code_length_);
 
     beidou_b1i_code_gen_complex_sampled(code, gnss_synchro_->PRN, fs_in_, 0);
 
-    for (uint32_t i = 0; i < sampled_ms_; i++)
+    gsl::span<gr_complex> code_span(code_.data(), vector_length_);
+    for (unsigned int i = 0; i < num_codes_; i++)
         {
-            memcpy(&(code_[i * code_length_]), code,
-                sizeof(gr_complex) * code_length_);
+            std::copy_n(code.data(), code_length_, code_span.subspan(i * code_length_, code_length_).data());
         }
 
-    acquisition_->set_local_code(code_);
-    delete[] code;
+    acquisition_->set_local_code(code_.data());
 }
 
 
@@ -231,31 +162,6 @@ void BeidouB1iPcpsAcquisition::set_state(int state)
 }
 
 
-float BeidouB1iPcpsAcquisition::calculate_threshold(float pfa)
-{
-    //Calculate the threshold
-    uint32_t frequency_bins = 0;
-    /*
-    for (int doppler = (int)(-doppler_max_); doppler <= (int)doppler_max_; doppler += doppler_step_)
-        {
-            frequency_bins++;
-        }
-     */
-
-    frequency_bins = (2 * doppler_max_ + doppler_step_) / doppler_step_;
-
-    DLOG(INFO) << "Channel " << channel_ << "  Pfa = " << pfa;
-    uint32_t ncells = vector_length_ * frequency_bins;
-    double exponent = 1 / static_cast<double>(ncells);
-    double val = pow(1.0 - pfa, exponent);
-    auto lambda = static_cast<double>(vector_length_);
-    boost::math::exponential_distribution<double> mydist(lambda);
-    auto threshold = static_cast<float>(quantile(mydist, val));
-
-    return threshold;
-}
-
-
 void BeidouB1iPcpsAcquisition::connect(gr::top_block_sptr top_block)
 {
     if (item_type_ == "gr_complex")
@@ -268,9 +174,11 @@ void BeidouB1iPcpsAcquisition::connect(gr::top_block_sptr top_block)
         }
     else if (item_type_ == "cbyte")
         {
+            // Since a byte-based acq implementation is not available,
+            // we just convert cshorts to gr_complex
             top_block->connect(cbyte_to_float_x2_, 0, float_to_complex_, 0);
             top_block->connect(cbyte_to_float_x2_, 1, float_to_complex_, 1);
-            top_block->connect(float_to_complex_, 0, stream_to_vector_, 0);
+            top_block->connect(float_to_complex_, 0, acquisition_, 0);
         }
     else
         {
@@ -291,11 +199,9 @@ void BeidouB1iPcpsAcquisition::disconnect(gr::top_block_sptr top_block)
         }
     else if (item_type_ == "cbyte")
         {
-            // Since a byte-based acq implementation is not available,
-            // we just convert cshorts to gr_complex
             top_block->disconnect(cbyte_to_float_x2_, 0, float_to_complex_, 0);
             top_block->disconnect(cbyte_to_float_x2_, 1, float_to_complex_, 1);
-            top_block->disconnect(float_to_complex_, 0, stream_to_vector_, 0);
+            top_block->disconnect(float_to_complex_, 0, acquisition_, 0);
         }
     else
         {
@@ -314,7 +220,7 @@ gr::basic_block_sptr BeidouB1iPcpsAcquisition::get_left_block()
         {
             return acquisition_;
         }
-    else if (item_type_ == "cbyte")
+    if (item_type_ == "cbyte")
         {
             return cbyte_to_float_x2_;
         }
@@ -330,6 +236,7 @@ gr::basic_block_sptr BeidouB1iPcpsAcquisition::get_right_block()
 {
     return acquisition_;
 }
+
 
 void BeidouB1iPcpsAcquisition::set_resampler_latency(uint32_t latency_samples)
 {

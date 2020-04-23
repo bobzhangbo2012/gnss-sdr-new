@@ -6,34 +6,24 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_VITERBI_DECODER_H_
-#define GNSS_SDR_VITERBI_DECODER_H_
+#ifndef GNSS_SDR_VITERBI_DECODER_H
+#define GNSS_SDR_VITERBI_DECODER_H
 
 #include <cstddef>  // for size_t
 #include <deque>
+#include <vector>
 
 /*!
  * \brief Class that implements a Viterbi decoder
@@ -42,7 +32,7 @@ class Viterbi_Decoder
 {
 public:
     Viterbi_Decoder(const int g_encoder[], const int KK, const int nn);
-    ~Viterbi_Decoder();
+    ~Viterbi_Decoder() = default;
     void reset();
 
     /*!
@@ -78,10 +68,10 @@ private:
 
     private:
         int t;
-        int* state;
-        int* bit;
-        float* metric;
-        int* refcount;
+        std::vector<int> state;
+        std::vector<int> v_bit;
+        std::vector<float> v_metric;
+        int refcount;
     };
 
     // code properties
@@ -94,16 +84,16 @@ private:
     int d_number_symbols;
 
     // trellis definition
-    int* d_out0;
-    int* d_state0;
-    int* d_out1;
-    int* d_state1;
+    std::vector<int> d_out0;
+    std::vector<int> d_state0;
+    std::vector<int> d_out1;
+    std::vector<int> d_state1;
 
     // trellis state
-    float* d_pm_t;
+    std::vector<float> d_pm_t;
     std::deque<Prev> d_trellis_paths;
-    float* d_metric_c;  /* Set of all possible branch metrics */
-    float* d_rec_array; /* Received values for one trellis section */
+    std::vector<float> d_metric_c;  /* Set of all possible branch metrics */
+    std::vector<float> d_rec_array; /* Received values for one trellis section */
     bool d_trellis_state_is_initialised;
 
     // measures
@@ -124,4 +114,4 @@ private:
     int parity_counter(int symbol, int length);
 };
 
-#endif /* GNSS_SDR_VITERBI_DECODER_H_ */
+#endif  // GNSS_SDR_VITERBI_DECODER_H

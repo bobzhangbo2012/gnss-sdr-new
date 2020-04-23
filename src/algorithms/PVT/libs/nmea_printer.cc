@@ -3,32 +3,21 @@
  * \brief Implementation of a NMEA 2.1 printer for GNSS-SDR
  * This class provides a implementation of a subset of the NMEA-0183 standard for interfacing
  * marine electronic devices as defined by the National Marine Electronics Association (NMEA).
- * See http://www.nmea.org/ for the NMEA 183 standard
+ * See https://www.nmea.org/ for the NMEA 183 standard
  *
  * \author Javier Arribas, 2012. jarribas(at)cttc.es
  *
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -36,16 +25,33 @@
 #include "nmea_printer.h"
 #include "rtklib_solution.h"
 #include "rtklib_solver.h"
-#include <boost/filesystem/operations.hpp>   // for create_directories, exists
-#include <boost/filesystem/path.hpp>         // for path, operator<<
-#include <boost/filesystem/path_traits.hpp>  // for filesystem
-#include <boost/system/error_code.hpp>       // for error_code
 #include <glog/logging.h>
+#include <array>
 #include <cstdint>
 #include <exception>
 #include <fcntl.h>
 #include <iostream>  // for cout, cerr
 #include <termios.h>
+#include <utility>
+
+#if HAS_STD_FILESYSTEM
+#include <system_error>
+namespace errorlib = std;
+#if HAS_STD_FILESYSTEM_EXPERIMENTAL
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#else
+#include <boost/filesystem/operations.hpp>   // for create_directories, exists
+#include <boost/filesystem/path.hpp>         // for path, operator<<
+#include <boost/filesystem/path_traits.hpp>  // for filesystem
+#include <boost/system/error_code.hpp>       // for error_code
+namespace fs = boost::filesystem;
+namespace errorlib = boost::system;
+#endif
 
 
 Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_file, bool flag_nmea_tty_port, std::string nmea_dump_devname, const std::string& base_path)
@@ -54,24 +60,24 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
     d_flag_nmea_output_file = flag_nmea_output_file;
     if (d_flag_nmea_output_file == true)
         {
-            boost::filesystem::path full_path(boost::filesystem::current_path());
-            const boost::filesystem::path p(nmea_base_path);
-            if (!boost::filesystem::exists(p))
+            fs::path full_path(fs::current_path());
+            const fs::path p(nmea_base_path);
+            if (!fs::exists(p))
                 {
                     std::string new_folder;
-                    for (auto& folder : boost::filesystem::path(nmea_base_path))
+                    for (auto& folder : fs::path(nmea_base_path))
                         {
                             new_folder += folder.string();
-                            boost::system::error_code ec;
-                            if (!boost::filesystem::exists(new_folder))
+                            errorlib::error_code ec;
+                            if (!fs::exists(new_folder))
                                 {
-                                    if (!boost::filesystem::create_directory(new_folder, ec))
+                                    if (!fs::create_directory(new_folder, ec))
                                         {
                                             std::cout << "Could not create the " << new_folder << " folder." << std::endl;
                                             nmea_base_path = full_path.string();
                                         }
                                 }
-                            new_folder += boost::filesystem::path::preferred_separator;
+                            new_folder += fs::path::preferred_separator;
                         }
                 }
             else
@@ -84,7 +90,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
                     std::cout << "NMEA files will be stored at " << nmea_base_path << std::endl;
                 }
 
-            nmea_base_path = nmea_base_path + boost::filesystem::path::preferred_separator;
+            nmea_base_path = nmea_base_path + fs::path::preferred_separator;
 
             nmea_filename = nmea_base_path + filename;
 
@@ -118,6 +124,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
 
 Nmea_Printer::~Nmea_Printer()
 {
+    auto pos = nmea_file_descriptor.tellp();
     try
         {
             if (nmea_file_descriptor.is_open())
@@ -132,6 +139,14 @@ Nmea_Printer::~Nmea_Printer()
     catch (const std::exception& e)
         {
             std::cerr << e.what() << '\n';
+        }
+    if (pos == 0)
+        {
+            errorlib::error_code ec;
+            if (!fs::remove(fs::path(nmea_filename), ec))
+                {
+                    std::cerr << "Problem removing NMEA temporary file: " << nmea_filename << '\n';
+                }
         }
     try
         {
@@ -150,9 +165,9 @@ int Nmea_Printer::init_serial(const std::string& serial_device)
      * Opens the serial device and sets the default baud rate for a NMEA transmission (9600,8,N,1)
      */
     int fd = 0;
-    struct termios options
-    {
-    };
+    // clang-format off
+    struct termios options{};
+    // clang-format on
     int64_t BAUD;
     int64_t DATABITS;
     int64_t STOPBITS;
@@ -268,13 +283,13 @@ bool Nmea_Printer::Print_Nmea_Line(const std::shared_ptr<Rtklib_Solver>& pvt_dat
 }
 
 
-char Nmea_Printer::checkSum(std::string sentence)
+char Nmea_Printer::checkSum(const std::string& sentence)
 {
     char check = 0;
     // iterate over the string, XOR each byte with the total sum:
     for (char c : sentence)
         {
-            check = char(check ^ c);
+            check = static_cast<char>(check ^ c);
         }
     // return the result
     return check;
@@ -413,9 +428,9 @@ std::string Nmea_Printer::get_GPRMC()
 {
     // Sample -> $GPRMC,161229.487,A,3723.2475,N,12158.3416,W,0.13,309.62,120598,*10
     std::stringstream sentence_str;
-    unsigned char buff[1024] = {0};
-    outnmea_rmc(buff, &d_PVT_data->pvt_sol);
-    sentence_str << buff;
+    std::array<unsigned char, 1024> buff{};
+    outnmea_rmc(buff.data(), &d_PVT_data->pvt_sol);
+    sentence_str << buff.data();
     return sentence_str.str();
 }
 
@@ -425,9 +440,9 @@ std::string Nmea_Printer::get_GPGSA()
     // $GPGSA,A,3,07,02,26,27,09,04,15, , , , , ,1.8,1.0,1.5*33
     // GSA-GNSS DOP and Active Satellites
     std::stringstream sentence_str;
-    unsigned char buff[1024] = {0};
-    outnmea_gsa(buff, &d_PVT_data->pvt_sol, d_PVT_data->pvt_ssat);
-    sentence_str << buff;
+    std::array<unsigned char, 1024> buff{};
+    outnmea_gsa(buff.data(), &d_PVT_data->pvt_sol, d_PVT_data->pvt_ssat.data());
+    sentence_str << buff.data();
     return sentence_str.str();
 }
 
@@ -438,9 +453,9 @@ std::string Nmea_Printer::get_GPGSV()
     // $GPGSV,2,1,07,07,79,048,42,02,51,062,43,26,36,256,42,27,27,138,42*71
     // Notice that NMEA 2.1 only supports 12 channels
     std::stringstream sentence_str;
-    unsigned char buff[1024] = {0};
-    outnmea_gsv(buff, &d_PVT_data->pvt_sol, d_PVT_data->pvt_ssat);
-    sentence_str << buff;
+    std::array<unsigned char, 1024> buff{};
+    outnmea_gsv(buff.data(), &d_PVT_data->pvt_sol, d_PVT_data->pvt_ssat.data());
+    sentence_str << buff.data();
     return sentence_str.str();
 }
 
@@ -448,9 +463,9 @@ std::string Nmea_Printer::get_GPGSV()
 std::string Nmea_Printer::get_GPGGA()
 {
     std::stringstream sentence_str;
-    unsigned char buff[1024] = {0};
-    outnmea_gga(buff, &d_PVT_data->pvt_sol);
-    sentence_str << buff;
+    std::array<unsigned char, 1024> buff{};
+    outnmea_gga(buff.data(), &d_PVT_data->pvt_sol);
+    sentence_str << buff.data();
     return sentence_str.str();
     // $GPGGA,104427.591,5920.7009,N,01803.2938,E,1,05,3.3,78.2,M,23.2,M,0.0,0000*4A
 }

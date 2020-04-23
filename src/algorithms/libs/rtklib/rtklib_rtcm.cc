@@ -25,28 +25,7 @@
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  *----------------------------------------------------------------------------*/
@@ -54,7 +33,7 @@
 #include "rtklib_rtcm.h"
 #include "rtklib_rtkcmn.h"
 
-//extern int encode_rtcm3(rtcm_t *rtcm, int type, int sync);
+// extern int encode_rtcm3(rtcm_t *rtcm, int type, int sync);
 
 
 /* initialize rtcm control -----------------------------------------------------
@@ -73,7 +52,8 @@ int init_rtcm(rtcm_t *rtcm)
     geph_t geph0 = {0, -1, 0, 0, 0, 0, {0, 0.0}, {0, 0.0}, {0.0}, {0.0}, {0.0},
         0.0, 0.0, 0.0};
     ssr_t ssr0 = {{{0, 0.0}}, {0.0}, {0}, 0, 0, 0, 0, {0.0}, {0.0}, {0.0}, 0.0, {0.0}, {0.0}, {0.0}, 0.0, 0.0, '0'};
-    int i, j;
+    int i;
+    int j;
 
     trace(3, "init_rtcm:\n");
 
@@ -369,7 +349,9 @@ int input_rtcm3(rtcm_t *rtcm, unsigned char data)
  *-----------------------------------------------------------------------------*/
 int input_rtcm2f(rtcm_t *rtcm, FILE *fp)
 {
-    int i, data = 0, ret;
+    int i;
+    int data = 0;
+    int ret;
 
     trace(4, "input_rtcm2f: data=%02x\n", data);
 
@@ -397,7 +379,9 @@ int input_rtcm2f(rtcm_t *rtcm, FILE *fp)
  *-----------------------------------------------------------------------------*/
 int input_rtcm3f(rtcm_t *rtcm, FILE *fp)
 {
-    int i, data = 0, ret;
+    int i;
+    int data = 0;
+    int ret;
 
     trace(4, "input_rtcm3f: data=%02x\n", data);
 
@@ -435,15 +419,15 @@ int gen_rtcm2(rtcm_t *rtcm, int type, int sync)
 }
 
 
-///* generate rtcm 3 message -----------------------------------------------------
+// /* generate rtcm 3 message -----------------------------------------------------
 // * generate rtcm 3 message
 // * args   : rtcm_t *rtcm   IO rtcm control struct
 // *          int    type    I  message type
 // *          int    sync    I  sync flag (1:another message follows)
 // * return : status (1:ok,0:error)
 // *-----------------------------------------------------------------------------*/
-//int gen_rtcm3(rtcm_t *rtcm, int type, int sync)
-//{
+// int gen_rtcm3(rtcm_t *rtcm, int type, int sync)
+// {
 //    unsigned int crc;
 //    int i = 0;
 //
@@ -482,4 +466,4 @@ int gen_rtcm2(rtcm_t *rtcm, int type, int sync)
 //    rtcm->nbyte = rtcm->len+3;
 //
 //    return 1;
-//}
+// }

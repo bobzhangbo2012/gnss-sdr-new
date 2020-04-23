@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -33,6 +22,8 @@
 #include "GPS_L1_CA.h"
 #include "geofunctions.h"
 #include <glog/logging.h>
+#include <array>
+#include <cstddef>
 
 
 Pvt_Solution::Pvt_Solution()
@@ -51,6 +42,8 @@ Pvt_Solution::Pvt_Solution()
     d_valid_observations = 0;
     d_rx_pos = arma::zeros(3, 1);
     d_rx_dt_s = 0.0;
+    d_rx_clock_drift_ppm = 0.0;
+    d_pre_2009_file = false;  // disabled by default
 }
 
 
@@ -68,16 +61,16 @@ arma::vec Pvt_Solution::rotateSatellite(double const traveltime, const arma::vec
      *       X_sat_rot   - rotated satellite's coordinates (ECEF)
      */
 
-    //--- Find rotation angle --------------------------------------------------
+    // -- Find rotation angle --------------------------------------------------
     double omegatau;
     omegatau = OMEGA_EARTH_DOT * traveltime;
 
-    //--- Build a rotation matrix ----------------------------------------------
+    // -- Build a rotation matrix ----------------------------------------------
     arma::mat R3 = {{cos(omegatau), sin(omegatau), 0.0},
         {-sin(omegatau), cos(omegatau), 0.0},
         {0.0, 0.0, 1.0}};
 
-    //--- Do the rotation ------------------------------------------------------
+    // -- Do the rotation ------------------------------------------------------
     arma::vec X_sat_rot;
     X_sat_rot = R3 * X_sat;
     return X_sat_rot;
@@ -97,8 +90,8 @@ int Pvt_Solution::cart2geo(double X, double Y, double Z, int elipsoid_selection)
                  4. World Geodetic System 1984
      */
 
-    const double a[5] = {6378388.0, 6378160.0, 6378135.0, 6378137.0, 6378137.0};
-    const double f[5] = {1.0 / 297.0, 1.0 / 298.247, 1.0 / 298.26, 1.0 / 298.257222101, 1.0 / 298.257223563};
+    const std::array<double, 5> a = {6378388.0, 6378160.0, 6378135.0, 6378137.0, 6378137.0};
+    const std::array<double, 5> f = {1.0 / 297.0, 1.0 / 298.247, 1.0 / 298.26, 1.0 / 298.257222101, 1.0 / 298.257223563};
 
     double lambda = atan2(Y, X);
     double ex2 = (2.0 - f[elipsoid_selection]) * f[elipsoid_selection] / ((1.0 - f[elipsoid_selection]) * (1.0 - f[elipsoid_selection]));
@@ -126,7 +119,7 @@ int Pvt_Solution::cart2geo(double X, double Y, double Z, int elipsoid_selection)
     d_latitude_d = phi * 180.0 / GPS_PI;
     d_longitude_d = lambda * 180.0 / GPS_PI;
     d_height_m = h;
-    //todo: refactor this class. Mix of duplicated functions, use either RTKLIB geodetic functions or geofunctions.h
+    // todo: refactor this class. Mix of duplicated functions, use either RTKLIB geodetic functions or geofunctions.h
     return 0;
 }
 
@@ -270,7 +263,7 @@ void Pvt_Solution::perform_pos_averaging()
                     d_avg_latitude_d = 0.0;
                     d_avg_longitude_d = 0.0;
                     d_avg_height_m = 0.0;
-                    for (unsigned int i = 0; i < d_hist_longitude_d.size(); i++)
+                    for (size_t i = 0; i < d_hist_longitude_d.size(); i++)
                         {
                             d_avg_latitude_d = d_avg_latitude_d + d_hist_latitude_d.at(i);
                             d_avg_longitude_d = d_avg_longitude_d + d_hist_longitude_d.at(i);
@@ -283,7 +276,7 @@ void Pvt_Solution::perform_pos_averaging()
                 }
             else
                 {
-                    //int current_depth=d_hist_longitude_d.size();
+                    // int current_depth=d_hist_longitude_d.size();
                     // Push new values
                     d_hist_longitude_d.push_front(d_longitude_d);
                     d_hist_latitude_d.push_front(d_latitude_d);
@@ -313,6 +306,16 @@ void Pvt_Solution::set_time_offset_s(double offset)
     d_rx_dt_s = offset;
 }
 
+double Pvt_Solution::get_clock_drift_ppm() const
+{
+    return d_rx_clock_drift_ppm;
+}
+
+
+void Pvt_Solution::set_clock_drift_ppm(double clock_drift_ppm)
+{
+    d_rx_clock_drift_ppm = clock_drift_ppm;
+}
 
 double Pvt_Solution::get_latitude() const
 {
@@ -406,6 +409,17 @@ arma::vec Pvt_Solution::get_rx_pos() const
     return d_rx_pos;
 }
 
+void Pvt_Solution::set_rx_vel(const arma::vec &vel)
+{
+    d_rx_vel = vel;
+}
+
+
+arma::vec Pvt_Solution::get_rx_vel() const
+{
+    return d_rx_vel;
+}
+
 
 boost::posix_time::ptime Pvt_Solution::get_position_UTC_time() const
 {
@@ -428,4 +442,10 @@ int Pvt_Solution::get_num_valid_observations() const
 void Pvt_Solution::set_num_valid_observations(int num)
 {
     d_valid_observations = num;
+}
+
+
+void Pvt_Solution::set_pre_2009_file(bool pre_2009_file)
+{
+    d_pre_2009_file = pre_2009_file;
 }

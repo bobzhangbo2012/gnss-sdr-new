@@ -8,32 +8,22 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H_
-#define GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H_
+#ifndef GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H
+#define GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H
 
+#include "concurrent_queue.h"
 #include "gnss_block_interface.h"
 #include "unpack_byte_2bit_cpx_samples.h"
 #include <gnuradio/blocks/file_sink.h>
@@ -41,8 +31,9 @@
 #include <gnuradio/blocks/interleaved_short_to_complex.h>
 #include <gnuradio/blocks/throttle.h>
 #include <gnuradio/hier_block2.h>
-#include <gnuradio/msg_queue.h>
+#include <pmt/pmt.h>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 
@@ -59,9 +50,9 @@ public:
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams,
-        boost::shared_ptr<gr::msg_queue> queue);
+        const std::shared_ptr<Concurrent_Queue<pmt::pmt_t>>& queue);
 
-    virtual ~TwoBitCpxFileSignalSource();
+    ~TwoBitCpxFileSignalSource() = default;
     inline std::string role() override
     {
         return role_;
@@ -127,10 +118,10 @@ private:
     boost::shared_ptr<gr::block> valve_;
     gr::blocks::file_sink::sptr sink_;
     gr::blocks::throttle::sptr throttle_;
-    boost::shared_ptr<gr::msg_queue> queue_;
+    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
     size_t item_size_;
     // Throttle control
     bool enable_throttle_control_;
 };
 
-#endif /*GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H_*/
+#endif  // GNSS_SDR_TWO_BIT_CPX_FILE_SIGNAL_SOURCE_H

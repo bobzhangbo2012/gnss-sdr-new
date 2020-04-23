@@ -13,25 +13,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -89,18 +78,18 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_generic(lv_32fc
         }
     for (n = 0; n < num_points; n++)
         {
-            tmp32_1 = *in_common++ * (*phase);  //if(n<10 || n >= 8108) printf("generic phase %i: %f,%f\n", n,lv_creal(*phase),lv_cimag(*phase));
+            tmp32_1 = *in_common++ * (*phase);  // if(n<10 || n >= 8108) printf("generic phase %i: %f,%f\n", n,lv_creal(*phase),lv_cimag(*phase));
 
             // Regenerate phase
             if (n % 256 == 0)
                 {
-                    //printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+                    // printf("Phase before regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
 #ifdef __cplusplus
                     (*phase) /= std::abs((*phase));
 #else
                     (*phase) /= hypotf(lv_creal(*phase), lv_cimag(*phase));
 #endif
-                    //printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
+                    // printf("Phase after regeneration %i: %f,%f  Modulus: %f\n", n,lv_creal(*phase),lv_cimag(*phase), cabsf(*phase));
                 }
 
             (*phase) *= phase_inc;
@@ -145,7 +134,7 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_generic_reload(
 #ifdef __cplusplus
             (*phase) /= std::abs((*phase));
 #else
-            //(*phase) /= cabsf((*phase));
+            // (*phase) /= cabsf((*phase));
             (*phase) /= hypotf(lv_creal(*phase), lv_cimag(*phase));
 #endif
         }
@@ -225,7 +214,7 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_u_sse3(lv_32fc_
             yl = _mm_moveldup_ps(z1);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(z1);
 
-            //next two samples
+            // next two samples
             _in_common += 2;
 
             for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
@@ -337,7 +326,7 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_a_sse3(lv_32fc_
             yl = _mm_moveldup_ps(z1);  // Load yl with cr,cr,dr,dr
             yh = _mm_movehdup_ps(z1);
 
-            //next two samples
+            // next two samples
             _in_common += 2;
 
             for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
@@ -457,7 +446,7 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_t
             yl = _mm256_moveldup_ps(z);  // Load yl with cr,cr,dr,dr
             yh = _mm256_movehdup_ps(z);
 
-            //next two samples
+            // next two samples
             _in_common += 4;
 
             for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
@@ -587,7 +576,7 @@ static inline void volk_gnsssdr_32fc_x2_rotator_dot_prod_32fc_xn_a_avx(lv_32fc_t
             yl = _mm256_moveldup_ps(z);  // Load yl with cr,cr,dr,dr
             yh = _mm256_movehdup_ps(z);
 
-            //next two samples
+            // next two samples
             _in_common += 4;
 
             for (n_vec = 0; n_vec < num_a_vectors; n_vec++)

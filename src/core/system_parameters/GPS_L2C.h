@@ -5,32 +5,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GPS_L2C_H_
-#define GNSS_SDR_GPS_L2C_H_
+#ifndef GNSS_SDR_GPS_L2C_H
+#define GNSS_SDR_GPS_L2C_H
 
 
 #include "GPS_CNAV.h"
@@ -44,8 +33,8 @@
 // Physical constants
 const double GPS_L2_C_M_S = 299792458.0;                //!< The speed of light, [m/s]
 const double GPS_L2_C_M_MS = 299792.4580;               //!< The speed of light, [m/ms]
-const double GPS_L2_PI = 3.1415926535898;               //!< Pi as defined in IS-GPS-200E
-const double GPS_L2_TWO_PI = 6.283185307179586;         //!< 2Pi as defined in IS-GPS-200E
+const double GPS_L2_PI = 3.1415926535898;               //!< Pi as defined in IS-GPS-200K
+const double GPS_L2_TWO_PI = 6.283185307179586;         //!< 2Pi as defined in IS-GPS-200K
 const double GPS_L2_OMEGA_EARTH_DOT = 7.2921151467e-5;  //!< Earth rotation rate, [rad/s]
 const double GPS_L2_GM = 3.986005e14;                   //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
 const double GPS_L2_F = -4.442807633e-10;               //!< Constant, [s/(m)^(1/2)]
@@ -53,18 +42,18 @@ const double GPS_L2_F = -4.442807633e-10;               //!< Constant, [s/(m)^(1
 // carrier and code frequencies
 const double GPS_L2_FREQ_HZ = FREQ2;  //!< L2 [Hz]
 
-const double GPS_L2_M_CODE_RATE_HZ = 0.5115e6;     //!< GPS L2 M code rate [chips/s]
+const double GPS_L2_M_CODE_RATE_CPS = 0.5115e6;    //!< GPS L2 M code rate [chips/s]
 const int32_t GPS_L2_M_CODE_LENGTH_CHIPS = 10230;  //!< GPS L2 M code length [chips]
-const double GPS_L2_M_PERIOD = 0.02;               //!< GPS L2 M code period [seconds]
+const double GPS_L2_M_PERIOD_S = 0.02;             //!< GPS L2 M code period [seconds]
 
-const double GPS_L2_L_CODE_RATE_HZ = 0.5115e6;      //!< GPS L2 L code rate [chips/s]
+const double GPS_L2_L_CODE_RATE_CPS = 0.5115e6;     //!< GPS L2 L code rate [chips/s]
 const int32_t GPS_L2_L_CODE_LENGTH_CHIPS = 767250;  //!< GPS L2 L code length [chips]
-const double GPS_L2_L_PERIOD = 1.5;                 //!< GPS L2 L code period [seconds]
+const double GPS_L2_L_PERIOD_S = 1.5;               //!< GPS L2 L code period [seconds]
 
 const int32_t GPS_L2C_HISTORY_DEEP = 5;
 
-//optimum parameters
-const uint32_t GPS_L2C_OPT_ACQ_FS_HZ = 2000000;  //!< Sampling frequncy that maximizes the acquisition SNR while using a non-multiple of chip rate
+// optimum parameters
+const uint32_t GPS_L2C_OPT_ACQ_FS_SPS = 2000000;  //!< Sampling frequency that maximizes the acquisition SNR while using a non-multiple of chip rate
 
 
 const int32_t GPS_L2C_M_INIT_REG[115] =
@@ -104,4 +93,4 @@ const int32_t GPS_L2_SAMPLES_PER_SYMBOL = 1;
 const int32_t GPS_L2_CNAV_DATA_PAGE_SYMBOLS = 600;
 const int32_t GPS_L2_CNAV_DATA_PAGE_DURATION_S = 12;
 
-#endif /* GNSS_SDR_GPS_L2C_H_ */
+#endif  // GNSS_SDR_GPS_L2C_H

@@ -1,25 +1,15 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
+# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 find_package(GPSTK QUIET)
 if(NOT GPSTK_FOUND OR ENABLE_OWN_GPSTK)
     include(GNUInstallDirs)
-    #string(REGEX REPLACE /[^/]*$ "" LIBDIR ${CMAKE_INSTALL_LIBDIR})
     set(GPSTK_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/../../../thirdparty/gpstk-${GNSSSDR_GPSTK_LOCAL_VERSION}/install/${CMAKE_INSTALL_LIBDIR}/${CMAKE_FIND_LIBRARY_PREFIXES}gpstk${CMAKE_SHARED_LIBRARY_SUFFIX})
     set(GPSTK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../thirdparty/gpstk-${GNSSSDR_GPSTK_LOCAL_VERSION}/install/include)
 endif()
@@ -55,9 +45,22 @@ find_program(UNCOMPRESS_EXECUTABLE uncompress
 )
 
 if(Boost_FOUND)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
-
+    message(STATUS "The rinex2assist utility tool will be built when doing '${CMAKE_MAKE_PROGRAM_PRETTY_NAME}'")
     add_executable(rinex2assist ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
+    set_property(TARGET rinex2assist PROPERTY CXX_STANDARD 14)  # Required by GPSTk
+    # Do not show warnings raised by GPSTk v3.0.0
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(rinex2assist
+            PUBLIC
+                -Wno-deprecated -Wno-unused-parameter -Wno-sign-compare -Wno-type-limits -Wno-unused-but-set-variable -Wno-deprecated-copy -Wno-extra
+        )
+    endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(rinex2assist
+            PUBLIC
+                -Wno-deprecated -Wno-unused-parameter -Wno-sign-compare
+        )
+    endif()
 
     target_link_libraries(rinex2assist
         PUBLIC
@@ -65,8 +68,7 @@ if(Boost_FOUND)
             Boost::serialization
             ${GPSTK_LIBRARY}
             Gflags::gflags
-            algorithms_libs
-            core_receiver
+            Threads::Threads
             core_system_parameters
     )
 
@@ -97,5 +99,17 @@ if(Boost_FOUND)
     )
 else()
     message(STATUS "Boost Iostreams library not found.")
-    message(STATUS " rinex2assist will not be built.")
+    message(STATUS " The rinex2assist utility tool will not be built.")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|kFreeBSD|GNU")
+        message(STATUS " You can install the Boost Iostreams library by doing:")
+        if(${LINUX_DISTRIBUTION} MATCHES "Fedora" OR ${LINUX_DISTRIBUTION} MATCHES "Red Hat")
+            message(STATUS " sudo yum install boost-iostreams")
+        elseif(${LINUX_DISTRIBUTION} MATCHES "openSUSE")
+            message(STATUS " sudo zypper install libboost_iostreams-devel")
+        else()
+            message(STATUS " sudo apt-get install libboost-iostreams-dev")
+        endif()
+    endif()
 endif()
+
+set(Boost_FOUND TRUE)  # trick for summary report

@@ -7,31 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
-#ifndef GNSS_SDR_GALILEO_NAVIGATION_MESSAGE_H_
-#define GNSS_SDR_GALILEO_NAVIGATION_MESSAGE_H_
+#ifndef GNSS_SDR_GALILEO_NAVIGATION_MESSAGE_H
+#define GNSS_SDR_GALILEO_NAVIGATION_MESSAGE_H
 
 #include "Galileo_E1.h"
 #include "galileo_almanac_helper.h"
@@ -48,20 +37,14 @@
 /*!
  * \brief This class handles the Galileo I/NAV Data message, as described in the
  * Galileo Open Service Signal in Space Interface Control Document (OS SIS ICD), Issue 1.2 (Nov 2015).
- * See https://www.gsc-europa.eu/system/files/galileo_documents/Galileo_OS_SIS_ICD.pdf
+ * See https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo-OS-SIS-ICD.pdf
  */
 class Galileo_Navigation_Message
 {
-private:
-    bool CRC_test(std::bitset<GALILEO_DATA_FRAME_BITS> bits, uint32_t checksum);
-    bool read_navigation_bool(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
-    uint64_t read_navigation_unsigned(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
-    uint64_t read_page_type_unsigned(std::bitset<GALILEO_PAGE_TYPE_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
-    int64_t read_navigation_signed(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
-
 public:
+    Galileo_Navigation_Message();
+
     int32_t Page_type_time_stamp;
-    int32_t flag_even_word;
     std::string page_Even;
     bool flag_CRC_test;
     bool flag_all_ephemeris;  //!< Flag indicating that all words containing ephemeris have been received
@@ -117,7 +100,7 @@ public:
     // Word type 4: Ephemeris (4/4) and Clock correction parameters*/
     int32_t IOD_nav_4;    //
     int32_t SV_ID_PRN_4;  //
-    double C_ic_4;        //!<Amplitude of the cosine harmonic correction term to the angle of inclination [radians]
+    double C_ic_4;        //!< Amplitude of the cosine harmonic correction term to the angle of inclination [radians]
     double C_is_4;        //!< Amplitude of the sine harmonic correction term to the angle of inclination [radians]
 
     // Clock correction parameters
@@ -293,7 +276,12 @@ public:
      */
     Galileo_Almanac_Helper get_almanac();
 
-    Galileo_Navigation_Message();
+private:
+    bool CRC_test(std::bitset<GALILEO_DATA_FRAME_BITS> bits, uint32_t checksum);
+    bool read_navigation_bool(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
+    uint64_t read_navigation_unsigned(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
+    uint64_t read_page_type_unsigned(std::bitset<GALILEO_PAGE_TYPE_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
+    int64_t read_navigation_signed(std::bitset<GALILEO_DATA_JK_BITS> bits, const std::vector<std::pair<int32_t, int32_t> >& parameter);
 };
 
-#endif /* GALILEO_NAVIGATION_MESSAGE_H_ */
+#endif  // GNSS_SDR_GALILEO_NAVIGATION_MESSAGE_H

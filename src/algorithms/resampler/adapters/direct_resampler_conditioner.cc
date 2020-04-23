@@ -6,25 +6,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -36,7 +25,7 @@
 #include "direct_resampler_conditioner_cs.h"
 #include <glog/logging.h>
 #include <gnuradio/blocks/file_sink.h>
-#include <volk/volk.h>
+#include <volk/volk.h>  // for lv_8sc_t
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -48,7 +37,8 @@ DirectResamplerConditioner::DirectResamplerConditioner(
 {
     std::string default_item_type = "short";
     std::string default_dump_file = "./data/signal_conditioner.dat";
-    double fs_in_deprecated, fs_in;
+    double fs_in_deprecated;
+    double fs_in;
     fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", 2048000.0);
     fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
     sample_freq_in_ = configuration->property(role_ + ".sample_freq_in", 4000000.0);
@@ -111,9 +101,6 @@ DirectResamplerConditioner::DirectResamplerConditioner(
             LOG(ERROR) << "This implementation only supports one output stream";
         }
 }
-
-
-DirectResamplerConditioner::~DirectResamplerConditioner() = default;
 
 
 void DirectResamplerConditioner::connect(gr::top_block_sptr top_block)

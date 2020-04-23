@@ -1,54 +1,65 @@
-# Copyright (C) 2011-2019 (see AUTHORS file for a list of contributors)
+# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
+#
+# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
 #
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 ########################################################################
 # Find  GR-DBFCTTC Module
 ########################################################################
 
-include(FindPkgConfig)
+#
+# Provides the following imported target:
+# Gnuradio::dbfcttc
+#
+
 pkg_check_modules(PC_GR_DBFCTTC gr-dbfcttc)
+
+if(NOT GRDBFCTTC_ROOT)
+    set(GRDBFCTTC_ROOT_USER_DEFINED /usr/local)
+else()
+    set(GRDBFCTTC_ROOT_USER_DEFINED ${GRDBFCTTC_ROOT})
+endif()
+if(DEFINED ENV{GRDBFCTTC_ROOT})
+    set(GRDBFCTTC_ROOT_USER_DEFINED
+        ${GRDBFCTTC_ROOT_USER_DEFINED}
+        $ENV{GRDBFCTTC_ROOT}
+    )
+endif()
+if(DEFINED ENV{GR_DBFCTTC_DIR})
+    set(GRDBFCTTC_ROOT_USER_DEFINED
+        ${GRDBFCTTC_ROOT_USER_DEFINED}
+        $ENV{GR_DBFCTTC_DIR}
+    )
+endif()
+set(GRDBFCTTC_ROOT_USER_DEFINED
+    ${GRDBFCTTC_ROOT_USER_DEFINED}
+    ${CMAKE_INSTALL_PREFIX}
+)
 
 find_path(
     GR_DBFCTTC_INCLUDE_DIRS
     NAMES dbfcttc/api.h
-    HINTS $ENV{GR_DBFCTTC_DIR}/include
-          ${PC_GR_DBFCTTC_INCLUDEDIR}
-    PATHS ${CMAKE_INSTALL_PREFIX}/include
+    HINTS ${PC_GR_DBFCTTC_INCLUDEDIR}
+    PATHS ${GRDBFCTTC_ROOT_USER_DEFINED}/include
           /usr/include
           /usr/local/include
-          ${GRDBFCTTC_ROOT}/include
-          $ENV{GRDBFCTTC_ROOT}/include
+          /opt/local/include
 )
 
 find_library(
     GR_DBFCTTC_LIBRARIES
     NAMES gnuradio-dbfcttc
-    HINTS $ENV{GR_DBFCTTC_DIR}/lib
-          ${PC_GR_DBFCTTC_LIBDIR}
-    PATHS ${CMAKE_INSTALL_PREFIX}/lib
-          ${CMAKE_INSTALL_PREFIX}/lib64
+    HINTS ${PC_GR_DBFCTTC_LIBDIR}
+    PATHS ${GRDBFCTTC_ROOT_USER_DEFINED}/lib
+          ${GRDBFCTTC_ROOT_USER_DEFINED}/lib64
           /usr/lib
           /usr/lib64
           /usr/local/lib
           /usr/local/lib64
-          ${GRDBFCTTC_ROOT}/lib
-          $ENV{GRDBFCTTC_ROOT}/lib
-          ${GRDBFCTTC_ROOT}/lib64
-          $ENV{GRDBFCTTC_ROOT}/lib64
+          /opt/local/lib
 )
 
 include(FindPackageHandleStandardArgs)

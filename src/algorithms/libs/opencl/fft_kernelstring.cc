@@ -1,49 +1,12 @@
-
-//
-// File:       fft_kernelstring.cpp
-//
-// Version:    <1.0>
-//
-// Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple Inc. ("Apple")
-//             in consideration of your agreement to the following terms, and your use,
-//             installation, modification or redistribution of this Apple software
-//             constitutes acceptance of these terms.  If you do not agree with these
-//             terms, please do not use, install, modify or redistribute this Apple
-//             software.
-//
-//             In consideration of your agreement to abide by the following terms, and
-//             subject to these terms, Apple grants you a personal, non - exclusive
-//             license, under Apple's copyrights in this original Apple software ( the
-//             "Apple Software" ), to use, reproduce, modify and redistribute the Apple
-//             Software, with or without modifications, in source and / or binary forms;
-//             provided that if you redistribute the Apple Software in its entirety and
-//             without modifications, you must retain this notice and the following text
-//             and disclaimers in all such redistributions of the Apple Software. Neither
-//             the name, trademarks, service marks or logos of Apple Inc. may be used to
-//             endorse or promote products derived from the Apple Software without specific
-//             prior written permission from Apple.  Except as expressly stated in this
-//             notice, no other rights or licenses, express or implied, are granted by
-//             Apple herein, including but not limited to any patent rights that may be
-//             infringed by your derivative works or by other works in which the Apple
-//             Software may be incorporated.
-//
-//             The Apple Software is provided by Apple on an "AS IS" basis.  APPLE MAKES NO
-//             WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED
-//             WARRANTIES OF NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A
-//             PARTICULAR PURPOSE, REGARDING THE APPLE SOFTWARE OR ITS USE AND OPERATION
-//             ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
-//
-//             IN NO EVENT SHALL APPLE BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
-//             CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-//             SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-//             INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
-//             AND / OR DISTRIBUTION OF THE APPLE SOFTWARE, HOWEVER CAUSED AND WHETHER
-//             UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
-//             OTHERWISE, EVEN IF APPLE HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Copyright ( C ) 2008 Apple Inc. All Rights Reserved.
-//
-////////////////////////////////////////////////////////////////////////////////////////////////////
+/*!
+ * \file fft_kernelstring.cc
+ *
+ * Version:    <1.0>
+ *
+ * Copyright ( C ) 2008 Apple Inc. All Rights Reserved.
+ * SPDX-License-Identifier: LicenseRef-Apple-Permissive
+ *
+ */
 
 
 #include "clFFT.h"
@@ -66,7 +29,7 @@ static string
 num2str(int num)
 {
     char temp[200];
-    sprintf(temp, "%d", num);
+    snprintf(temp, sizeof(temp), "%d", num);
     return string(temp);
 }
 
@@ -243,7 +206,8 @@ insertGlobalLoadsAndTranspose(string &kernelString, int N, int numWorkItemsPerXF
 {
     int log2NumWorkItemsPerXForm = (int)log2(numWorkItemsPerXForm);
     int groupSize = numWorkItemsPerXForm * numXFormsPerWG;
-    int i, j;
+    int i;
+    int j;
     int lMemSize = 0;
 
     if (numXFormsPerWG > 1)
@@ -446,7 +410,10 @@ static int
 insertGlobalStoresAndTranspose(string &kernelString, int N, int maxRadix, int Nr, int numWorkItemsPerXForm, int numXFormsPerWG, int mem_coalesce_width, clFFT_DataFormat dataFormat)
 {
     int groupSize = numWorkItemsPerXForm * numXFormsPerWG;
-    int i, j, k, ind;
+    int i;
+    int j;
+    int k;
+    int ind;
     int lMemSize = 0;
     int numIter = maxRadix / Nr;
     string indent = string("");
@@ -597,7 +564,8 @@ insertfftKernel(string &kernelString, int Nr, int numIter)
 static void
 insertTwiddleKernel(string &kernelString, int Nr, int numIter, int Nprev, int len, int numWorkItemsPerXForm)
 {
-    int z, k;
+    int z;
+    int k;
     int logNPrev = (int)log2(Nprev);
 
     for (z = 0; z < numIter; z++)
@@ -620,7 +588,7 @@ insertTwiddleKernel(string &kernelString, int Nr, int numIter, int Nprev, int le
             for (k = 1; k < Nr; k++)
                 {
                     int ind = z * Nr + k;
-                    //float fac =  (float) (2.0 * M_PI * (double) k / (double) len);
+                    // float fac =  (float) (2.0 * M_PI * (double) k / (double) len);
                     kernelString += string("    ang = dir * ( 2.0f * M_PI * ") + num2str(k) + string(".0f / ") + num2str(len) + string(".0f )") + string(" * angf;\n");
                     kernelString += string("    w = (float2)(native_cos(ang), native_sin(ang));\n");
                     kernelString += string("    a[") + num2str(ind) + string("] = complexMul(a[") + num2str(ind) + string("], w);\n");
@@ -662,7 +630,8 @@ getPadding(int numWorkItemsPerXForm, int Nprev, int numWorkItemsReq, int numXFor
 static void
 insertLocalStores(string &kernelString, int numIter, int Nr, int numWorkItemsPerXForm, int numWorkItemsReq, int offset, string &comp)
 {
-    int z, k;
+    int z;
+    int k;
 
     for (z = 0; z < numIter; z++)
         {
@@ -787,8 +756,10 @@ createLocalMemfftKernelString(cl_fft_plan *plan)
         }
     assert(tmpLen == n && "product of radices choosen doesnt match the length of signal\n");
 
-    int offset, midPad;
-    string localString(""), kernelName("");
+    int offset;
+    int midPad;
+    string localString("");
+    string kernelName("");
 
     clFFT_DataFormat dataFormat = plan->format;
     string *kernelString = plan->kernel_string;
@@ -814,7 +785,7 @@ createLocalMemfftKernelString(cl_fft_plan *plan)
     (*kInfo)->in_place_possible = 1;
     (*kInfo)->next = nullptr;
     (*kInfo)->kernel_name = (char *)malloc(sizeof(char) * (kernelName.size() + 1));
-    strcpy((*kInfo)->kernel_name, kernelName.c_str());
+    snprintf((*kInfo)->kernel_name, sizeof((*kInfo)->kernel_name), kernelName.c_str());
 
     unsigned int numWorkItemsPerXForm = n / radixArray[0];
     unsigned int numWorkItemsPerWG = numWorkItemsPerXForm <= 64 ? 64 : numWorkItemsPerXForm;
@@ -938,11 +909,16 @@ void getGlobalRadixInfo(int n, int *radix, int *R1, int *R2, int *numRadices)
 static void
 createGlobalFFTKernelString(cl_fft_plan *plan, int n, int BS, cl_fft_kernel_dir dir, int vertBS)
 {
-    int i, j, k, t;
+    int i;
+    int j;
+    int k;
+    int t;
     int radixArr[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int R1Arr[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int R2Arr[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int radix, R1, R2;
+    int radix;
+    int R1;
+    int R2;
     int numRadices;
 
     int maxThreadsPerBlock = plan->max_work_item_per_workgroup;
@@ -955,7 +931,8 @@ createGlobalFFTKernelString(cl_fft_plan *plan, int n, int BS, cl_fft_kernel_dir 
 
     int numPasses = numRadices;
 
-    string localString(""), kernelName("");
+    string localString("");
+    string kernelName("");
     string *kernelString = plan->kernel_string;
     cl_fft_kernel_info **kInfo = &plan->kernel_info;
     int kCount = 0;
@@ -1035,7 +1012,7 @@ createGlobalFFTKernelString(cl_fft_plan *plan, int n, int BS, cl_fft_kernel_dir 
                 (*kInfo)->in_place_possible = 0;
             (*kInfo)->next = nullptr;
             (*kInfo)->kernel_name = (char *)malloc(sizeof(char) * (kernelName.size() + 1));
-            strcpy((*kInfo)->kernel_name, kernelName.c_str());
+            snprintf((*kInfo)->kernel_name, sizeof((*kInfo)->kernel_name), kernelName.c_str());
 
             insertVariables(localString, R1);
 

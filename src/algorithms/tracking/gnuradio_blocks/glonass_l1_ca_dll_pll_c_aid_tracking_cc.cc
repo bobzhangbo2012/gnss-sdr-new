@@ -13,25 +13,14 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -48,23 +37,25 @@
 #include <matio.h>
 #include <pmt/pmt.h>
 #include <volk_gnsssdr/volk_gnsssdr.h>
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <utility>
+#include <vector>
 
 
 #define CN0_ESTIMATION_SAMPLES 10
 
 
-glonass_l1_ca_dll_pll_c_aid_tracking_cc_sptr
-glonass_l1_ca_dll_pll_c_aid_make_tracking_cc(
+glonass_l1_ca_dll_pll_c_aid_tracking_cc_sptr glonass_l1_ca_dll_pll_c_aid_make_tracking_cc(
     int64_t fs_in,
     uint32_t vector_length,
     bool dump,
-    std::string dump_filename,
+    const std::string &dump_filename,
     float pll_bw_hz,
     float dll_bw_hz,
     float pll_bw_narrow_hz,
@@ -73,7 +64,7 @@ glonass_l1_ca_dll_pll_c_aid_make_tracking_cc(
     float early_late_space_chips)
 {
     return glonass_l1_ca_dll_pll_c_aid_tracking_cc_sptr(new glonass_l1_ca_dll_pll_c_aid_tracking_cc(
-        fs_in, vector_length, dump, std::move(dump_filename), pll_bw_hz, dll_bw_hz, pll_bw_narrow_hz, dll_bw_narrow_hz, extend_correlation_ms, early_late_space_chips));
+        fs_in, vector_length, dump, dump_filename, pll_bw_hz, dll_bw_hz, pll_bw_narrow_hz, dll_bw_narrow_hz, extend_correlation_ms, early_late_space_chips));
 }
 
 
@@ -82,18 +73,18 @@ void glonass_l1_ca_dll_pll_c_aid_tracking_cc::forecast(int noutput_items,
 {
     if (noutput_items != 0)
         {
-            ninput_items_required[0] = static_cast<int32_t>(d_vector_length) * 2;  //set the required available samples in each call
+            ninput_items_required[0] = static_cast<int32_t>(d_vector_length) * 2;  // set the required available samples in each call
         }
 }
 
 
-void glonass_l1_ca_dll_pll_c_aid_tracking_cc::msg_handler_preamble_index(pmt::pmt_t msg)
+void glonass_l1_ca_dll_pll_c_aid_tracking_cc::msg_handler_preamble_index(const pmt::pmt_t &msg)
 {
-    //pmt::print(msg);
+    // pmt::print(msg);
     DLOG(INFO) << "Extended correlation enabled for Tracking CH " << d_channel << ": Satellite " << Gnss_Satellite(systemName[sys], d_acquisition_gnss_synchro->PRN);
-    if (d_enable_extended_integration == false)  //avoid re-setting preamble indicator
+    if (d_enable_extended_integration == false)  // avoid re-setting preamble indicator
         {
-            d_preamble_timestamp_s = pmt::to_double(std::move(msg));
+            d_preamble_timestamp_s = pmt::to_double(msg);
             d_enable_extended_integration = true;
             d_preamble_synchronized = false;
         }
@@ -104,7 +95,7 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::glonass_l1_ca_dll_pll_c_aid_tracking_cc
     int64_t fs_in,
     uint32_t vector_length,
     bool dump,
-    std::string dump_filename,
+    const std::string &dump_filename,
     float pll_bw_hz,
     float dll_bw_hz,
     float pll_bw_narrow_hz,
@@ -125,7 +116,7 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::glonass_l1_ca_dll_pll_c_aid_tracking_cc
     d_dump = dump;
     d_fs_in = fs_in;
     d_vector_length = vector_length;
-    d_dump_filename = std::move(dump_filename);
+    d_dump_filename = dump_filename;
     d_correlation_length_samples = static_cast<int32_t>(d_vector_length);
 
     // Initialize tracking  ==========================================
@@ -142,16 +133,13 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::glonass_l1_ca_dll_pll_c_aid_tracking_cc
 
     // Initialization of local code replica
     // Get space for a vector with the C/A code replica sampled 1x/chip
-    d_ca_code = static_cast<gr_complex *>(volk_gnsssdr_malloc(static_cast<int32_t>(GLONASS_L1_CA_CODE_LENGTH_CHIPS) * sizeof(gr_complex), volk_gnsssdr_get_alignment()));
+    d_ca_code.resize(static_cast<int32_t>(GLONASS_L1_CA_CODE_LENGTH_CHIPS), gr_complex(0.0, 0.0));
 
     // correlator outputs (scalar)
     d_n_correlator_taps = 3;  // Early, Prompt, and Late
-    d_correlator_outs = static_cast<gr_complex *>(volk_gnsssdr_malloc(d_n_correlator_taps * sizeof(gr_complex), volk_gnsssdr_get_alignment()));
-    for (int32_t n = 0; n < d_n_correlator_taps; n++)
-        {
-            d_correlator_outs[n] = gr_complex(0, 0);
-        }
-    d_local_code_shift_chips = static_cast<float *>(volk_gnsssdr_malloc(d_n_correlator_taps * sizeof(float), volk_gnsssdr_get_alignment()));
+    d_correlator_outs.resize(d_n_correlator_taps, gr_complex(0.0, 0.0));
+
+    d_local_code_shift_chips.reserve(d_n_correlator_taps);
     // Set TAPs delay values [chips]
     d_local_code_shift_chips[0] = -d_early_late_spc_chips;
     d_local_code_shift_chips[1] = 0.0;
@@ -159,23 +147,23 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::glonass_l1_ca_dll_pll_c_aid_tracking_cc
 
     multicorrelator_cpu.init(2 * d_correlation_length_samples, d_n_correlator_taps);
 
-    //--- Perform initializations ------------------------------
+    // --- Perform initializations ------------------------------
     // define initial code frequency basis of NCO
-    d_code_freq_chips = GLONASS_L1_CA_CODE_RATE_HZ;
+    d_code_freq_chips = GLONASS_L1_CA_CODE_RATE_CPS;
     // define residual code phase (in chips)
     d_rem_code_phase_samples = 0.0;
     // define residual carrier phase
     d_rem_carrier_phase_rad = 0.0;
 
     // sample synchronization
-    d_sample_counter = 0ULL;  //(from trk to tlm)
+    d_sample_counter = 0ULL;  // (from trk to tlm)
     d_acq_sample_stamp = 0;
     d_enable_tracking = false;
     d_pull_in = false;
 
     // CN0 estimation and lock detector buffers
     d_cn0_estimation_counter = 0;
-    d_Prompt_buffer = new gr_complex[FLAGS_cn0_samples];
+    d_Prompt_buffer.reserve(FLAGS_cn0_samples);
     d_carrier_lock_test = 1;
     d_CN0_SNV_dB_Hz = 0;
     d_carrier_lock_fail_counter = 0;
@@ -211,7 +199,7 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::glonass_l1_ca_dll_pll_c_aid_tracking_cc
 
     d_glonass_freq_ch = 0;
 
-    //set_min_output_buffer((int64_t)300);
+    // set_min_output_buffer((int64_t)300);
 }
 
 
@@ -226,7 +214,7 @@ void glonass_l1_ca_dll_pll_c_aid_tracking_cc::start_tracking()
 
     int64_t acq_trk_diff_samples;
     double acq_trk_diff_seconds;
-    acq_trk_diff_samples = static_cast<int64_t>(d_sample_counter) - static_cast<int64_t>(d_acq_sample_stamp);  //-d_vector_length;
+    acq_trk_diff_samples = static_cast<int64_t>(d_sample_counter) - static_cast<int64_t>(d_acq_sample_stamp);  // -d_vector_length;
     DLOG(INFO) << "Number of samples between Acquisition and Tracking =" << acq_trk_diff_samples;
     acq_trk_diff_seconds = static_cast<double>(acq_trk_diff_samples) / static_cast<double>(d_fs_in);
     // Doppler effect
@@ -237,7 +225,7 @@ void glonass_l1_ca_dll_pll_c_aid_tracking_cc::start_tracking()
     double T_chip_mod_seconds;
     double T_prn_mod_seconds;
     double T_prn_mod_samples;
-    d_code_freq_chips = radial_velocity * GLONASS_L1_CA_CODE_RATE_HZ;
+    d_code_freq_chips = radial_velocity * GLONASS_L1_CA_CODE_RATE_CPS;
     d_code_phase_step_chips = static_cast<double>(d_code_freq_chips) / static_cast<double>(d_fs_in);
     T_chip_mod_seconds = 1.0 / d_code_freq_chips;
     T_prn_mod_seconds = T_chip_mod_seconds * GLONASS_L1_CA_CODE_LENGTH_CHIPS;
@@ -245,11 +233,12 @@ void glonass_l1_ca_dll_pll_c_aid_tracking_cc::start_tracking()
 
     d_correlation_length_samples = round(T_prn_mod_samples);
 
-    double T_prn_true_seconds = GLONASS_L1_CA_CODE_LENGTH_CHIPS / GLONASS_L1_CA_CODE_RATE_HZ;
+    double T_prn_true_seconds = GLONASS_L1_CA_CODE_LENGTH_CHIPS / GLONASS_L1_CA_CODE_RATE_CPS;
     double T_prn_true_samples = T_prn_true_seconds * static_cast<double>(d_fs_in);
     double T_prn_diff_seconds = T_prn_true_seconds - T_prn_mod_seconds;
     double N_prn_diff = acq_trk_diff_seconds / T_prn_true_seconds;
-    double corrected_acq_phase_samples, delay_correction_samples;
+    double corrected_acq_phase_samples;
+    double delay_correction_samples;
     corrected_acq_phase_samples = fmod((d_acq_code_phase_samples + T_prn_diff_seconds * N_prn_diff * static_cast<double>(d_fs_in)), T_prn_true_samples);
     if (corrected_acq_phase_samples < 0)
         {
@@ -272,13 +261,10 @@ void glonass_l1_ca_dll_pll_c_aid_tracking_cc::start_tracking()
     d_code_loop_filter.initialize();                           // initialize the code filter
 
     // generate local reference ALWAYS starting at chip 1 (1 sample per chip)
-    glonass_l1_ca_code_gen_complex(d_ca_code, 0);
+    glonass_l1_ca_code_gen_complex(gsl::span<gr_complex>(d_ca_code.data(), GLONASS_L1_CA_CODE_LENGTH_CHIPS), 0);
 
-    multicorrelator_cpu.set_local_code_and_taps(static_cast<int32_t>(GLONASS_L1_CA_CODE_LENGTH_CHIPS), d_ca_code, d_local_code_shift_chips);
-    for (int32_t n = 0; n < d_n_correlator_taps; n++)
-        {
-            d_correlator_outs[n] = gr_complex(0, 0);
-        }
+    multicorrelator_cpu.set_local_code_and_taps(static_cast<int32_t>(GLONASS_L1_CA_CODE_LENGTH_CHIPS), d_ca_code.data(), d_local_code_shift_chips.data());
+    std::fill_n(d_correlator_outs.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
 
     d_carrier_lock_fail_counter = 0;
     d_rem_code_phase_samples = 0.0;
@@ -316,7 +302,7 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::~glonass_l1_ca_dll_pll_c_aid_tracking_c
                 }
             catch (const std::exception &ex)
                 {
-                    LOG(WARNING) << "Exception in destructor " << ex.what();
+                    LOG(WARNING) << "Exception in Tracking block destructor: " << ex.what();
                 }
         }
 
@@ -342,15 +328,11 @@ glonass_l1_ca_dll_pll_c_aid_tracking_cc::~glonass_l1_ca_dll_pll_c_aid_tracking_c
 
     try
         {
-            volk_gnsssdr_free(d_local_code_shift_chips);
-            volk_gnsssdr_free(d_correlator_outs);
-            volk_gnsssdr_free(d_ca_code);
-            delete[] d_Prompt_buffer;
             multicorrelator_cpu.free();
         }
     catch (const std::exception &ex)
         {
-            LOG(WARNING) << "Exception in destructor " << ex.what();
+            LOG(WARNING) << "Exception in Tracking block destructor: " << ex.what();
         }
 }
 
@@ -386,24 +368,24 @@ int32_t glonass_l1_ca_dll_pll_c_aid_tracking_cc::save_matfile()
         {
             return 1;
         }
-    auto *abs_E = new float[num_epoch];
-    auto *abs_P = new float[num_epoch];
-    auto *abs_L = new float[num_epoch];
-    auto *Prompt_I = new float[num_epoch];
-    auto *Prompt_Q = new float[num_epoch];
-    auto *PRN_start_sample_count = new uint64_t[num_epoch];
-    auto *acc_carrier_phase_rad = new double[num_epoch];
-    auto *carrier_doppler_hz = new double[num_epoch];
-    auto *code_freq_chips = new double[num_epoch];
-    auto *carr_error_hz = new double[num_epoch];
-    auto *carr_error_filt_hz = new double[num_epoch];
-    auto *code_error_chips = new double[num_epoch];
-    auto *code_error_filt_chips = new double[num_epoch];
-    auto *CN0_SNV_dB_Hz = new double[num_epoch];
-    auto *carrier_lock_test = new double[num_epoch];
-    auto *aux1 = new double[num_epoch];
-    auto *aux2 = new double[num_epoch];
-    auto *PRN = new uint32_t[num_epoch];
+    auto abs_E = std::vector<float>(num_epoch);
+    auto abs_P = std::vector<float>(num_epoch);
+    auto abs_L = std::vector<float>(num_epoch);
+    auto Prompt_I = std::vector<float>(num_epoch);
+    auto Prompt_Q = std::vector<float>(num_epoch);
+    auto PRN_start_sample_count = std::vector<uint64_t>(num_epoch);
+    auto acc_carrier_phase_rad = std::vector<double>(num_epoch);
+    auto carrier_doppler_hz = std::vector<double>(num_epoch);
+    auto code_freq_chips = std::vector<double>(num_epoch);
+    auto carr_error_hz = std::vector<double>(num_epoch);
+    auto carr_error_filt_hz = std::vector<double>(num_epoch);
+    auto code_error_chips = std::vector<double>(num_epoch);
+    auto code_error_filt_chips = std::vector<double>(num_epoch);
+    auto CN0_SNV_dB_Hz = std::vector<double>(num_epoch);
+    auto carrier_lock_test = std::vector<double>(num_epoch);
+    auto aux1 = std::vector<double>(num_epoch);
+    auto aux2 = std::vector<double>(num_epoch);
+    auto PRN = std::vector<uint32_t>(num_epoch);
 
     try
         {
@@ -436,24 +418,6 @@ int32_t glonass_l1_ca_dll_pll_c_aid_tracking_cc::save_matfile()
     catch (const std::ifstream::failure &e)
         {
             std::cerr << "Problem reading dump file:" << e.what() << std::endl;
-            delete[] abs_E;
-            delete[] abs_P;
-            delete[] abs_L;
-            delete[] Prompt_I;
-            delete[] Prompt_Q;
-            delete[] PRN_start_sample_count;
-            delete[] acc_carrier_phase_rad;
-            delete[] carrier_doppler_hz;
-            delete[] code_freq_chips;
-            delete[] carr_error_hz;
-            delete[] carr_error_filt_hz;
-            delete[] code_error_chips;
-            delete[] code_error_filt_chips;
-            delete[] CN0_SNV_dB_Hz;
-            delete[] carrier_lock_test;
-            delete[] aux1;
-            delete[] aux2;
-            delete[] PRN;
             return 1;
         }
 
@@ -466,98 +430,80 @@ int32_t glonass_l1_ca_dll_pll_c_aid_tracking_cc::save_matfile()
     matfp = Mat_CreateVer(filename.c_str(), nullptr, MAT_FT_MAT73);
     if (reinterpret_cast<int64_t *>(matfp) != nullptr)
         {
-            size_t dims[2] = {1, static_cast<size_t>(num_epoch)};
-            matvar = Mat_VarCreate("abs_E", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, abs_E, 0);
+            std::array<size_t, 2> dims{1, static_cast<size_t>(num_epoch)};
+            matvar = Mat_VarCreate("abs_E", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), abs_E.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("abs_P", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, abs_P, 0);
+            matvar = Mat_VarCreate("abs_P", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), abs_P.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("abs_L", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, abs_L, 0);
+            matvar = Mat_VarCreate("abs_L", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), abs_L.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("Prompt_I", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, Prompt_I, 0);
+            matvar = Mat_VarCreate("Prompt_I", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), Prompt_I.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("Prompt_Q", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims, Prompt_Q, 0);
+            matvar = Mat_VarCreate("Prompt_Q", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), Prompt_Q.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("PRN_start_sample_count", MAT_C_UINT64, MAT_T_UINT64, 2, dims, PRN_start_sample_count, 0);
+            matvar = Mat_VarCreate("PRN_start_sample_count", MAT_C_UINT64, MAT_T_UINT64, 2, dims.data(), PRN_start_sample_count.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("acc_carrier_phase_rad", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, acc_carrier_phase_rad, 0);
+            matvar = Mat_VarCreate("acc_carrier_phase_rad", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), acc_carrier_phase_rad.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("carrier_doppler_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, carrier_doppler_hz, 0);
+            matvar = Mat_VarCreate("carrier_doppler_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), carrier_doppler_hz.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("code_freq_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, code_freq_chips, 0);
+            matvar = Mat_VarCreate("code_freq_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), code_freq_chips.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("carr_error_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, carr_error_hz, 0);
+            matvar = Mat_VarCreate("carr_error_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), carr_error_hz.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("carr_error_filt_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, carr_error_filt_hz, 0);
+            matvar = Mat_VarCreate("carr_error_filt_hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), carr_error_filt_hz.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("code_error_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, code_error_chips, 0);
+            matvar = Mat_VarCreate("code_error_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), code_error_chips.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("code_error_filt_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, code_error_filt_chips, 0);
+            matvar = Mat_VarCreate("code_error_filt_chips", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), code_error_filt_chips.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("CN0_SNV_dB_Hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, CN0_SNV_dB_Hz, 0);
+            matvar = Mat_VarCreate("CN0_SNV_dB_Hz", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), CN0_SNV_dB_Hz.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("carrier_lock_test", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, carrier_lock_test, 0);
+            matvar = Mat_VarCreate("carrier_lock_test", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), carrier_lock_test.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("aux1", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, aux1, 0);
+            matvar = Mat_VarCreate("aux1", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), aux1.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("aux2", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, aux2, 0);
+            matvar = Mat_VarCreate("aux2", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), aux2.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            matvar = Mat_VarCreate("PRN", MAT_C_UINT32, MAT_T_UINT32, 2, dims, PRN, 0);
+            matvar = Mat_VarCreate("PRN", MAT_C_UINT32, MAT_T_UINT32, 2, dims.data(), PRN.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
         }
     Mat_Close(matfp);
-    delete[] abs_E;
-    delete[] abs_P;
-    delete[] abs_L;
-    delete[] Prompt_I;
-    delete[] Prompt_Q;
-    delete[] PRN_start_sample_count;
-    delete[] acc_carrier_phase_rad;
-    delete[] carrier_doppler_hz;
-    delete[] code_freq_chips;
-    delete[] carr_error_hz;
-    delete[] carr_error_filt_hz;
-    delete[] code_error_chips;
-    delete[] code_error_filt_chips;
-    delete[] CN0_SNV_dB_Hz;
-    delete[] carrier_lock_test;
-    delete[] aux1;
-    delete[] aux2;
-    delete[] PRN;
     return 0;
 }
 
@@ -636,7 +582,7 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
 
             // ################# CARRIER WIPEOFF AND CORRELATORS ##############################
             // perform carrier wipe-off and compute Early, Prompt and Late correlation
-            multicorrelator_cpu.set_input_output_vectors(d_correlator_outs, in);
+            multicorrelator_cpu.set_input_output_vectors(d_correlator_outs.data(), in);
             multicorrelator_cpu.Carrier_wipeoff_multicorrelator_resampler(d_rem_carrier_phase_rad,
                 d_carrier_phase_step_rad,
                 d_rem_code_phase_chips,
@@ -685,7 +631,7 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                                               << " dll_bw = " << d_dll_bw_hz << " [Hz], dll_narrow_bw = " << d_dll_bw_narrow_hz << " [Hz]" << std::endl;
                                 }
                             // UPDATE INTEGRATION TIME
-                            CURRENT_INTEGRATION_TIME_S = static_cast<double>(d_extend_correlation_ms) * GLONASS_L1_CA_CODE_PERIOD;
+                            CURRENT_INTEGRATION_TIME_S = static_cast<double>(d_extend_correlation_ms) * GLONASS_L1_CA_CODE_PERIOD_S;
                             d_code_loop_filter.set_pdi(CURRENT_INTEGRATION_TIME_S);
                             enable_dll_pll = true;
                         }
@@ -712,7 +658,6 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                                     d_rem_carrier_phase_rad = fmod(d_rem_carrier_phase_rad + d_carrier_phase_step_rad * static_cast<double>(d_correlation_length_samples), GLONASS_TWO_PI);
 
                                     // UPDATE ACCUMULATED CARRIER PHASE
-                                    CORRECTED_INTEGRATION_TIME_S = (static_cast<double>(d_correlation_length_samples) / static_cast<double>(d_fs_in));
                                     d_acc_carrier_phase_cycles -= d_carrier_phase_step_rad * d_correlation_length_samples / GLONASS_TWO_PI;
 
                                     // disable tracking loop and inform telemetry decoder
@@ -748,11 +693,11 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                     // PLL to DLL assistance [Secs/Ti]
                     d_pll_to_dll_assist_secs_Ti = (d_carrier_doppler_hz * CURRENT_INTEGRATION_TIME_S) / d_glonass_freq_ch;
                     // code Doppler frequency update
-                    d_code_freq_chips = GLONASS_L1_CA_CODE_RATE_HZ + (((d_carrier_doppler_hz - d_carrier_doppler_old_hz) * GLONASS_L1_CA_CODE_RATE_HZ) / d_glonass_freq_ch);
+                    d_code_freq_chips = GLONASS_L1_CA_CODE_RATE_CPS + (((d_carrier_doppler_hz - d_carrier_doppler_old_hz) * GLONASS_L1_CA_CODE_RATE_CPS) / d_glonass_freq_ch);
 
                     // ################## DLL ##########################################################
                     // DLL discriminator
-                    d_code_error_chips_Ti = dll_nc_e_minus_l_normalized(d_correlator_outs[0], d_correlator_outs[2]);  // [chips/Ti] //early and late
+                    d_code_error_chips_Ti = dll_nc_e_minus_l_normalized(d_correlator_outs[0], d_correlator_outs[2], d_early_late_spc_chips, 1.0);  // [chips/Ti] //early and late
                     // Code discriminator filter
                     d_code_error_filt_chips_s = d_code_loop_filter.get_code_nco(d_code_error_chips_Ti);  // input [chips/Ti] -> output [chips/second]
                     d_code_error_filt_chips_Ti = d_code_error_filt_chips_s * CURRENT_INTEGRATION_TIME_S;
@@ -767,24 +712,24 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                     double K_prn_samples = round(T_prn_samples);
                     double K_T_prn_error_samples = K_prn_samples - T_prn_samples;
 
-                    d_rem_code_phase_samples = d_rem_code_phase_samples - K_T_prn_error_samples + code_error_filt_secs_Ti * static_cast<double>(d_fs_in);  //(code_error_filt_secs_Ti + d_pll_to_dll_assist_secs_Ti) * static_cast<double>(d_fs_in);
+                    d_rem_code_phase_samples = d_rem_code_phase_samples - K_T_prn_error_samples + code_error_filt_secs_Ti * static_cast<double>(d_fs_in);  // (code_error_filt_secs_Ti + d_pll_to_dll_assist_secs_Ti) * static_cast<double>(d_fs_in);
                     d_rem_code_phase_integer_samples = round(d_rem_code_phase_samples);                                                                    // round to a discrete number of samples
                     d_correlation_length_samples = K_prn_samples + d_rem_code_phase_integer_samples;
                     d_rem_code_phase_samples = d_rem_code_phase_samples - d_rem_code_phase_integer_samples;
 
-                    //################### PLL COMMANDS #################################################
-                    //carrier phase step (NCO phase increment per sample) [rads/sample]
+                    // ################### PLL COMMANDS #################################################
+                    // carrier phase step (NCO phase increment per sample) [rads/sample]
                     d_carrier_phase_step_rad = GLONASS_TWO_PI * d_carrier_doppler_hz / static_cast<double>(d_fs_in);
                     d_acc_carrier_phase_cycles -= d_carrier_phase_step_rad * d_correlation_length_samples / GLONASS_TWO_PI;
                     // UPDATE ACCUMULATED CARRIER PHASE
                     CORRECTED_INTEGRATION_TIME_S = (static_cast<double>(d_correlation_length_samples) / static_cast<double>(d_fs_in));
-                    //remnant carrier phase [rad]
+                    // remnant carrier phase [rad]
                     d_rem_carrier_phase_rad = fmod(d_rem_carrier_phase_rad + GLONASS_TWO_PI * d_carrier_doppler_hz * CORRECTED_INTEGRATION_TIME_S, GLONASS_TWO_PI);
 
-                    //################### DLL COMMANDS #################################################
-                    //code phase step (Code resampler phase increment per sample) [chips/sample]
+                    // ################### DLL COMMANDS #################################################
+                    // code phase step (Code resampler phase increment per sample) [chips/sample]
                     d_code_phase_step_chips = d_code_freq_chips / static_cast<double>(d_fs_in);
-                    //remnant code phase [chips]
+                    // remnant code phase [chips]
                     d_rem_code_phase_chips = d_rem_code_phase_samples * (d_code_freq_chips / static_cast<double>(d_fs_in));
 
                     // ####### CN0 ESTIMATION AND LOCK DETECTORS #######################################
@@ -798,9 +743,9 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                         {
                             d_cn0_estimation_counter = 0;
                             // Code lock indicator
-                            d_CN0_SNV_dB_Hz = cn0_svn_estimator(d_Prompt_buffer, CN0_ESTIMATION_SAMPLES, GLONASS_L1_CA_CODE_PERIOD);
+                            d_CN0_SNV_dB_Hz = cn0_m2m4_estimator(d_Prompt_buffer.data(), CN0_ESTIMATION_SAMPLES, GLONASS_L1_CA_CODE_PERIOD_S);
                             // Carrier lock indicator
-                            d_carrier_lock_test = carrier_lock_detector(d_Prompt_buffer, CN0_ESTIMATION_SAMPLES);
+                            d_carrier_lock_test = carrier_lock_detector(d_Prompt_buffer.data(), CN0_ESTIMATION_SAMPLES);
                             // Loss of lock detection
                             if (d_carrier_lock_test < d_carrier_lock_threshold or d_CN0_SNV_dB_Hz < FLAGS_cn0_min)
                                 {
@@ -817,7 +762,7 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
                                 {
                                     std::cout << "Loss of lock in channel " << d_channel << "!" << std::endl;
                                     LOG(INFO) << "Loss of lock in channel " << d_channel << "!";
-                                    this->message_port_pub(pmt::mp("events"), pmt::from_long(3));  //3 -> loss of lock
+                                    this->message_port_pub(pmt::mp("events"), pmt::from_long(3));  // 3 -> loss of lock
                                     d_carrier_lock_fail_counter = 0;
                                     d_enable_tracking = false;  // TODO: check if disabling tracking is consistent with the channel state machine
                                 }
@@ -855,13 +800,13 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
         {
             for (int32_t n = 0; n < d_n_correlator_taps; n++)
                 {
-                    d_correlator_outs[n] = gr_complex(0, 0);
+                    d_correlator_outs[n] = gr_complex(0.0, 0.0);
                 }
 
             current_synchro_data.System = {'R'};
             current_synchro_data.Tracking_sample_counter = d_sample_counter + static_cast<uint64_t>(d_correlation_length_samples);
         }
-    //assign the GNURadio block output data
+    // assign the GNU Radio block output data
     current_synchro_data.fs = d_fs_in;
     *out[0] = current_synchro_data;
     if (d_dump)
@@ -869,7 +814,9 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
             // MULTIPLEXED FILE RECORDING - Record results to file
             float prompt_I;
             float prompt_Q;
-            float tmp_E, tmp_P, tmp_L;
+            float tmp_E;
+            float tmp_P;
+            float tmp_L;
             float tmp_VE = 0.0;
             float tmp_VL = 0.0;
             float tmp_float;
@@ -930,7 +877,7 @@ int glonass_l1_ca_dll_pll_c_aid_tracking_cc::general_work(int noutput_items __at
         }
 
     consume_each(d_correlation_length_samples);        // this is necessary in gr::block derivates
-    d_sample_counter += d_correlation_length_samples;  //count for the processed samples
+    d_sample_counter += d_correlation_length_samples;  // count for the processed samples
 
-    return 1;  //output tracking result ALWAYS even in the case of d_enable_tracking==false
+    return 1;  // output tracking result ALWAYS even in the case of d_enable_tracking==false
 }

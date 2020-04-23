@@ -7,31 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #include "channel_fsm.h"
-#include "control_message_factory.h"
+#include "channel_event.h"
 #include <glog/logging.h>
 #include <utility>
 
@@ -86,6 +75,7 @@ bool ChannelFsm::Event_start_acquisition_fpga()
     DLOG(INFO) << "CH = " << channel_ << ". Ev start acquisition FPGA";
     return true;
 }
+
 
 bool ChannelFsm::Event_start_acquisition()
 {
@@ -170,12 +160,15 @@ void ChannelFsm::set_tracking(std::shared_ptr<TrackingInterface> tracking)
     trk_ = std::move(tracking);
 }
 
+
 void ChannelFsm::set_telemetry(std::shared_ptr<TelemetryDecoderInterface> telemetry)
 {
     std::lock_guard<std::mutex> lk(mx);
     nav_ = std::move(telemetry);
 }
-void ChannelFsm::set_queue(gr::msg_queue::sptr queue)
+
+
+void ChannelFsm::set_queue(std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue)
 {
     std::lock_guard<std::mutex> lk(mx);
     queue_ = std::move(queue);
@@ -194,6 +187,7 @@ void ChannelFsm::stop_acquisition()
     acq_->stop_acquisition();
 }
 
+
 void ChannelFsm::stop_tracking()
 {
     trk_->stop_tracking();
@@ -210,29 +204,17 @@ void ChannelFsm::start_acquisition()
 void ChannelFsm::start_tracking()
 {
     trk_->start_tracking();
-    std::unique_ptr<ControlMessageFactory> cmf(new ControlMessageFactory());
-    if (queue_ != gr::msg_queue::make())
-        {
-            queue_->handle(cmf->GetQueueMessage(channel_, 1));
-        }
+    queue_->push(pmt::make_any(channel_event_make(channel_, 1)));
 }
 
 
 void ChannelFsm::request_satellite()
 {
-    std::unique_ptr<ControlMessageFactory> cmf(new ControlMessageFactory());
-    if (queue_ != gr::msg_queue::make())
-        {
-            queue_->handle(cmf->GetQueueMessage(channel_, 0));
-        }
+    queue_->push(pmt::make_any(channel_event_make(channel_, 0)));
 }
 
 
 void ChannelFsm::notify_stop_tracking()
 {
-    std::unique_ptr<ControlMessageFactory> cmf(new ControlMessageFactory());
-    if (queue_ != gr::msg_queue::make())
-        {
-            queue_->handle(cmf->GetQueueMessage(channel_, 2));
-        }
+    queue_->push(pmt::make_any(channel_event_make(channel_, 2)));
 }

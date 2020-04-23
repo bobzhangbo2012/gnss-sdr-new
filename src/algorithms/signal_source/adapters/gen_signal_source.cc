@@ -7,32 +7,20 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 #include "gen_signal_source.h"
 #include <boost/lexical_cast.hpp>
-#include <boost/thread/thread.hpp>
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
 #include <gnuradio/message.h>
@@ -42,10 +30,10 @@
 
 // Constructor
 GenSignalSource::GenSignalSource(GNSSBlockInterface *signal_generator, GNSSBlockInterface *filter,
-    std::string role, boost::shared_ptr<gr::msg_queue> queue) : signal_generator_(signal_generator),
-                                                                filter_(filter),
-                                                                role_(std::move(role)),
-                                                                queue_(std::move(queue))
+    std::string role, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : signal_generator_(signal_generator),
+                                                                             filter_(filter),
+                                                                             role_(std::move(role)),
+                                                                             queue_(std::move(queue))
 {
     connected_ = false;
 }

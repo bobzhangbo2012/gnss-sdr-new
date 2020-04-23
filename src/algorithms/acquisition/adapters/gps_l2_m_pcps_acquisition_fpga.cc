@@ -15,18 +15,7 @@
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
@@ -41,17 +30,10 @@
 #include <gnuradio/fft/fft.h>     // for fft_complex
 #include <gnuradio/gr_complex.h>  // for gr_complex
 #include <volk/volk.h>            // for volk_32fc_conjugate_32fc
-#include <volk_gnsssdr/volk_gnsssdr.h>
-#include <cmath>    // for abs, pow, floor
-#include <complex>  // for complex
-#include <cstring>  // for memcpy
-
-#define NUM_PRNs 32
-#define QUANT_BITS_LOCAL_CODE 16
-#define SELECT_LSBits 0x0000FFFF         // Select the 10 LSbits out of a 20-bit word
-#define SELECT_MSBbits 0xFFFF0000        // Select the 10 MSbits out of a 20-bit word
-#define SELECT_ALL_CODE_BITS 0xFFFFFFFF  // Select a 20 bit word
-#define SHL_CODE_BITS 65536              // shift left by 10 bits
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>
+#include <algorithm>  // for copy_n
+#include <cmath>      // for abs, pow, floor
+#include <complex>    // for complex
 
 GpsL2MPcpsAcquisitionFpga::GpsL2MPcpsAcquisitionFpga(
     ConfigurationInterface* configuration,
@@ -63,12 +45,9 @@ GpsL2MPcpsAcquisitionFpga::GpsL2MPcpsAcquisitionFpga(
 {
     pcpsconf_fpga_t acq_parameters;
     configuration_ = configuration;
-    std::string default_item_type = "gr_complex";
     std::string default_dump_filename = "./acquisition.mat";
 
     LOG(INFO) << "role " << role;
-
-    item_type_ = configuration_->property(role + ".item_type", default_item_type);
 
     int64_t fs_in_deprecated = configuration_->property("GNSS-SDR.internal_fs_hz", 2048000);
     fs_in_ = configuration_->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
@@ -78,38 +57,41 @@ GpsL2MPcpsAcquisitionFpga::GpsL2MPcpsAcquisitionFpga(
     DLOG(INFO) << role << " satellite repeat = " << acq_parameters.repeat_satellite;
 
     doppler_max_ = configuration->property(role + ".doppler_max", 5000);
-    if (FLAGS_doppler_max != 0) doppler_max_ = FLAGS_doppler_max;
+    if (FLAGS_doppler_max != 0)
+        {
+            doppler_max_ = FLAGS_doppler_max;
+        }
     acq_parameters.doppler_max = doppler_max_;
 
-    acq_parameters.sampled_ms = 20;
-    unsigned int code_length = std::round(static_cast<double>(fs_in_) / (GPS_L2_M_CODE_RATE_HZ / static_cast<double>(GPS_L2_M_CODE_LENGTH_CHIPS)));
+    unsigned int code_length = std::round(static_cast<double>(fs_in_) / (GPS_L2_M_CODE_RATE_CPS / static_cast<double>(GPS_L2_M_CODE_LENGTH_CHIPS)));
     acq_parameters.code_length = code_length;
     // The FPGA can only use FFT lengths that are a power of two.
-    float nbits = ceilf(log2f((float)code_length));
+    float nbits = ceilf(log2f(static_cast<float>(code_length)));
     unsigned int nsamples_total = pow(2, nbits);
-    unsigned int vector_length = nsamples_total;
     unsigned int select_queue_Fpga = configuration_->property(role + ".select_queue_Fpga", 0);
     acq_parameters.select_queue_Fpga = select_queue_Fpga;
     std::string default_device_name = "/dev/uio0";
     std::string device_name = configuration_->property(role + ".devicename", default_device_name);
     acq_parameters.device_name = device_name;
-    acq_parameters.samples_per_ms = nsamples_total / acq_parameters.sampled_ms;
     acq_parameters.samples_per_code = nsamples_total;
 
     acq_parameters.downsampling_factor = configuration_->property(role + ".downsampling_factor", 1.0);
     acq_parameters.total_block_exp = configuration_->property(role + ".total_block_exp", 14);
-    acq_parameters.excludelimit = static_cast<uint32_t>(std::round(static_cast<double>(fs_in_) / GPS_L2_M_CODE_RATE_HZ));
+    acq_parameters.excludelimit = static_cast<uint32_t>(std::round(static_cast<double>(fs_in_) / GPS_L2_M_CODE_RATE_CPS));
 
     // compute all the GPS L2C PRN Codes (this is done only once upon the class constructor in order to avoid re-computing the PRN codes every time
     // a channel is assigned)
-    auto* fft_if = new gr::fft::fft_complex(vector_length, true);  // Direct FFT
+    auto fft_if = std::unique_ptr<gr::fft::fft_complex>(new gr::fft::fft_complex(nsamples_total, true));  // Direct FFT
     // allocate memory to compute all the PRNs and compute all the possible codes
-    auto* code = new std::complex<float>[nsamples_total];  // buffer for the local code
-    auto* fft_codes_padded = static_cast<gr_complex*>(volk_gnsssdr_malloc(nsamples_total * sizeof(gr_complex), volk_gnsssdr_get_alignment()));
-    //d_all_fft_codes_ = new lv_16sc_t[nsamples_total * NUM_PRNs];  // memory containing all the possible fft codes for PRN 0 to 32
-    d_all_fft_codes_ = new uint32_t[(nsamples_total * NUM_PRNs)];  // memory containing all the possible fft codes for PRN 0 to 32
-    float max;                                                     // temporary maxima search
-    int32_t tmp, tmp2, local_code, fft_data;
+    volk_gnsssdr::vector<std::complex<float>> code(nsamples_total);
+    volk_gnsssdr::vector<std::complex<float>> fft_codes_padded(nsamples_total);
+    d_all_fft_codes_ = std::vector<uint32_t>(nsamples_total * NUM_PRNs);  // memory containing all the possible fft codes for PRN 0 to 32
+
+    float max;  // temporary maxima search
+    int32_t tmp;
+    int32_t tmp2;
+    int32_t local_code;
+    int32_t fft_data;
 
     for (unsigned int PRN = 1; PRN <= NUM_PRNs; PRN++)
         {
@@ -119,11 +101,11 @@ GpsL2MPcpsAcquisitionFpga::GpsL2MPcpsAcquisitionFpga(
                 {
                     code[s] = std::complex<float>(0.0, 0.0);
                 }
-            memcpy(fft_if->get_inbuf(), code, sizeof(gr_complex) * nsamples_total);            // copy to FFT buffer
-            fft_if->execute();                                                                 // Run the FFT of local code
-            volk_32fc_conjugate_32fc(fft_codes_padded, fft_if->get_outbuf(), nsamples_total);  // conjugate values
-            max = 0;                                                                           // initialize maximum value
-            for (unsigned int i = 0; i < nsamples_total; i++)                                  // search for maxima
+            std::copy_n(code.data(), nsamples_total, fft_if->get_inbuf());                            // copy to FFT buffer
+            fft_if->execute();                                                                        // Run the FFT of local code
+            volk_32fc_conjugate_32fc(fft_codes_padded.data(), fft_if->get_outbuf(), nsamples_total);  // conjugate values
+            max = 0;                                                                                  // initialize maximum value
+            for (unsigned int i = 0; i < nsamples_total; i++)                                         // search for maxima
                 {
                     if (std::abs(fft_codes_padded[i].real()) > max)
                         {
@@ -149,27 +131,24 @@ GpsL2MPcpsAcquisitionFpga::GpsL2MPcpsAcquisitionFpga(
                 }
         }
 
-    acq_parameters.all_fft_codes = d_all_fft_codes_;
-
-    // temporary buffers that we can delete
-    delete[] code;
-    delete fft_if;
-    delete[] fft_codes_padded;
+    acq_parameters.all_fft_codes = d_all_fft_codes_.data();
 
     acquisition_fpga_ = pcps_make_acquisition_fpga(acq_parameters);
 
     channel_ = 0;
     doppler_step_ = 0;
     gnss_synchro_ = nullptr;
-    
 
     threshold_ = 0.0;
-}
 
-
-GpsL2MPcpsAcquisitionFpga::~GpsL2MPcpsAcquisitionFpga()
-{
-    delete[] d_all_fft_codes_;
+    if (in_streams_ > 1)
+        {
+            LOG(ERROR) << "This implementation only supports one input stream";
+        }
+    if (out_streams_ > 0)
+        {
+            LOG(ERROR) << "This implementation does not provide an output stream";
+        }
 }
 
 
@@ -221,7 +200,6 @@ signed int GpsL2MPcpsAcquisitionFpga::mag()
 void GpsL2MPcpsAcquisitionFpga::init()
 {
     acquisition_fpga_->init();
-    //set_local_code();
 }
 
 

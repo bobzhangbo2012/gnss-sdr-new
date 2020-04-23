@@ -6,32 +6,21 @@
  *
  * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2018  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
  *
  * GNSS-SDR is a software defined Global Navigation
  *          Satellite Systems receiver
  *
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GLONASS_L1_L2_CA_H_
-#define GNSS_SDR_GLONASS_L1_L2_CA_H_
+#ifndef GNSS_SDR_GLONASS_L1_L2_CA_H
+#define GNSS_SDR_GLONASS_L1_L2_CA_H
 
 #include "MATH_CONSTANTS.h"
 #include "gnss_frequencies.h"
@@ -44,8 +33,8 @@
 // Physical constants
 const double GLONASS_C_M_S = SPEED_OF_LIGHT;                   //!< The speed of light, [m/s]
 const double GLONASS_C_M_MS = 299792.4580;                     //!< The speed of light, [m/ms]
-const double GLONASS_PI = 3.1415926535898;                     //!< Pi as defined in IS-GPS-200E
-const double GLONASS_TWO_PI = 6.283185307179586;               //!< 2Pi as defined in IS-GPS-200E
+const double GLONASS_PI = 3.1415926535898;                     //!< Pi as defined in IS-GPS-200K
+const double GLONASS_TWO_PI = 6.283185307179586;               //!< 2Pi as defined in IS-GPS-200K
 const double GLONASS_OMEGA_EARTH_DOT = 7.292115e-5;            //!< Earth rotation rate, [rad/s]
 const double GLONASS_GM = 398600.4418e9;                       //!< Universal gravitational constant times the mass of the Earth, [m^3/s^2]
 const double GLONASS_F_M_A = 0.35e9;                           //!< Gravitational constant of atmosphere [m^3/s^2]
@@ -81,20 +70,20 @@ const double GLONASS_SUN_GM = 0.1325263e12;            //!< Solar gravitational 
 const double GLONASS_SUN_SEMI_MAJOR_AXIS = 1.49598e8;  //!< Semi-major axis of solar orbit [km];
 const double GLONASS_SUN_ECCENTRICITY = 0.016719;      //!< Eccentricity of solar orbit
 
-const double GLONASS_L2_CA_FREQ_HZ = FREQ2_GLO;        //!< L2 [Hz]
-const double GLONASS_L2_CA_DFREQ_HZ = DFRQ2_GLO;       //!< Freq Bias for GLONASS L1 [Hz]
-const double GLONASS_L2_CA_CODE_RATE_HZ = 0.511e6;     //!< GLONASS L1 C/A code rate [chips/s]
-const double GLONASS_L2_CA_CODE_LENGTH_CHIPS = 511.0;  //!< GLONASS L1 C/A code length [chips]
-const double GLONASS_L2_CA_CODE_PERIOD = 0.001;        //!< GLONASS L1 C/A code period [seconds]
-const double GLONASS_L2_CA_CHIP_PERIOD = 1.9569e-06;   //!< GLONASS L1 C/A chip period [seconds]
+const double GLONASS_L2_CA_FREQ_HZ = FREQ2_GLO;         //!< L2 [Hz]
+const double GLONASS_L2_CA_DFREQ_HZ = DFRQ2_GLO;        //!< Freq Bias for GLONASS L1 [Hz]
+const double GLONASS_L2_CA_CODE_RATE_CPS = 0.511e6;     //!< GLONASS L1 C/A code rate [chips/s]
+const double GLONASS_L2_CA_CODE_LENGTH_CHIPS = 511.0;   //!< GLONASS L1 C/A code length [chips]
+const double GLONASS_L2_CA_CODE_PERIOD_S = 0.001;       //!< GLONASS L1 C/A code period [seconds]
+const double GLONASS_L2_CA_CHIP_PERIOD_S = 1.9569e-06;  //!< GLONASS L1 C/A chip period [seconds]
 const double GLONASS_L2_CA_SYMBOL_RATE_BPS = 1000;
 
-const double GLONASS_L1_CA_FREQ_HZ = FREQ1_GLO;        //!< L1 [Hz]
-const double GLONASS_L1_CA_DFREQ_HZ = DFRQ1_GLO;       //!< Freq Bias for GLONASS L1 [Hz]
-const double GLONASS_L1_CA_CODE_RATE_HZ = 0.511e6;     //!< GLONASS L1 C/A code rate [chips/s]
-const double GLONASS_L1_CA_CODE_LENGTH_CHIPS = 511.0;  //!< GLONASS L1 C/A code length [chips]
-const double GLONASS_L1_CA_CODE_PERIOD = 0.001;        //!< GLONASS L1 C/A code period [seconds]
-const double GLONASS_L1_CA_CHIP_PERIOD = 1.9569e-06;   //!< GLONASS L1 C/A chip period [seconds]
+const double GLONASS_L1_CA_FREQ_HZ = FREQ1_GLO;         //!< L1 [Hz]
+const double GLONASS_L1_CA_DFREQ_HZ = DFRQ1_GLO;        //!< Freq Bias for GLONASS L1 [Hz]
+const double GLONASS_L1_CA_CODE_RATE_CPS = 0.511e6;     //!< GLONASS L1 C/A code rate [chips/s]
+const double GLONASS_L1_CA_CODE_LENGTH_CHIPS = 511.0;   //!< GLONASS L1 C/A code length [chips]
+const double GLONASS_L1_CA_CODE_PERIOD_S = 0.001;       //!< GLONASS L1 C/A code period [seconds]
+const double GLONASS_L1_CA_CHIP_PERIOD_S = 1.9569e-06;  //!< GLONASS L1 C/A chip period [seconds]
 const double GLONASS_L1_CA_SYMBOL_RATE_BPS = 1000;
 
 const int32_t GLONASS_CA_NBR_SATS = 24;  // STRING DATA WITHOUT PREAMBLE
@@ -130,102 +119,102 @@ const std::map<uint32_t, int32_t> GLONASS_PRN = {
     {
         0,
         8,
-    },  //For test
+    },  // For test
     {
         1,
         1,
-    },  //Plane 1
+    },  // Plane 1
     {
         2,
         -4,
-    },  //Plane 1
+    },  // Plane 1
     {
         3,
         5,
-    },  //Plane 1
+    },  // Plane 1
     {
         4,
         6,
-    },  //Plane 1
+    },  // Plane 1
     {
         5,
         1,
-    },  //Plane 1
+    },  // Plane 1
     {
         6,
         -4,
-    },  //Plane 1
+    },  // Plane 1
     {
         7,
         5,
-    },  //Plane 1
+    },  // Plane 1
     {
         8,
         6,
-    },  //Plane 1
+    },  // Plane 1
     {
         9,
         -2,
-    },  //Plane 2
+    },  // Plane 2
     {
         10,
         -7,
-    },  //Plane 2
+    },  // Plane 2
     {
         11,
         0,
-    },  //Plane 2
+    },  // Plane 2
     {
         12,
         -1,
-    },  //Plane 2
+    },  // Plane 2
     {
         13,
         -2,
-    },  //Plane 2
+    },  // Plane 2
     {
         14,
         -7,
-    },  //Plane 2
+    },  // Plane 2
     {
         15,
         0,
-    },  //Plane 2
+    },  // Plane 2
     {
         16,
         -1,
-    },  //Plane 2
+    },  // Plane 2
     {
         17,
         4,
-    },  //Plane 3
+    },  // Plane 3
     {
         18,
         -3,
-    },  //Plane 3
+    },  // Plane 3
     {
         19,
         3,
-    },  //Plane 3
+    },  // Plane 3
     {
         20,
         -5,
-    },  //Plane 3
+    },  // Plane 3
     {
         21,
         4,
-    },  //Plane 3
+    },  // Plane 3
     {
         22,
         -3,
-    },  //Plane 3
+    },  // Plane 3
     {
         23,
         3,
-    },         //Plane 3
-    {24, 2}};  //Plane 3
+    },         // Plane 3
+    {24, 2}};  // Plane 3
 
-const double GLONASS_STARTOFFSET_MS = 68.802;  //[ms] Initial sign. travel time (this cannot go here)
+const double GLONASS_STARTOFFSET_MS = 68.802;  // [ms] Initial sign. travel time (this cannot go here)
 
 // OBSERVABLE HISTORY DEEP FOR INTERPOLATION
 const int32_t GLONASS_L1_CA_HISTORY_DEEP = 100;
@@ -258,13 +247,13 @@ const std::vector<int32_t> GLONASS_GNAV_CRC_P_INDEX{66, 67, 68, 69, 70, 71, 72, 
 const std::vector<int32_t> GLONASS_GNAV_CRC_Q_INDEX{9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85};
 
 // GLONASS GNAV NAVIGATION MESSAGE STRUCTURE
-// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200E Appendix II)
+// NAVIGATION MESSAGE FIELDS POSITIONS (from IS-GPS-200K Appendix II)
 
 // FRAME 1-4
 // COMMON FIELDS
 const std::vector<std::pair<int32_t, int32_t>> STRING_ID({{2, 4}});
 const std::vector<std::pair<int32_t, int32_t>> KX({{78, 8}});
-//STRING 1
+// STRING 1
 const std::vector<std::pair<int32_t, int32_t>> P1({{8, 2}});
 const std::vector<std::pair<int32_t, int32_t>> T_K_HR({{10, 5}});
 const std::vector<std::pair<int32_t, int32_t>> T_K_MIN({{15, 6}});
@@ -273,7 +262,7 @@ const std::vector<std::pair<int32_t, int32_t>> X_N_DOT({{22, 24}});
 const std::vector<std::pair<int32_t, int32_t>> X_N_DOT_DOT({{46, 5}});
 const std::vector<std::pair<int32_t, int32_t>> X_N({{51, 27}});
 
-//STRING 2
+// STRING 2
 const std::vector<std::pair<int32_t, int32_t>> B_N({{6, 3}});
 const std::vector<std::pair<int32_t, int32_t>> P2({{9, 1}});
 const std::vector<std::pair<int32_t, int32_t>> T_B({{10, 7}});
@@ -281,7 +270,7 @@ const std::vector<std::pair<int32_t, int32_t>> Y_N_DOT({{22, 24}});
 const std::vector<std::pair<int32_t, int32_t>> Y_N_DOT_DOT({{46, 5}});
 const std::vector<std::pair<int32_t, int32_t>> Y_N({{51, 27}});
 
-//STRING 3
+// STRING 3
 const std::vector<std::pair<int32_t, int32_t>> P3({{6, 1}});
 const std::vector<std::pair<int32_t, int32_t>> GAMMA_N({{7, 11}});
 const std::vector<std::pair<int32_t, int32_t>> P({{19, 2}});
@@ -316,7 +305,7 @@ const std::vector<std::pair<int32_t, int32_t>> LAMBDA_N_A({{24, 21}});
 const std::vector<std::pair<int32_t, int32_t>> DELTA_I_N_A({{45, 18}});
 const std::vector<std::pair<int32_t, int32_t>> EPSILON_N_A({{63, 15}});
 
-//STRING 7, 9, 11, 13, 15
+// STRING 7, 9, 11, 13, 15
 const std::vector<std::pair<int32_t, int32_t>> OMEGA_N_A({{6, 16}});
 const std::vector<std::pair<int32_t, int32_t>> T_LAMBDA_N_A({{22, 21}});
 const std::vector<std::pair<int32_t, int32_t>> DELTA_T_N_A({{43, 22}});
@@ -327,5 +316,4 @@ const std::vector<std::pair<int32_t, int32_t>> H_N_A({{72, 5}});
 const std::vector<std::pair<int32_t, int32_t>> B1({{6, 11}});
 const std::vector<std::pair<int32_t, int32_t>> B2({{17, 10}});
 
-
-#endif /* GNSS_SDR_GLONASS_L1_L2_CA_H_ */
+#endif  // GNSS_SDR_GLONASS_L1_L2_CA_H
