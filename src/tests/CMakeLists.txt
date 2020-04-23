@@ -497,6 +497,11 @@ if(ENABLE_UNIT_TESTING)
             core_receiver
             core_system_parameters
     )
+    if(GNURADIO_USES_STD_POINTERS)
+        target_compile_definitions(run_tests
+            PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+        )
+    endif()
     if(ENABLE_UNIT_TESTING_EXTRA)
         target_link_libraries(run_tests PUBLIC Gpstk::gpstk)
     endif()
@@ -610,6 +615,11 @@ function(add_system_test executable)
 
     target_include_directories(${executable} PUBLIC ${OPT_INCLUDES_} ${CMAKE_SOURCE_DIR}/src/algorithms/libs)
     target_link_libraries(${executable} PUBLIC ${OPT_LIBS_} algorithms_libs)
+    if(GNURADIO_USES_STD_POINTERS)
+        target_compile_definitions(${executable}
+            PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+        )
+    endif()
 
     if(ENABLE_INSTALL_TESTS)
         if(EXISTS ${CMAKE_SOURCE_DIR}/install/${executable})
@@ -667,7 +677,9 @@ if(ENABLE_SYSTEM_TESTING)
         )
         add_system_test(position_test)
         if(NOT GNSSSIMULATOR_FOUND OR ENABLE_GNSS_SIM_INSTALL)
-            add_dependencies(position_test gnss-sim)
+            if(NOT CMAKE_CROSSCOMPILING)
+                add_dependencies(position_test gnss-sim)
+            endif()
         endif()
     else()
         # Avoid working with old executables if they were switched ON and then OFF
