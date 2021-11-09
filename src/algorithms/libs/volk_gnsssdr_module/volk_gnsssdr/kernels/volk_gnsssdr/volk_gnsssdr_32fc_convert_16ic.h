@@ -5,18 +5,15 @@
  *          <li> Andres Cecilia, 2014. a.cecilia.luque(at)gmail.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -375,7 +372,7 @@ static inline void volk_gnsssdr_32fc_convert_16ic_a_avx2(lv_16sc_t* outputVector
 #endif /* LV_HAVE_AVX2 */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_32fc_convert_16ic_neon(lv_16sc_t* outputVector, const lv_32fc_t* inputVector, unsigned int num_points)
@@ -439,7 +436,7 @@ static inline void volk_gnsssdr_32fc_convert_16ic_neon(lv_16sc_t* outputVector, 
         }
 }
 
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 
 #ifdef LV_HAVE_GENERIC

@@ -3,18 +3,15 @@
  * \brief  Interface of a GPS RRLL ACQUISITION ASSISTACE storage
  * \author Javier Arribas, 2013. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -22,6 +19,12 @@
 #define GNSS_SDR_GPS_ACQ_ASSIST_H
 
 #include <cstdint>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup System_Parameters
+ * \{ */
+
 
 /*!
  * \brief This class is a storage for the GPS GSM RRLL acquisition assistance data as described in
@@ -34,22 +37,25 @@
 class Gps_Acq_Assist
 {
 public:
-    uint32_t i_satellite_PRN;   //!< SV PRN NUMBER
-    double d_TOW;               //!< Time Of Week assigned to the acquisition data
-    double d_Doppler0;          //!< Doppler (0 order term) [Hz]
-    double d_Doppler1;          //!< Doppler (1 order term) [Hz]
-    double dopplerUncertainty;  //!< Doppler Uncertainty [Hz]
-    double Code_Phase;          //!< Code phase [chips]
-    double Code_Phase_int;      //!< Integer Code Phase [1 C/A code period]
-    double GPS_Bit_Number;      //!< GPS Bit Number
-    double Code_Phase_window;   //!< Code Phase search window [chips]
-    double Azimuth;             //!< Satellite Azimuth [deg]
-    double Elevation;           //!< Satellite Elevation [deg]
-
     /*!
      * Default constructor
      */
-    Gps_Acq_Assist();
+    Gps_Acq_Assist() = default;
+
+    uint32_t PRN{};               //!< SV PRN NUMBER
+    double tow{};                 //!< Time Of Week assigned to the acquisition data
+    double Doppler0{};            //!< Doppler (0 order term) [Hz]
+    double Doppler1{};            //!< Doppler (1 order term) [Hz]
+    double dopplerUncertainty{};  //!< Doppler Uncertainty [Hz]
+    double Code_Phase{};          //!< Code phase [chips]
+    double Code_Phase_int{};      //!< Integer Code Phase [1 C/A code period]
+    double GPS_Bit_Number{};      //!< GPS Bit Number
+    double Code_Phase_window{};   //!< Code Phase search window [chips]
+    double Azimuth{};             //!< Satellite Azimuth [deg]
+    double Elevation{};           //!< Satellite Elevation [deg]
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_GPS_ACQ_ASSIST_H

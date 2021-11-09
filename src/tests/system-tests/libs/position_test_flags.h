@@ -3,18 +3,15 @@
  * \brief Helper file for unit testing
  * \author Javier Arribas, 2018. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_POSITION_TEST_FLAGS_H
@@ -34,7 +31,7 @@ DEFINE_string(pvt_solver_dump_filename, std::string("PVT.dat"), "Path and filena
 DEFINE_double(static_2D_error_m, 2.0, "Static scenario 2D (East, North) positioning error threshold [meters]");
 DEFINE_double(static_3D_error_m, 5.0, "Static scenario 3D (East, North, Up) positioning error threshold [meters]");
 DEFINE_double(accuracy_CEP, 2.0, "Static scenario 2D (East, North) accuracy Circular Error Position (CEP) threshold [meters]");
-DEFINE_double(precision_SEP, 10.0, "Static scenario 3D (East, North, Up) precision Spherical Error Position (SEP) threshold [meters]");
+DEFINE_double(precision_SEP, 15.0, "Static scenario 3D (East, North, Up) precision Spherical Error Position (SEP) threshold [meters]");
 DEFINE_double(dynamic_3D_position_RMSE, 10.0, "Dynamic scenario 3D (ECEF) accuracy RMSE threshold [meters]");
 DEFINE_double(dynamic_3D_velocity_RMSE, 5.0, "Dynamic scenario 3D (ECEF) velocity accuracy RMSE threshold [meters/second]");
 DEFINE_bool(enable_carrier_smoothing, false, "Activates carrier smoothing of pseudoranges");

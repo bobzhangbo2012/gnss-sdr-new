@@ -7,18 +7,15 @@
  *          <li> Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "tracking_discriminators.h"
@@ -30,11 +27,11 @@ double phase_unwrap(double phase_rad)
 {
     if (phase_rad >= HALF_PI)
         {
-            return phase_rad - PI;
+            return phase_rad - GNSS_PI;
         }
     if (phase_rad <= -HALF_PI)
         {
-            return phase_rad + PI;
+            return phase_rad + GNSS_PI;
         }
     else
         {
@@ -54,10 +51,8 @@ double phase_unwrap(double phase_rad)
  */
 double fll_four_quadrant_atan(gr_complex prompt_s1, gr_complex prompt_s2, double t1, double t2)
 {
-    float cross;
-    float dot;
-    dot = prompt_s1.real() * prompt_s2.real() + prompt_s1.imag() * prompt_s2.imag();
-    cross = prompt_s1.real() * prompt_s2.imag() - prompt_s2.real() * prompt_s1.imag();
+    const float dot = prompt_s1.real() * prompt_s2.real() + prompt_s1.imag() * prompt_s2.imag();
+    const float cross = prompt_s1.real() * prompt_s2.imag() - prompt_s2.real() * prompt_s1.imag();
     return std::atan2(cross, dot) / (t2 - t1);
 }
 
@@ -120,9 +115,9 @@ double pll_cloop_two_quadrant_atan(gr_complex prompt_s1)
  */
 double dll_nc_e_minus_l_normalized(gr_complex early_s1, gr_complex late_s1, float spc, float slope, float y_intercept)
 {
-    double P_early = std::abs(early_s1);
-    double P_late = std::abs(late_s1);
-    double E_plus_L = P_early + P_late;
+    const double P_early = std::abs(early_s1);
+    const double P_late = std::abs(late_s1);
+    const double E_plus_L = P_early + P_late;
     if (E_plus_L == 0.0)
         {
             return 0.0;
@@ -142,10 +137,9 @@ double dll_nc_e_minus_l_normalized(gr_complex early_s1, gr_complex late_s1, floa
  */
 double dll_nc_vemlp_normalized(gr_complex very_early_s1, gr_complex early_s1, gr_complex late_s1, gr_complex very_late_s1)
 {
-    double Early = std::sqrt(very_early_s1.real() * very_early_s1.real() + very_early_s1.imag() * very_early_s1.imag() + early_s1.real() * early_s1.real() + early_s1.imag() * early_s1.imag());
-    double Late = std::sqrt(late_s1.real() * late_s1.real() + late_s1.imag() * late_s1.imag() + very_late_s1.real() * very_late_s1.real() + very_late_s1.imag() * very_late_s1.imag());
-
-    double E_plus_L = Early + Late;
+    const double Early = std::sqrt(very_early_s1.real() * very_early_s1.real() + very_early_s1.imag() * very_early_s1.imag() + early_s1.real() * early_s1.real() + early_s1.imag() * early_s1.imag());
+    const double Late = std::sqrt(late_s1.real() * late_s1.real() + late_s1.imag() * late_s1.imag() + very_late_s1.real() * very_late_s1.real() + very_late_s1.imag() * very_late_s1.imag());
+    const double E_plus_L = Early + Late;
     if (E_plus_L == 0.0)
         {
             return 0.0;

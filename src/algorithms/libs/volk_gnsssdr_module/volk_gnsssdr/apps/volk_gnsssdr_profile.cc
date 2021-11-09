@@ -1,9 +1,8 @@
-/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
- *
+/*
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -154,7 +153,7 @@ int main(int argc, char *argv[])
                         }
                     catch (std::string &error)
                         {
-                            std::cerr << "Caught Exception in 'run_volk_gnsssdr_tests': " << error << std::endl;
+                            std::cerr << "Caught Exception in 'run_volk_gnsssdr_tests': " << error << '\n';
                         }
                 }
         }
@@ -176,7 +175,7 @@ int main(int argc, char *argv[])
         }
     else
         {
-            std::cout << "Warning: this was a dry-run. Config not generated" << std::endl;
+            std::cout << "Warning: this was a dry-run. Config not generated\n";
         }
 
     return 0;
@@ -233,7 +232,7 @@ void read_results(std::vector<volk_gnsssdr_test_results_t> *results, std::string
 
                     if (single_kernel_result.size() == 3)
                         {
-                            volk_gnsssdr_test_results_t kernel_result;
+                            volk_gnsssdr_test_results_t kernel_result{};
                             kernel_result.name = std::string(single_kernel_result[0]);
                             kernel_result.config_name = std::string(single_kernel_result[0]);
                             kernel_result.best_arch_u = std::string(single_kernel_result[1]);
@@ -261,22 +260,22 @@ void write_results(const std::vector<volk_gnsssdr_test_results_t> *results, bool
         {
             try
                 {
-                    std::cout << "Creating " << config_path.parent_path() << " ..." << std::endl;
+                    std::cout << "Creating " << config_path.parent_path() << " ...\n";
                     try
                         {
                             fs::create_directories(config_path.parent_path());
                         }
                     catch (const fs::filesystem_error &e)
                         {
-                            std::cerr << "ERROR: Could not create folder " << config_path.parent_path() << std::endl;
-                            std::cerr << "Reason: " << e.what() << std::endl;
+                            std::cerr << "ERROR: Could not create folder " << config_path.parent_path() << '\n';
+                            std::cerr << "Reason: " << e.what() << '\n';
                             return;
                         }
                 }
             catch (...)
                 {
                     // Catch exception when using std::experimental
-                    std::cerr << "ERROR: Could not create folder" << std::endl;
+                    std::cerr << "ERROR: Could not create folder\n";
                     return;
                 }
         }
@@ -284,20 +283,20 @@ void write_results(const std::vector<volk_gnsssdr_test_results_t> *results, bool
     std::ofstream config;
     if (update_result)
         {
-            std::cout << "Updating " << path << " ..." << std::endl;
+            std::cout << "Updating " << path << " ...\n";
             config.open(path.c_str(), std::ofstream::app);
             if (!config.is_open())
                 {  // either we don't have write access or we don't have the dir yet
-                    std::cout << "Error opening file " << path << std::endl;
+                    std::cout << "Error opening file " << path << '\n';
                 }
         }
     else
         {
-            std::cout << "Writing " << path << " ..." << std::endl;
+            std::cout << "Writing " << path << " ...\n";
             config.open(path.c_str());
             if (!config.is_open())
                 {  // either we don't have write access or we don't have the dir yet
-                    std::cout << "Error opening file " << path << std::endl;
+                    std::cout << "Error opening file " << path << '\n';
                 }
 
             config << "\
@@ -311,29 +310,29 @@ void write_results(const std::vector<volk_gnsssdr_test_results_t> *results, bool
         {
             config << profile_results->config_name << " "
                    << profile_results->best_arch_a << " "
-                   << profile_results->best_arch_u << std::endl;
+                   << profile_results->best_arch_u << '\n';
         }
     config.close();
 }
 
 void write_json(std::ofstream &json_file, std::vector<volk_gnsssdr_test_results_t> results)
 {
-    json_file << "{" << std::endl;
-    json_file << " \"volk_gnsssdr_tests\": [" << std::endl;
+    json_file << "{\n";
+    json_file << " \"volk_gnsssdr_tests\": [\n";
     size_t len = results.size();
     size_t i = 0;
     std::vector<volk_gnsssdr_test_results_t>::iterator result;
     for (result = results.begin(); result != results.end(); ++result)
         {
-            json_file << "  {" << std::endl;
-            json_file << "   \"name\": \"" << result->name << "\"," << std::endl;
-            json_file << "   \"vlen\": " << (int)(result->vlen) << "," << std::endl;
-            json_file << "   \"iter\": " << result->iter << "," << std::endl;
+            json_file << "  {\n";
+            json_file << "   \"name\": \"" << result->name << "\",\n";
+            json_file << "   \"vlen\": " << (int)(result->vlen) << ",\n";
+            json_file << "   \"iter\": " << result->iter << ",\n";
             json_file << "   \"best_arch_a\": \"" << result->best_arch_a
-                      << "\"," << std::endl;
+                      << "\",\n";
             json_file << "   \"best_arch_u\": \"" << result->best_arch_u
-                      << "\"," << std::endl;
-            json_file << "   \"results\": {" << std::endl;
+                      << "\",\n";
+            json_file << "   \"results\": {\n";
             size_t results_len = result->results.size();
             size_t ri = 0;
 
@@ -341,27 +340,27 @@ void write_json(std::ofstream &json_file, std::vector<volk_gnsssdr_test_results_
             for (kernel_time_pair = result->results.begin(); kernel_time_pair != result->results.end(); ++kernel_time_pair)
                 {
                     volk_gnsssdr_test_time_t time = kernel_time_pair->second;
-                    json_file << "    \"" << time.name << "\": {" << std::endl;
-                    json_file << "     \"name\": \"" << time.name << "\"," << std::endl;
-                    json_file << "     \"time\": " << time.time << "," << std::endl;
-                    json_file << "     \"units\": \"" << time.units << "\"" << std::endl;
+                    json_file << "    \"" << time.name << "\": {\n";
+                    json_file << "     \"name\": \"" << time.name << "\",\n";
+                    json_file << "     \"time\": " << time.time << ",\n";
+                    json_file << "     \"units\": \"" << time.units << "\"\n";
                     json_file << "    }";
                     if (ri + 1 != results_len)
                         {
                             json_file << ",";
                         }
-                    json_file << std::endl;
+                    json_file << '\n';
                     ri++;
                 }
-            json_file << "   }" << std::endl;
+            json_file << "   }\n";
             json_file << "  }";
             if (i + 1 != len)
                 {
                     json_file << ",";
                 }
-            json_file << std::endl;
+            json_file << '\n';
             i++;
         }
-    json_file << " ]" << std::endl;
-    json_file << "}" << std::endl;
+    json_file << " ]\n";
+    json_file << "}\n";
 }

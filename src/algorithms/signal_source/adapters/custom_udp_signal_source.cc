@@ -3,46 +3,43 @@
  * \brief Receives ip frames containing samples in UDP frame encapsulation
  * using a high performance packet capture library (libpcap)
  * \author Javier Arribas jarribas (at) cttc.es
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
 #include "custom_udp_signal_source.h"
-#include "GPS_L1_CA.h"
 #include "configuration_interface.h"
-#include <boost/format.hpp>
+#include "gnss_sdr_string_literals.h"
 #include <glog/logging.h>
 #include <iostream>
-#include <utility>
 
 
-CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configuration,
+using namespace std::string_literals;
+
+CustomUDPSignalSource::CustomUDPSignalSource(const ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_stream, unsigned int out_stream,
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(std::move(queue))
+    Concurrent_Queue<pmt::pmt_t>* queue __attribute__((unused)))
+    : SignalSourceBase(configuration, role, "Custom_UDP_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream)
 {
     // DUMP PARAMETERS
-    std::string empty = "";
-    std::string default_dump_file = "./data/signal_source.dat";
-    std::string default_item_type = "gr_complex";
+    const std::string default_dump_file("./data/signal_source.dat");
+    const std::string default_item_type("gr_complex");
     dump_ = configuration->property(role + ".dump", false);
     dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
 
     // network PARAMETERS
-    std::string default_capture_device = "eth0";
-    std::string default_address = "127.0.0.1";
-    int default_port = 1234;
-    std::string address = configuration->property(role + ".origin_address", default_address);
+    const std::string default_capture_device("eth0");
+    const std::string default_address("127.0.0.1");
+    const int default_port = 1234;
+    const std::string address = configuration->property(role + ".origin_address", default_address);
     std::string capture_device = configuration->property(role + ".capture_device", default_capture_device);
     int port = configuration->property(role + ".port", default_port);
     int payload_bytes = configuration->property(role + ".payload_bytes", 1024);
@@ -51,8 +48,8 @@ CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configurati
     channels_in_udp_ = configuration->property(role + ".channels_in_udp", 1);
     IQ_swap_ = configuration->property(role + ".IQ_swap", false);
 
-    std::string default_sample_type = "cbyte";
-    std::string sample_type = configuration->property(role + ".sample_type", default_sample_type);
+    const std::string default_sample_type("cbyte");
+    const std::string sample_type = configuration->property(role + ".sample_type", default_sample_type);
     item_type_ = configuration->property(role + ".item_type", default_item_type);
     // output item size is always gr_complex
     item_size_ = sizeof(gr_complex);
@@ -75,7 +72,7 @@ CustomUDPSignalSource::CustomUDPSignalSource(ConfigurationInterface* configurati
         }
     else
         {
-            std::cout << "Configuration error: RF_channels<channels_in_use" << std::endl;
+            std::cout << "Configuration error: RF_channels<channels_in_use\n";
             exit(0);
         }
 
@@ -105,7 +102,7 @@ void CustomUDPSignalSource::connect(gr::top_block_sptr top_block)
         {
             top_block->connect(udp_gnss_rx_source_, n, null_sinks_.at(n), 0);
         }
-    DLOG(INFO) << "connected udp_source to null_sinks to enable the use of spare channels" << std::endl;
+    DLOG(INFO) << "connected udp_source to null_sinks to enable the use of spare channels\n";
 
     if (dump_)
         {
@@ -133,7 +130,7 @@ void CustomUDPSignalSource::disconnect(gr::top_block_sptr top_block)
                     DLOG(INFO) << "disconnected source to file sink";
                 }
         }
-    DLOG(INFO) << "disconnected udp_source" << std::endl;
+    DLOG(INFO) << "disconnected udp_source\n";
 }
 
 

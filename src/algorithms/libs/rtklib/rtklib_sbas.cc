@@ -19,7 +19,7 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
@@ -36,7 +36,8 @@
  *         Interface Specification for QZSS, Japan Aerospace Exploration Agency,
  *         July 31, 2009
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #include "rtklib_sbas.h"
 #include "rtklib_rtkcmn.h"
@@ -729,8 +730,8 @@ void readmsgs(const char *file, int sel, gtime_t ts, gtime_t te,
 /* compare sbas messages -----------------------------------------------------*/
 int cmpmsgs(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const sbsmsg_t *>(p1);
-    auto *q2 = static_cast<const sbsmsg_t *>(p2);
+    const auto *q1 = static_cast<const sbsmsg_t *>(p1);
+    const auto *q2 = static_cast<const sbsmsg_t *>(p2);
     return q1->week != q2->week ? q1->week - q2->week : (q1->tow < q2->tow ? -1 : (q1->tow > q2->tow ? 1 : q1->prn - q2->prn));
 }
 
@@ -1127,7 +1128,7 @@ double sbstropcorr(gtime_t time, const double *pos, const double *azel,
         fabs(pos[2] - pos_[2]) > 1.0)
         {
             getmet(pos[0] * R2D, met);
-            c = cos(2.0 * PI * (time2doy(time) - (pos[0] >= 0.0 ? 28.0 : 211.0)) / 365.25);
+            c = cos(2.0 * GNSS_PI * (time2doy(time) - (pos[0] >= 0.0 ? 28.0 : 211.0)) / 365.25);
             for (i = 0; i < 5; i++)
                 {
                     met[i] -= met[i + 5] * c;
@@ -1177,7 +1178,7 @@ int sbslongcorr(gtime_t time, int sat, const sbssat_t *sbssat,
             *ddts = p->lcorr.daf0 + p->lcorr.daf1 * t;
 
             trace(5, "sbslongcorr: sat=%2d drs=%7.2f%7.2f%7.2f ddts=%7.2f\n",
-                sat, drs[0], drs[1], drs[2], *ddts * SPEED_OF_LIGHT);
+                sat, drs[0], drs[1], drs[2], *ddts * SPEED_OF_LIGHT_M_S);
 
             return 1;
         }
@@ -1278,10 +1279,10 @@ int sbssatcorr(gtime_t time, int sat, const nav_t *nav, double *rs,
             rs[i] += drs[i];
         }
 
-    dts[0] += dclk + prc / SPEED_OF_LIGHT;
+    dts[0] += dclk + prc / SPEED_OF_LIGHT_M_S;
 
     trace(5, "sbssatcorr: sat=%2d drs=%6.3f %6.3f %6.3f dclk=%.3f %.3f var=%.3f\n",
-        sat, drs[0], drs[1], drs[2], dclk, prc / SPEED_OF_LIGHT, *var);
+        sat, drs[0], drs[1], drs[2], dclk, prc / SPEED_OF_LIGHT_M_S, *var);
 
     return 1;
 }

@@ -1,21 +1,18 @@
 /*!
  * \file unpack_spir_gss6450_samples.cc
- *
  * \brief Unpacks SPIR int samples
  * \author Antonio Ramos,  antonio(at)cttc.es
  * \author Javier Arribas jarribas (at) cttc.es
- * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
+ * -----------------------------------------------------------------------------
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is not part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -23,15 +20,15 @@
 #include <gnuradio/io_signature.h>
 #include <cmath>
 
-unpack_spir_gss6450_samples_sptr make_unpack_spir_gss6450_samples(unsigned int adc_nbit_)
+unpack_spir_gss6450_samples_sptr make_unpack_spir_gss6450_samples(int adc_nbit_)
 {
     return unpack_spir_gss6450_samples_sptr(new unpack_spir_gss6450_samples(adc_nbit_));
 }
 
 
-unpack_spir_gss6450_samples::unpack_spir_gss6450_samples(unsigned int adc_nbit) : gr::sync_interpolator("unpack_spir_gss6450_samples",
-                                                                                      gr::io_signature::make(1, 1, sizeof(int32_t)),
-                                                                                      gr::io_signature::make(1, 1, sizeof(gr_complex)), 16 / adc_nbit)
+unpack_spir_gss6450_samples::unpack_spir_gss6450_samples(int adc_nbit) : gr::sync_interpolator("unpack_spir_gss6450_samples",
+                                                                             gr::io_signature::make(1, 1, sizeof(int32_t)),
+                                                                             gr::io_signature::make(1, 1, sizeof(gr_complex)), 16 / adc_nbit)
 {
     adc_bits = adc_nbit;
     samples_per_int = 16 / adc_bits;
@@ -53,21 +50,21 @@ void unpack_spir_gss6450_samples::decode_4bits_word(uint32_t input_uint32, gr_co
 
                     if (tmp_char >= 2)
                         {
-                            I = (tmp_char - 4);
+                            I = static_cast<float>(tmp_char - 4);
                         }
                     else
                         {
-                            I = tmp_char;
+                            I = static_cast<float>(tmp_char);
                         }
                     input_uint32 = input_uint32 >> 2;
                     tmp_char = input_uint32 & 3;
                     if (tmp_char >= 2)
                         {
-                            Q = (tmp_char - 4);
+                            Q = static_cast<float>(tmp_char - 4);
                         }
                     else
                         {
-                            Q = tmp_char;
+                            Q = static_cast<float>(tmp_char);
                         }
                     input_uint32 = input_uint32 >> 2;
 
@@ -82,21 +79,21 @@ void unpack_spir_gss6450_samples::decode_4bits_word(uint32_t input_uint32, gr_co
 
                     if (tmp_char >= 8)
                         {
-                            I = (tmp_char - 16);
+                            I = static_cast<float>(tmp_char - 16);
                         }
                     else
                         {
-                            I = tmp_char;
+                            I = static_cast<float>(tmp_char);
                         }
                     input_uint32 = input_uint32 >> 4;
                     tmp_char = input_uint32 & 0x0F;
                     if (tmp_char >= 8)
                         {
-                            Q = (tmp_char - 16);
+                            Q = static_cast<float>(tmp_char - 16);
                         }
                     else
                         {
-                            Q = tmp_char;
+                            Q = static_cast<float>(tmp_char);
                         }
                     input_uint32 = input_uint32 >> 4;
 

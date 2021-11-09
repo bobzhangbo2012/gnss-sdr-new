@@ -4,18 +4,15 @@
  *  Galileo E1 Signals
  * \author Marc Molina, 2013. marc.molina.pena(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GALILEO_E1_PCPS_TONG_AMBIGUOUS_ACQUISITION_H
@@ -29,6 +26,12 @@
 #include <string>
 #include <vector>
 
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_adapters
+ * \{ */
+
+
 class ConfigurationInterface;
 
 /*!
@@ -38,7 +41,8 @@ class ConfigurationInterface;
 class GalileoE1PcpsTongAmbiguousAcquisition : public AcquisitionInterface
 {
 public:
-    GalileoE1PcpsTongAmbiguousAcquisition(ConfigurationInterface* configuration,
+    GalileoE1PcpsTongAmbiguousAcquisition(
+        const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -85,8 +89,8 @@ public:
     }
 
     /*!
-      * \brief Set channel fsm associated to this acquisition instance
-      */
+     * \brief Set channel fsm associated to this acquisition instance
+     */
     inline void set_channel_fsm(std::weak_ptr<ChannelFsm> channel_fsm) override
     {
         channel_fsm_ = channel_fsm;
@@ -140,31 +144,34 @@ public:
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
 private:
-    ConfigurationInterface* configuration_;
+    float calculate_threshold(float pfa) const;
+    const ConfigurationInterface* configuration_;
     pcps_tong_acquisition_cc_sptr acquisition_cc_;
     gr::blocks::stream_to_vector::sptr stream_to_vector_;
-    size_t item_size_;
+    std::weak_ptr<ChannelFsm> channel_fsm_;
+    std::vector<std::complex<float>> code_;
+    Gnss_Synchro* gnss_synchro_;
     std::string item_type_;
+    std::string dump_filename_;
+    std::string role_;
+    int64_t fs_in_;
+    size_t item_size_;
+    float threshold_;
     unsigned int vector_length_;
     unsigned int code_length_;
     unsigned int channel_;
-    std::weak_ptr<ChannelFsm> channel_fsm_;
-    float threshold_;
     unsigned int doppler_max_;
     unsigned int doppler_step_;
     unsigned int sampled_ms_;
     unsigned int tong_init_val_;
     unsigned int tong_max_val_;
     unsigned int tong_max_dwells_;
-    int64_t fs_in_;
-    bool dump_;
-    std::string dump_filename_;
-    std::vector<std::complex<float>> code_;
-    Gnss_Synchro* gnss_synchro_;
-    std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-    float calculate_threshold(float pfa);
+    bool dump_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GALILEO_E1_PCPS_TONG_AMBIGUOUS_ACQUISITION_H

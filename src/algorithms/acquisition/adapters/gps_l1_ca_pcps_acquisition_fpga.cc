@@ -7,59 +7,59 @@
  *          <li> Javier Arribas, 2019. jarribas(at)cttc.es
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l1_ca_pcps_acquisition_fpga.h"
 #include "GPS_L1_CA.h"
 #include "configuration_interface.h"
+#include "gnss_sdr_fft.h"
 #include "gnss_sdr_flags.h"
-#include "gps_sdr_signal_processing.h"
+#include "gps_sdr_signal_replica.h"
+#include "uio_fpga.h"
 #include <glog/logging.h>
-#include <gnuradio/fft/fft.h>
 #include <gnuradio/gr_complex.h>  // for gr_complex
 #include <volk/volk.h>            // for volk_32fc_conjugate_32fc
-#include <volk_gnsssdr/volk_gnsssdr_alloc.h>
-#include <algorithm>  // for copy_n
-#include <cmath>      // for abs, pow, floor
-#include <complex>    // for complex
+#include <algorithm>              // for copy_n
+#include <cmath>                  // for abs, pow, floor
+#include <complex>                // for complex
 
 GpsL1CaPcpsAcquisitionFpga::GpsL1CaPcpsAcquisitionFpga(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
-    unsigned int out_streams) : role_(role),
+    unsigned int out_streams) : gnss_synchro_(nullptr),
+                                role_(role),
+                                doppler_center_(0),
+                                channel_(0),
+                                doppler_step_(0),
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
     pcpsconf_fpga_t acq_parameters;
-    configuration_ = configuration;
 
     DLOG(INFO) << "role " << role;
 
-    int64_t fs_in_deprecated = configuration_->property("GNSS-SDR.internal_fs_hz", 2048000);
-    int64_t fs_in = configuration_->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
+    int64_t fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", 2048000);
+    int64_t fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
 
-    acq_parameters.repeat_satellite = configuration_->property(role + ".repeat_satellite", false);
+    acq_parameters.repeat_satellite = configuration->property(role + ".repeat_satellite", false);
     DLOG(INFO) << role << " satellite repeat = " << acq_parameters.repeat_satellite;
 
-    uint32_t downsampling_factor = configuration_->property(role + ".downsampling_factor", 4);
+    uint32_t downsampling_factor = configuration->property(role + ".downsampling_factor", 4);
     acq_parameters.downsampling_factor = downsampling_factor;
     fs_in = fs_in / downsampling_factor;
 
     acq_parameters.fs_in = fs_in;
-    doppler_max_ = configuration_->property(role + ".doppler_max", 5000);
+    doppler_max_ = configuration->property(role + ".doppler_max", 5000);
     if (FLAGS_doppler_max != 0)
         {
             doppler_max_ = FLAGS_doppler_max;
@@ -68,23 +68,31 @@ GpsL1CaPcpsAcquisitionFpga::GpsL1CaPcpsAcquisitionFpga(
     auto code_length = static_cast<uint32_t>(std::round(static_cast<double>(fs_in) / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));
     acq_parameters.code_length = code_length;
     // The FPGA can only use FFT lengths that are a power of two.
-    float nbits = ceilf(log2f(static_cast<float>(code_length) * 2.0));
+    float nbits = ceilf(log2f(static_cast<float>(code_length) * 2.0F));
     uint32_t nsamples_total = pow(2, nbits);
-    uint32_t select_queue_Fpga = configuration_->property(role + ".select_queue_Fpga", 0);
+    uint32_t select_queue_Fpga = configuration->property(role + ".select_queue_Fpga", 0);
     acq_parameters.select_queue_Fpga = select_queue_Fpga;
-    std::string default_device_name = "/dev/uio0";
-    std::string device_name = configuration_->property(role + ".devicename", default_device_name);
-    acq_parameters.device_name = device_name;
+
+    // UIO device file
+    std::string device_io_name;
+    // find the uio device file corresponding to the acquisition
+    if (find_uio_dev_file_name(device_io_name, acquisition_device_name, 0) < 0)
+        {
+            std::cout << "Cannot find the FPGA uio device file corresponding to device name " << acquisition_device_name << std::endl;
+            throw std::exception();
+        }
+    acq_parameters.device_name = device_io_name;
+
     acq_parameters.samples_per_code = nsamples_total;
     acq_parameters.excludelimit = static_cast<unsigned int>(1 + ceil(GPS_L1_CA_CHIP_PERIOD_S * static_cast<float>(fs_in)));
 
     // compute all the GPS L1 PRN Codes (this is done only once upon the class constructor in order to avoid re-computing the PRN codes every time
     // a channel is assigned)
-    auto fft_if = std::unique_ptr<gr::fft::fft_complex>(new gr::fft::fft_complex(nsamples_total, true));
+    auto fft_if = gnss_fft_fwd_make_unique(nsamples_total);
     // allocate memory to compute all the PRNs and compute all the possible codes
     volk_gnsssdr::vector<std::complex<float>> code(nsamples_total);
     volk_gnsssdr::vector<std::complex<float>> fft_codes_padded(nsamples_total);
-    d_all_fft_codes_ = std::vector<uint32_t>(nsamples_total * NUM_PRNs);  // memory containing all the possible fft codes for PRN 0 to 32
+    d_all_fft_codes_ = volk_gnsssdr::vector<uint32_t>(nsamples_total * NUM_PRNs);  // memory containing all the possible fft codes for PRN 0 to 32
     float max;
     int32_t tmp;
     int32_t tmp2;
@@ -138,17 +146,13 @@ GpsL1CaPcpsAcquisitionFpga::GpsL1CaPcpsAcquisitionFpga(
     acq_parameters.all_fft_codes = d_all_fft_codes_.data();
 
     // reference for the FPGA FFT-IFFT attenuation factor
-    acq_parameters.total_block_exp = configuration_->property(role + ".total_block_exp", 10);
+    acq_parameters.total_block_exp = configuration->property(role + ".total_block_exp", 10);
 
-    acq_parameters.num_doppler_bins_step2 = configuration_->property(role + ".second_nbins", 4);
-    acq_parameters.doppler_step2 = configuration_->property(role + ".second_doppler_step", 125.0);
-    acq_parameters.make_2_steps = configuration_->property(role + ".make_two_steps", false);
-    acq_parameters.max_num_acqs = configuration_->property(role + ".max_num_acqs", 2);
+    acq_parameters.num_doppler_bins_step2 = configuration->property(role + ".second_nbins", 4);
+    acq_parameters.doppler_step2 = configuration->property(role + ".second_doppler_step", static_cast<float>(125.0));
+    acq_parameters.make_2_steps = configuration->property(role + ".make_two_steps", false);
+    acq_parameters.max_num_acqs = configuration->property(role + ".max_num_acqs", 2);
     acquisition_fpga_ = pcps_make_acquisition_fpga(acq_parameters);
-
-    channel_ = 0;
-    doppler_step_ = 0;
-    gnss_synchro_ = nullptr;
 
     if (in_streams_ > 1)
         {
@@ -163,8 +167,8 @@ GpsL1CaPcpsAcquisitionFpga::GpsL1CaPcpsAcquisitionFpga(
 
 void GpsL1CaPcpsAcquisitionFpga::stop_acquisition()
 {
-    // this command causes the SW to reset the HW.
-    acquisition_fpga_->reset_acquisition();
+    // stop the acquisition and the other FPGA modules.
+    acquisition_fpga_->stop_acquisition();
 }
 
 

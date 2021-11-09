@@ -3,18 +3,15 @@
  * \brief GNU Radio block that receives asynchronous channel messages from acquisition and tracking blocks
  * \author Javier Arribas, 2016. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_CHANNEL_MSG_RECEIVER_CC_H
@@ -24,18 +21,16 @@
 #include <gnuradio/block.h>
 #include <pmt/pmt.h>
 #include <memory>
-#if GNURADIO_USES_STD_POINTERS
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Channel
+ * \{ */
+/** \addtogroup Channel_libs
+ * \{ */
+
 
 class channel_msg_receiver_cc;
 
-#if GNURADIO_USES_STD_POINTERS
-using channel_msg_receiver_cc_sptr = std::shared_ptr<channel_msg_receiver_cc>;
-#else
-using channel_msg_receiver_cc_sptr = boost::shared_ptr<channel_msg_receiver_cc>;
-#endif
+using channel_msg_receiver_cc_sptr = gnss_shared_ptr<channel_msg_receiver_cc>;
 
 channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
 
@@ -50,9 +45,12 @@ public:
 private:
     friend channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
     channel_msg_receiver_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat);
+    void msg_handler_channel_events(const pmt::pmt_t& msg);
     std::shared_ptr<ChannelFsm> d_channel_fsm;
     bool d_repeat;  // todo: change FSM to include repeat value
-    void msg_handler_events(pmt::pmt_t msg);
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_CHANNEL_MSG_RECEIVER_CC_H

@@ -3,18 +3,15 @@
  * \brief Receives ip frames containing samples in UDP frame encapsulation
  * using a high performance packet capture library (libpcap)
  * \author Javier Arribas jarribas (at) cttc.es
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -22,19 +19,19 @@
 #define GNSS_SDR_CUSTOM_UDP_SIGNAL_SOURCE_H
 
 #include "concurrent_queue.h"
-#include "gnss_block_interface.h"
 #include "gr_complex_ip_packet_source.h"
+#include "signal_source_base.h"
 #include <gnuradio/blocks/file_sink.h>
 #include <gnuradio/blocks/null_sink.h>
 #include <pmt/pmt.h>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#if GNURADIO_USES_STD_POINTERS
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Signal_Source
+ * \{ */
+/** \addtogroup Signal_Source_adapters
+ * \{ */
 
 
 class ConfigurationInterface;
@@ -43,27 +40,14 @@ class ConfigurationInterface;
  * \brief This class reads from UDP packets, which streams interleaved
  * I/Q samples over a network.
  */
-class CustomUDPSignalSource : public GNSSBlockInterface
+class CustomUDPSignalSource : public SignalSourceBase
 {
 public:
-    CustomUDPSignalSource(ConfigurationInterface* configuration,
+    CustomUDPSignalSource(const ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
-        unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);
+        unsigned int out_stream, Concurrent_Queue<pmt::pmt_t>* queue);
 
     ~CustomUDPSignalSource() = default;
-
-    inline std::string role() override
-    {
-        return role_;
-    }
-
-    /*!
-     * \brief Returns "Custom_UDP_Signal_Source"
-     */
-    inline std::string implementation() override
-    {
-        return "Custom_UDP_Signal_Source";
-    }
 
     inline size_t item_size() override
     {
@@ -77,29 +61,25 @@ public:
     gr::basic_block_sptr get_right_block(int RF_channel) override;
 
 private:
-    std::string role_;
+    Gr_Complex_Ip_Packet_Source::sptr udp_gnss_rx_source_;
+    std::vector<gnss_shared_ptr<gr::block>> null_sinks_;
+    std::vector<gnss_shared_ptr<gr::block>> file_sink_;
 
-    bool IQ_swap_;
+    std::string item_type_;
+    std::string dump_filename_;
+
+    size_t item_size_;
+
     int RF_channels_;
     int channels_in_udp_;
     unsigned int in_stream_;
     unsigned int out_stream_;
 
-    std::string item_type_;
-    size_t item_size_;
     bool dump_;
-    std::string dump_filename_;
-#if GNURADIO_USES_STD_POINTERS
-    std::vector<std::shared_ptr<gr::block>> null_sinks_;
-    std::vector<std::shared_ptr<gr::block>> file_sink_;
-#else
-    std::vector<boost::shared_ptr<gr::block>> null_sinks_;
-    std::vector<boost::shared_ptr<gr::block>> file_sink_;
-#endif
-
-    Gr_Complex_Ip_Packet_Source::sptr udp_gnss_rx_source_;
-
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
+    bool IQ_swap_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_CUSTOM_UDP_SIGNAL_SOURCE_H

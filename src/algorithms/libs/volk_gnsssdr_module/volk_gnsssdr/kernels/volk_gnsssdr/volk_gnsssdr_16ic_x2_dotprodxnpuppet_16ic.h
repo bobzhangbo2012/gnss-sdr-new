@@ -7,18 +7,15 @@
  *
  * VOLK_GNSSSDR puppet for integrating the resampler into the test system
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef INCLUDED_volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_H
@@ -177,7 +174,7 @@ static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_u_avx2(lv_16sc_t* r
 #endif /* LV_HAVE_AVX2  */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 
 static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_neon(lv_16sc_t* result, const lv_16sc_t* local_code, const lv_16sc_t* in, unsigned int num_points)
 {
@@ -202,7 +199,7 @@ static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_neon(lv_16sc_t* res
 #endif  // NEON
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 
 static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_neon_vma(lv_16sc_t* result, const lv_16sc_t* local_code, const lv_16sc_t* in, unsigned int num_points)
 {
@@ -226,7 +223,7 @@ static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_neon_vma(lv_16sc_t*
 
 #endif  // NEON
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 
 static inline void volk_gnsssdr_16ic_x2_dotprodxnpuppet_16ic_neon_optvma(lv_16sc_t* result, const lv_16sc_t* local_code, const lv_16sc_t* in, unsigned int num_points)
 {

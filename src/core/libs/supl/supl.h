@@ -3,23 +3,20 @@
  * \brief SUPL library with some RRLP
  * \author Carles Fernandez, 2017 cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
  * SPDX-License-Identifier: BSD-1-Clause
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
-#ifndef SUPL_H
-#define SUPL_H
+#ifndef GNSS_SDR_SUPL_H
+#define GNSS_SDR_SUPL_H
 
 #ifdef USE_EXPORT
 #define EXPORT __attribute__((visibility("default")))
@@ -43,6 +40,13 @@
 // clang-format on
 #include <PDU.h>
 #include <ULP-PDU.h>
+
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup SUPL_Library core_libs_supl
+ * \{ */
+
 
 #define SUPL_PORT "7275"
 
@@ -286,4 +290,7 @@ void supl_close(supl_ctx_t *ctx);
 int supl_ulp_send(supl_ctx_t *ctx, supl_ulp_t *pdu);
 int supl_ulp_recv(supl_ctx_t *ctx, supl_ulp_t *pdu);
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_SUPL_H

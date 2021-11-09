@@ -3,23 +3,21 @@
  * \brief Interface of a SBAS telemetry data decoder block
  * \author Daniel Fehr 2013. daniel.co(at)bluewin.ch
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_SBAS_L1_TELEMETRY_DECODER_GS_H
 #define GNSS_SDR_SBAS_L1_TELEMETRY_DECODER_GS_H
 
+#include "gnss_block_interface.h"
 #include "gnss_satellite.h"
 #include <boost/crc.hpp>  // for crc_optimal
 #include <gnuradio/block.h>
@@ -32,21 +30,18 @@
 #include <string>
 #include <utility>  // for pair
 #include <vector>
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>  // for std::shared_ptr
-#else
-#include <boost/shared_ptr.hpp>
-#endif
 
-class Viterbi_Decoder;
+/** \addtogroup Telemetry_Decoder
+ * \{ */
+/** \addtogroup Telemetry_Decoder_gnuradio_blocks
+ * \{ */
+
+
+class Viterbi_Decoder_Sbas;
 
 class sbas_l1_telemetry_decoder_gs;
 
-#if GNURADIO_USES_STD_POINTERS
-using sbas_l1_telemetry_decoder_gs_sptr = std::shared_ptr<sbas_l1_telemetry_decoder_gs>;
-#else
-using sbas_l1_telemetry_decoder_gs_sptr = boost::shared_ptr<sbas_l1_telemetry_decoder_gs>;
-#endif
+using sbas_l1_telemetry_decoder_gs_sptr = gnss_shared_ptr<sbas_l1_telemetry_decoder_gs>;
 
 sbas_l1_telemetry_decoder_gs_sptr sbas_l1_make_telemetry_decoder_gs(
     const Gnss_Satellite &satellite,
@@ -59,19 +54,16 @@ sbas_l1_telemetry_decoder_gs_sptr sbas_l1_make_telemetry_decoder_gs(
 class sbas_l1_telemetry_decoder_gs : public gr::block
 {
 public:
-    ~sbas_l1_telemetry_decoder_gs();
+    ~sbas_l1_telemetry_decoder_gs() override;
     void set_satellite(const Gnss_Satellite &satellite);  //!< Set satellite PRN
     void set_channel(int32_t channel);                    //!< Set receiver's channel
-    inline void reset()
-    {
-        return;
-    }
+    inline void reset(){};
 
     /*!
      * \brief This is where all signal processing takes place
      */
     int general_work(int noutput_items, gr_vector_int &ninput_items,
-        gr_vector_const_void_star &input_items, gr_vector_void_star &output_items);
+        gr_vector_const_void_star &input_items, gr_vector_void_star &output_items) override;
 
 private:
     friend sbas_l1_telemetry_decoder_gs_sptr sbas_l1_make_telemetry_decoder_gs(
@@ -105,7 +97,6 @@ private:
     {
     public:
         Sample_Aligner();
-        ~Sample_Aligner() = default;
         void reset();
         /*
          * samples length must be a multiple of two
@@ -114,8 +105,8 @@ private:
         bool get_symbols(const std::vector<double> &samples, std::vector<double> &symbols);
 
     private:
-        int32_t d_n_smpls_in_history;
-        double d_iir_par;
+        int32_t d_n_smpls_in_history{3};
+        double d_iir_par{0.05};
         double d_corr_paired{};
         double d_corr_shifted{};
         bool d_aligned{};
@@ -127,15 +118,14 @@ private:
     {
     public:
         Symbol_Aligner_And_Decoder();
-        ~Symbol_Aligner_And_Decoder() = default;
         void reset();
         bool get_bits(const std::vector<double> &symbols, std::vector<int32_t> &bits);
 
     private:
-        int32_t d_KK;
-        std::shared_ptr<Viterbi_Decoder> d_vd1;
-        std::shared_ptr<Viterbi_Decoder> d_vd2;
-        double d_past_symbol;
+        int32_t d_KK{7};
+        std::shared_ptr<Viterbi_Decoder_Sbas> d_vd1;
+        std::shared_ptr<Viterbi_Decoder_Sbas> d_vd2;
+        double d_past_symbol{0};
     } d_symbol_aligner_and_decoder;
 
 
@@ -166,4 +156,7 @@ private:
     } d_crc_verifier;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_SBAS_L1_TELEMETRY_DECODER_GS_H

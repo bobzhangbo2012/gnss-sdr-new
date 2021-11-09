@@ -1,23 +1,22 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
-set(OBS_ADAPTER_SOURCES
-    hybrid_observables.cc
-)
 
-set(OBS_ADAPTER_HEADERS
-    hybrid_observables.h
-)
-
-source_group(Headers FILES ${OBS_ADAPTER_HEADERS})
-
-add_library(obs_adapters ${OBS_ADAPTER_SOURCES} ${OBS_ADAPTER_HEADERS})
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(obs_adapters STATIC)
+    target_sources(obs_adapters
+        PRIVATE
+            hybrid_observables.cc
+        PUBLIC
+            hybrid_observables.h
+    )
+else()
+    source_group(Headers FILES hybrid_observables.h)
+    add_library(obs_adapters hybrid_observables.cc hybrid_observables.h)
+endif()
 
 target_include_directories(obs_adapters
     PUBLIC
@@ -27,10 +26,9 @@ target_include_directories(obs_adapters
 target_link_libraries(obs_adapters
     PUBLIC
         obs_gr_blocks
+        core_system_parameters
     PRIVATE
         gnss_sdr_flags
-        observables_libs
-        Gflags::gflags
         Glog::glog
 )
 

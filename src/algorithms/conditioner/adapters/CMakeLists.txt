@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 set(COND_ADAPTER_SOURCES
@@ -21,9 +18,21 @@ set(COND_ADAPTER_HEADERS
 list(SORT COND_ADAPTER_HEADERS)
 list(SORT COND_ADAPTER_SOURCES)
 
-source_group(Headers FILES ${COND_ADAPTER_HEADERS})
-
-add_library(conditioner_adapters ${COND_ADAPTER_SOURCES} ${COND_ADAPTER_HEADERS})
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(conditioner_adapters STATIC)
+    target_sources(conditioner_adapters
+        PRIVATE
+            ${COND_ADAPTER_SOURCES}
+        PUBLIC
+            ${COND_ADAPTER_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${COND_ADAPTER_HEADERS})
+    add_library(conditioner_adapters
+        ${COND_ADAPTER_SOURCES}
+        ${COND_ADAPTER_HEADERS}
+    )
+endif()
 
 target_link_libraries(conditioner_adapters
     PUBLIC

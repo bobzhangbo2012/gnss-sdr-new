@@ -7,26 +7,23 @@
  *          <li> Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "GPS_L1_CA.h"
 #include "acquisition_dump_reader.h"
 #include "concurrent_queue.h"
 #include "fpga_switch.h"
-#include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
+#include "gnss_sdr_filesystem.h"
 #include "gnss_synchro.h"
 #include "gps_l1_ca_pcps_acquisition_fpga.h"
 #include "in_memory_configuration.h"
@@ -46,18 +43,6 @@
 #include <gnuradio/analog/sig_source_c.h>
 #endif
 
-#if HAS_STD_FILESYSTEM
-#if HAS_STD_FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
-#else
-#include <boost/filesystem.hpp>
-namespace fs = boost::filesystem;
-#endif
 
 struct DMA_handler_args_gps_l1_acq_test
 {
@@ -136,7 +121,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception opening file " << Filename << std::endl;
+            std::cerr << "Exception opening file " << Filename << '\n';
             return nullptr;
         }
 
@@ -146,7 +131,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
     tx_fd = open("/dev/loop_tx", O_WRONLY);
     if (tx_fd < 0)
         {
-            std::cout << "Cannot open loop device" << std::endl;
+            std::cout << "Cannot open loop device\n";
             return nullptr;
         }
 
@@ -163,7 +148,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
                 }
             catch (const std::ifstream::failure& e)
                 {
-                    std::cerr << "Exception reading file " << Filename << std::endl;
+                    std::cerr << "Exception reading file " << Filename << '\n';
                 }
         }
 
@@ -190,7 +175,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
                 }
             catch (const std::ifstream::failure& e)
                 {
-                    std::cerr << "Exception reading file " << Filename << std::endl;
+                    std::cerr << "Exception reading file " << Filename << '\n';
                 }
 
             for (int index0 = 0; index0 < (nsamples_block_size * 2); index0 += 2)
@@ -207,7 +192,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
 
             if (write(tx_fd, input_samples_dma.data(), nsamples_block_size * 2 * 2) != nsamples_block_size * 2 * 2)
                 {
-                    std::cerr << "Error: DMA could not send all the required samples " << std::endl;
+                    std::cerr << "Error: DMA could not send all the required samples \n";
                 }
 
             // Throttle the DMA
@@ -227,7 +212,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception closing files " << Filename << std::endl;
+            std::cerr << "Exception closing files " << Filename << '\n';
         }
 
     try
@@ -236,7 +221,7 @@ void* handler_DMA_gps_l1_acq_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception closing loop device " << std::endl;
+            std::cerr << "Exception closing loop device \n";
         }
 
     return nullptr;
@@ -366,7 +351,7 @@ bool GpsL1CaPcpsAcquisitionTestFpga::acquire_signal()
 
     if (pthread_create(&thread_acquisition, nullptr, handler_acquisition_gps_l1_acq_test, reinterpret_cast<void*>(&args_acq)) < 0)
         {
-            std::cout << "ERROR cannot create acquisition Process" << std::endl;
+            std::cout << "ERROR cannot create acquisition Process\n";
         }
 
     // wait to give time for the acquisition thread to set up the acquisition HW accelerator in the FPGA
@@ -375,7 +360,7 @@ bool GpsL1CaPcpsAcquisitionTestFpga::acquire_signal()
     // create DMA child process
     if (pthread_create(&thread_DMA, nullptr, handler_DMA_gps_l1_acq_test, reinterpret_cast<void*>(&args)) < 0)
         {
-            std::cout << "ERROR cannot create DMA Process" << std::endl;
+            std::cout << "ERROR cannot create DMA Process\n";
         }
 
     // wait until the acquisition is finished
@@ -439,7 +424,7 @@ TEST_F(GpsL1CaPcpsAcquisitionTestFpga, ValidationOfResults)
     elapsed_seconds = end - start;
 
     uint32_t n = 0;  // there is only one channel
-    std::cout << "Acquired " << nsamples_to_transfer << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Acquired " << nsamples_to_transfer << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 
     double delay_error_samples = std::abs(expected_delay_samples - gnss_synchro_vec.at(n).Acq_delay_samples);
     auto delay_error_chips = static_cast<float>(delay_error_samples * 1023 / 4000);

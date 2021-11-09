@@ -4,18 +4,15 @@
  * tracking block based on a DLL and a PLL.
  * \author Javier Arribas, 2018. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "dll_pll_conf.h"
@@ -24,59 +21,19 @@
 #include <glog/logging.h>
 
 
-Dll_Pll_Conf::Dll_Pll_Conf()
+Dll_Pll_Conf::Dll_Pll_Conf() : carrier_lock_th(FLAGS_carrier_lock_th),
+                               cn0_samples(FLAGS_cn0_samples),
+                               cn0_min(FLAGS_cn0_min),
+                               max_code_lock_fail(FLAGS_max_lock_fail),
+                               max_carrier_lock_fail(FLAGS_max_carrier_lock_fail)
 {
-    /* DLL/PLL tracking configuration */
-    high_dyn = false;
-    smoother_length = 10;
-    fs_in = 2000000.0;
-    vector_length = 0U;
-    dump = false;
-    dump_mat = true;
-    dump_filename = std::string("./dll_pll_dump.dat");
-    enable_fll_pull_in = false;
-    enable_fll_steady_state = false;
-    pull_in_time_s = 10;
-    bit_synchronization_time_limit_s = pull_in_time_s + 60;
-    fll_filter_order = 1;
-    pll_filter_order = 3;
-    dll_filter_order = 2;
-    fll_bw_hz = 35.0;
-    pll_pull_in_bw_hz = 50.0;
-    dll_pull_in_bw_hz = 3.0;
-    pll_bw_hz = 35.0;
-    dll_bw_hz = 2.0;
-    pll_bw_narrow_hz = 5.0;
-    dll_bw_narrow_hz = 0.75;
-    early_late_space_chips = 0.25;
-    very_early_late_space_chips = 0.5;
-    early_late_space_narrow_chips = 0.15;
-    very_early_late_space_narrow_chips = 0.5;
-    slope = 1.0;
-    spc = 0.5;
-    y_intercept = 1.0;
-    carrier_aiding = true;
-    extend_correlation_symbols = 1;
-    cn0_samples = FLAGS_cn0_samples;
-    cn0_smoother_samples = 200;
-    cn0_smoother_alpha = 0.002;
-    carrier_lock_test_smoother_alpha = 0.002;
-    carrier_lock_test_smoother_samples = 25;
-    cn0_min = FLAGS_cn0_min;
-    max_carrier_lock_fail = FLAGS_max_carrier_lock_fail;
-    max_code_lock_fail = FLAGS_max_lock_fail;
-    carrier_lock_th = FLAGS_carrier_lock_th;
-    track_pilot = true;
-    enable_doppler_correction = false;
-    system = 'G';
     signal[0] = '1';
     signal[1] = 'C';
     signal[2] = '\0';
-    item_type = "gr_complex";
 }
 
 
-void Dll_Pll_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
+void Dll_Pll_Conf::SetFromConfiguration(const ConfigurationInterface *configuration,
     const std::string &role)
 {
     item_type = configuration->property(role + ".item_type", item_type);
@@ -86,7 +43,7 @@ void Dll_Pll_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
             item_type = "gr_complex";
         }
 
-    int fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", fs_in);
+    double fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", fs_in);
     fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
     high_dyn = configuration->property(role + ".high_dyn", high_dyn);
     dump = configuration->property(role + ".dump", dump);
@@ -141,7 +98,7 @@ void Dll_Pll_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
     enable_fll_steady_state = configuration->property(role + ".enable_fll_steady_state", enable_fll_steady_state);
     fll_bw_hz = configuration->property(role + ".fll_bw_hz", fll_bw_hz);
     pull_in_time_s = configuration->property(role + ".pull_in_time_s", pull_in_time_s);
-    bit_synchronization_time_limit_s = pull_in_time_s + 60;
+    bit_synchronization_time_limit_s = configuration->property(role + ".bit_synchronization_time_limit_s", bit_synchronization_time_limit_s);
     early_late_space_chips = configuration->property(role + ".early_late_space_chips", early_late_space_chips);
     early_late_space_narrow_chips = configuration->property(role + ".early_late_space_narrow_chips", early_late_space_narrow_chips);
     very_early_late_space_chips = configuration->property(role + ".very_early_late_space_chips", very_early_late_space_chips);

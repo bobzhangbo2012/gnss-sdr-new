@@ -3,18 +3,15 @@
  * \brief Interface of a thread-safe std::map
  * \author Javier Arribas, 2011. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_CONCURRENT_MAP_H
@@ -23,6 +20,11 @@
 #include <map>
 #include <mutex>
 #include <utility>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup Core_Receiver core_receiver
+ * \{ */
 
 
 template <typename Data>
@@ -88,4 +90,7 @@ private:
     mutable std::mutex the_mutex;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_CONCURRENT_MAP_H

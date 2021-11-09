@@ -19,20 +19,26 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-2-Clause
- *
- *-----------------------------------------------------------------------------*/
+ *------------------------------------------------------------------------------
+ */
 
 #ifndef GNSS_SDR_RTKLIB_SOLUTION_H
 #define GNSS_SDR_RTKLIB_SOLUTION_H
 
 #include "rtklib.h"
+
+/** \addtogroup PVT
+ * \{ */
+/** \addtogroup RTKLIB_Library
+ * \{ */
+
 
 #define COMMENTH "%"                   /* comment line indicator for solution */
 #define MSG_DISCONN "$_DISCONNECT\r\n" /* disconnect message */
@@ -157,4 +163,6 @@ void outsolex(FILE *fp, const sol_t *sol, const ssat_t *ssat,
     const solopt_t *opt);
 
 
-#endif
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_RTKLIB_SOLUTION_H

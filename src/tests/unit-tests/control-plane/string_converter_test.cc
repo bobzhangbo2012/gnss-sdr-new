@@ -5,26 +5,24 @@
  *         Carles Fernandez-Prades, 2012. cfernandez(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
+#include "gnss_sdr_make_unique.h"
 #include "string_converter.h"
 
 
 TEST(StringConverterTest, StringToBool)
 {
-    std::unique_ptr<StringConverter> converter(new StringConverter());
+    auto converter = std::make_unique<StringConverter>();
     bool conversion_result = converter->convert("false", true);
     bool expected_false = false;
     EXPECT_EQ(expected_false, conversion_result);
@@ -45,7 +43,7 @@ TEST(StringConverterTest, StringToSizeT)
 
 TEST(StringConverterTest, StringToBoolFail)
 {
-    std::unique_ptr<StringConverter> converter(new StringConverter());
+    auto converter = std::make_unique<StringConverter>();
     bool conversion_result = converter->convert("lse", true);
     bool expected_true = true;
     EXPECT_EQ(expected_true, conversion_result);
@@ -54,7 +52,7 @@ TEST(StringConverterTest, StringToBoolFail)
 
 TEST(StringConverterTest, StringToSizeTFail)
 {
-    std::unique_ptr<StringConverter> converter(new StringConverter());
+    auto converter = std::make_unique<StringConverter>();
     size_t conversion_result = converter->convert("false", 1);
     unsigned int expected1 = 1;
     EXPECT_EQ(expected1, conversion_result);

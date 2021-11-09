@@ -1,10 +1,10 @@
-/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
- *
+/*
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
+ *
  */
 
 #include <stdbool.h>
@@ -95,9 +95,9 @@ size_t volk_gnsssdr_load_preferences(volk_gnsssdr_arch_pref_t **prefs_res)
 
     // get the config path
     volk_gnsssdr_get_config_path(path, true);
-    if (!path[0]) return n_arch_prefs;  //no prefs found
+    if (!path[0]) return n_arch_prefs;  // no prefs found
     config_file = fopen(path, "r");
-    if (!config_file) return n_arch_prefs;  //no prefs found
+    if (!config_file) return n_arch_prefs;  // no prefs found
 
     // reset the file pointer and write the prefs into volk_gnsssdr_arch_prefs
     while (fgets(line, sizeof(line), config_file) != NULL)

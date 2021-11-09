@@ -6,18 +6,15 @@
  *          <li> Javier Arribas, 2019. jarribas(at)cttc.es
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H
@@ -26,10 +23,16 @@
 #include "channel_fsm.h"
 #include "pcps_acquisition_fpga.h"
 #include <gnuradio/runtime_types.h>  // for basic_block_sptr, top_block_sptr
-#include <cstddef>                   // for size_t
-#include <memory>                    // for weak_ptr
-#include <string>                    // for string
-#include <vector>
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>
+#include <cstddef>  // for size_t
+#include <memory>   // for weak_ptr
+#include <string>   // for string
+
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_adapters
+ * \{ */
+
 
 class Gnss_Synchro;
 class ConfigurationInterface;
@@ -41,7 +44,8 @@ class ConfigurationInterface;
 class GpsL2MPcpsAcquisitionFpga : public AcquisitionInterface
 {
 public:
-    GpsL2MPcpsAcquisitionFpga(ConfigurationInterface* configuration,
+    GpsL2MPcpsAcquisitionFpga(
+        const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -144,6 +148,8 @@ public:
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
 private:
+    const std::string acquisition_device_name = "acquisition_S00_AXI";  // UIO device name
+
     static const uint32_t NUM_PRNs = 32;
     static const uint32_t QUANT_BITS_LOCAL_CODE = 16;
     static const uint32_t SELECT_LSBits = 0x0000FFFF;         // Select the 10 LSbits out of a 20-bit word
@@ -151,21 +157,23 @@ private:
     static const uint32_t SELECT_ALL_CODE_BITS = 0xFFFFFFFF;  // Select a 20 bit word
     static const uint32_t SHL_CODE_BITS = 65536;              // shift left by 10 bits
 
-    ConfigurationInterface* configuration_;
     pcps_acquisition_fpga_sptr acquisition_fpga_;
-    std::string item_type_;
-    unsigned int channel_;
+    volk_gnsssdr::vector<uint32_t> d_all_fft_codes_;  // memory that contains all the code ffts
     std::weak_ptr<ChannelFsm> channel_fsm_;
+    Gnss_Synchro* gnss_synchro_;
+    std::string item_type_;
+    std::string dump_filename_;
+    std::string role_;
+    int64_t fs_in_;
     float threshold_;
+    unsigned int channel_;
     unsigned int doppler_max_;
     unsigned int doppler_step_;
-    int64_t fs_in_;
-    std::string dump_filename_;
-    Gnss_Synchro* gnss_synchro_;
-    std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-    std::vector<uint32_t> d_all_fft_codes_;  // memory that contains all the code ffts
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GPS_L2_M_PCPS_ACQUISITION_FPGA_H

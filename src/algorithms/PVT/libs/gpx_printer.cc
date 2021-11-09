@@ -4,23 +4,21 @@
  * \author Álvaro Cebrián Juan, 2018. acebrianjuan(at)gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
 #include "gpx_printer.h"
-#include "rtklib_solver.h"
+#include "gnss_sdr_filesystem.h"
+#include "pvt_solution.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <glog/logging.h>
 #include <ctime>      // for tm
@@ -29,37 +27,17 @@
 #include <iostream>   // for cout, cerr
 #include <sstream>    // for stringstream
 
-#if HAS_STD_FILESYSTEM
-#include <system_error>
-namespace errorlib = std;
-#if HAS_STD_FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
-#else
-#include <boost/filesystem/operations.hpp>   // for create_directories, exists
-#include <boost/filesystem/path.hpp>         // for path, operator<<
-#include <boost/filesystem/path_traits.hpp>  // for filesystem
-#include <boost/system/error_code.hpp>       // for error_code
-namespace fs = boost::filesystem;
-namespace errorlib = boost::system;
-#endif
 
-
-Gpx_Printer::Gpx_Printer(const std::string& base_path)
+Gpx_Printer::Gpx_Printer(const std::string& base_path) : indent("  "),
+                                                         gpx_base_path(base_path),
+                                                         positions_printed(false)
 {
-    positions_printed = false;
-    indent = "  ";
-    gpx_base_path = base_path;
     fs::path full_path(fs::current_path());
     const fs::path p(gpx_base_path);
     if (!fs::exists(p))
         {
             std::string new_folder;
-            for (auto& folder : fs::path(gpx_base_path))
+            for (const auto& folder : fs::path(gpx_base_path))
                 {
                     new_folder += folder.string();
                     errorlib::error_code ec;
@@ -67,7 +45,7 @@ Gpx_Printer::Gpx_Printer(const std::string& base_path)
                         {
                             if (!fs::create_directory(new_folder, ec))
                                 {
-                                    std::cout << "Could not create the " << new_folder << " folder." << std::endl;
+                                    std::cout << "Could not create the " << new_folder << " folder.\n";
                                     gpx_base_path = full_path.string();
                                 }
                         }
@@ -80,7 +58,7 @@ Gpx_Printer::Gpx_Printer(const std::string& base_path)
         }
     if (gpx_base_path != ".")
         {
-            std::cout << "GPX files will be stored at " << gpx_base_path << std::endl;
+            std::cout << "GPX files will be stored at " << gpx_base_path << '\n';
         }
 
     gpx_base_path = gpx_base_path + fs::path::preferred_separator;
@@ -89,8 +67,8 @@ Gpx_Printer::Gpx_Printer(const std::string& base_path)
 
 bool Gpx_Printer::set_headers(const std::string& filename, bool time_tag_name)
 {
-    boost::posix_time::ptime pt = boost::posix_time::second_clock::local_time();
-    tm timeinfo = boost::posix_time::to_tm(pt);
+    const boost::posix_time::ptime pt = boost::posix_time::second_clock::local_time();
+    const tm timeinfo = boost::posix_time::to_tm(pt);
 
     if (time_tag_name)
         {
@@ -144,40 +122,39 @@ bool Gpx_Printer::set_headers(const std::string& filename, bool time_tag_name)
             // Set iostream numeric format and precision
             gpx_file.setf(gpx_file.std::ofstream::fixed, gpx_file.std::ofstream::floatfield);
             gpx_file << std::setprecision(14);
-            gpx_file << R"(<?xml version="1.0" encoding="UTF-8"?>)" << std::endl
-                     << R"(<gpx version="1.1" creator="GNSS-SDR")" << std::endl
-                     << indent << "xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v2 http://www.garmin.com/xmlschemas/TrackPointExtensionv2.xsd\"" << std::endl
-                     << indent << "xmlns=\"http://www.topografix.com/GPX/1/1\"" << std::endl
-                     << indent << "xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\"" << std::endl
-                     << indent << "xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\"" << std::endl
-                     << indent << "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">" << std::endl
-                     << indent << "<trk>" << std::endl
-                     << indent << indent << "<name>Position fixes computed by GNSS-SDR v" << GNSS_SDR_VERSION << "</name>" << std::endl
-                     << indent << indent << "<desc>GNSS-SDR position log generated at " << pt << " (local time)</desc>" << std::endl
-                     << indent << indent << "<trkseg>" << std::endl;
+            gpx_file << R"(<?xml version="1.0" encoding="UTF-8"?>)" << '\n'
+                     << R"(<gpx version="1.1" creator="GNSS-SDR")" << '\n'
+                     << indent << "xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v2 http://www.garmin.com/xmlschemas/TrackPointExtensionv2.xsd\"\n"
+                     << indent << "xmlns=\"http://www.topografix.com/GPX/1/1\"\n"
+                     << indent << "xmlns:gpxx=\"http://www.garmin.com/xmlschemas/GpxExtensions/v3\"\n"
+                     << indent << "xmlns:gpxtpx=\"http://www.garmin.com/xmlschemas/TrackPointExtension/v2\"\n"
+                     << indent << "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
+                     << indent << "<trk>\n"
+                     << indent << indent << "<name>Position fixes computed by GNSS-SDR v" << GNSS_SDR_VERSION << "</name>\n"
+                     << indent << indent << "<desc>GNSS-SDR position log generated at " << pt << " (local time)</desc>\n"
+                     << indent << indent << "<trkseg>\n";
             return true;
         }
-    std::cout << "File " << gpx_filename << " cannot be saved. Wrong permissions?" << std::endl;
+    std::cout << "File " << gpx_filename << " cannot be saved. Wrong permissions?\n";
     return false;
 }
 
 
-bool Gpx_Printer::print_position(const std::shared_ptr<Rtklib_Solver>& position, bool print_average_values)
+bool Gpx_Printer::print_position(const Pvt_Solution* const position, bool print_average_values)
 {
     double latitude;
     double longitude;
     double height;
 
     positions_printed = true;
-    const std::shared_ptr<Rtklib_Solver>& position_ = position;
 
-    double speed_over_ground = position_->get_speed_over_ground();    // expressed in m/s
-    double course_over_ground = position_->get_course_over_ground();  // expressed in deg
+    const double speed_over_ground = position->get_speed_over_ground();    // expressed in m/s
+    const double course_over_ground = position->get_course_over_ground();  // expressed in deg
 
-    double hdop = position_->get_hdop();
-    double vdop = position_->get_vdop();
-    double pdop = position_->get_pdop();
-    std::string utc_time = to_iso_extended_string(position_->get_position_UTC_time());
+    const double hdop = position->get_hdop();
+    const double vdop = position->get_vdop();
+    const double pdop = position->get_pdop();
+    std::string utc_time = to_iso_extended_string(position->get_position_UTC_time());
     if (utc_time.length() < 23)
         {
             utc_time += ".";
@@ -187,15 +164,15 @@ bool Gpx_Printer::print_position(const std::shared_ptr<Rtklib_Solver>& position,
 
     if (print_average_values == false)
         {
-            latitude = position_->get_latitude();
-            longitude = position_->get_longitude();
-            height = position_->get_height();
+            latitude = position->get_latitude();
+            longitude = position->get_longitude();
+            height = position->get_height();
         }
     else
         {
-            latitude = position_->get_avg_latitude();
-            longitude = position_->get_avg_longitude();
-            height = position_->get_avg_height();
+            latitude = position->get_avg_latitude();
+            longitude = position->get_avg_longitude();
+            height = position->get_avg_height();
         }
 
     if (gpx_file.is_open())
@@ -206,7 +183,7 @@ bool Gpx_Printer::print_position(const std::shared_ptr<Rtklib_Solver>& position,
                      << "<extensions><gpxtpx:TrackPointExtension>"
                      << "<gpxtpx:speed>" << speed_over_ground << "</gpxtpx:speed>"
                      << "<gpxtpx:course>" << course_over_ground << "</gpxtpx:course>"
-                     << "</gpxtpx:TrackPointExtension></extensions></trkpt>" << std::endl;
+                     << "</gpxtpx:TrackPointExtension></extensions></trkpt>\n";
             return true;
         }
     return false;
@@ -217,8 +194,8 @@ bool Gpx_Printer::close_file()
 {
     if (gpx_file.is_open())
         {
-            gpx_file << indent << indent << "</trkseg>" << std::endl
-                     << indent << "</trk>" << std::endl
+            gpx_file << indent << indent << "</trkseg>\n"
+                     << indent << "</trk>\n"
                      << "</gpx>";
             gpx_file.close();
             return true;
@@ -229,6 +206,7 @@ bool Gpx_Printer::close_file()
 
 Gpx_Printer::~Gpx_Printer()
 {
+    DLOG(INFO) << "GPX printer destructor called.";
     try
         {
             close_file();

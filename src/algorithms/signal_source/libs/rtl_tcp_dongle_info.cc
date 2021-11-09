@@ -6,22 +6,18 @@
  *
  * This file contains information taken from librtlsdr:
  *  https://git.osmocom.org/rtl-sdr
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "rtl_tcp_dongle_info.h"
-#include <boost/foreach.hpp>
 #include <string>
 #include <vector>
 
@@ -38,8 +34,8 @@ boost::system::error_code Rtl_Tcp_Dongle_Info::read(boost::asio::ip::tcp::socket
     boost::system::error_code ec;
 
     unsigned char data[sizeof(char) * 4 + sizeof(uint32_t) * 2];
-    socket.receive(boost::asio::buffer(data), 0, ec);
-    if (!ec)
+    size_t received_bits = socket.receive(boost::asio::buffer(data), 0, ec);
+    if (!ec && (received_bits > 0))
         {
             std::memcpy(magic_, data, 4);
 
@@ -49,7 +45,7 @@ boost::system::error_code Rtl_Tcp_Dongle_Info::read(boost::asio::ip::tcp::socket
             tuner_type_ = boost::asio::detail::socket_ops::network_to_host_long(type);
 
             uint32_t count;
-            std ::memcpy(&count, &data[8], 4);
+            std::memcpy(&count, &data[8], 4);
 
             tuner_gain_count_ = boost::asio::detail::socket_ops::network_to_host_long(count);
         }
@@ -118,7 +114,7 @@ double Rtl_Tcp_Dongle_Info::clip_gain(int gain) const
         }
 
     double last_stop = gains.front();
-    BOOST_FOREACH (double g, gains)
+    for (auto g : gains)
         {
             g /= 10.0;
 

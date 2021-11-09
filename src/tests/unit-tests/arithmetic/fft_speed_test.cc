@@ -5,22 +5,19 @@
  * \author Antonio Ramos, 2017. antonio.ramos(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
+#include "gnss_sdr_fft.h"
 #include <armadillo>
-#include <gnuradio/fft/fft.h>
 #include <chrono>
 #include <memory>
 
@@ -38,8 +35,7 @@ TEST(FFTSpeedTest, ArmadilloVSGNURadioExecutionTime)
         for (unsigned int fft_size
              : fft_sizes) {
             d_fft_size = fft_size;
-            gr::fft::fft_complex* d_gr_fft;
-            d_gr_fft = new gr::fft::fft_complex(d_fft_size, true);
+            auto d_gr_fft = gnss_fft_fwd_make_unique(d_fft_size);
             arma::arma_rng::set_seed_random();
             arma::cx_fvec d_arma_fft = arma::cx_fvec(d_fft_size).randn() + gr_complex(0.0, 1.0) * arma::cx_fvec(d_fft_size).randn();
             arma::cx_fvec d_arma_fft_result(d_fft_size);
@@ -53,8 +49,7 @@ TEST(FFTSpeedTest, ArmadilloVSGNURadioExecutionTime)
             end = std::chrono::system_clock::now();
             elapsed_seconds = end - start;
             d_execution_time = elapsed_seconds.count() / static_cast<double>(FLAGS_fft_speed_iterations_test);
-            std::cout << "GNU Radio FFT execution time for length = " << d_fft_size << " : " << d_execution_time * 1e6 << " [us]" << std::endl;
-            delete d_gr_fft;
+            std::cout << "GNU Radio FFT execution time for length = " << d_fft_size << " : " << d_execution_time * 1e6 << " [us]\n";
 
             start = std::chrono::system_clock::now();
             for (int k = 0; k < FLAGS_fft_speed_iterations_test; k++)
@@ -64,6 +59,6 @@ TEST(FFTSpeedTest, ArmadilloVSGNURadioExecutionTime)
             end = std::chrono::system_clock::now();
             elapsed_seconds = end - start;
             d_execution_time = elapsed_seconds.count() / static_cast<double>(FLAGS_fft_speed_iterations_test);
-            std::cout << "Armadillo FFT execution time for length = " << d_fft_size << " : " << d_execution_time * 1e6 << " [us]" << std::endl;
+            std::cout << "Armadillo FFT execution time for length = " << d_fft_size << " : " << d_execution_time * 1e6 << " [us]\n";
         });
 }

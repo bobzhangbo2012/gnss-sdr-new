@@ -1,10 +1,8 @@
-# Copyright (C) 2019 (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2019-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 # Original code from https://github.com/vector-of-bool/CMakeCM and modified
 # by C. Fernandez. The original code is distributed under the OSI-approved
@@ -121,9 +119,11 @@ if(FILESYSTEM_FIND_QUIETLY)
     set(CMAKE_REQUIRED_QUIET ${FILESYSTEM_FIND_QUIETLY})
 endif()
 
-# All of our tests require C++17 or later
 set(CMAKE_CXX_STANDARD 17)
-if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "9.0.0"))
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "8.0.0"))
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.99")
+        set(UNDEFINED_BEHAVIOR_WITHOUT_LINKING TRUE)
+    endif()
     set(CMAKE_REQUIRED_FLAGS "-std=c++17")
 endif()
 if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.99"))
@@ -208,9 +208,10 @@ if(CXX_FILESYSTEM_HAVE_FS)
     ]] code @ONLY)
 
     # Try to compile a simple filesystem program without any linker flags
-    check_cxx_source_compiles("${code}" CXX_FILESYSTEM_NO_LINK_NEEDED)
-
-    set(can_link ${CXX_FILESYSTEM_NO_LINK_NEEDED})
+    if(NOT UNDEFINED_BEHAVIOR_WITHOUT_LINKING)
+        check_cxx_source_compiles("${code}" CXX_FILESYSTEM_NO_LINK_NEEDED)
+        set(can_link ${CXX_FILESYSTEM_NO_LINK_NEEDED})
+    endif()
 
     if(NOT CXX_FILESYSTEM_NO_LINK_NEEDED)
         set(prev_libraries ${CMAKE_REQUIRED_LIBRARIES})
@@ -252,7 +253,7 @@ endif()
 
 cmake_pop_check_state()
 
-set(FILESYSTEM_FOUND ${_found} CACHE BOOL "TRUE if we can compile and link a program using std::filesystem" FORCE)
+set(FILESYSTEM_FOUND ${_found})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(FILESYSTEM DEFAULT_MSG FILESYSTEM_FOUND)

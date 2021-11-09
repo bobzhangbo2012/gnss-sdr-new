@@ -1,11 +1,9 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
+
 
 set(OPT_SIGNAL_SOURCE_LIB_SOURCES "")
 set(OPT_SIGNAL_SOURCE_LIB_HEADERS "")
@@ -17,6 +15,10 @@ endif()
 if(ENABLE_FPGA OR ENABLE_AD9361)
     set(OPT_SIGNAL_SOURCE_LIB_SOURCES ${OPT_SIGNAL_SOURCE_LIB_SOURCES} fpga_switch.cc)
     set(OPT_SIGNAL_SOURCE_LIB_HEADERS ${OPT_SIGNAL_SOURCE_LIB_HEADERS} fpga_switch.h)
+    set(OPT_SIGNAL_SOURCE_LIB_SOURCES ${OPT_SIGNAL_SOURCE_LIB_SOURCES} fpga_dynamic_bit_selection.cc)
+    set(OPT_SIGNAL_SOURCE_LIB_HEADERS ${OPT_SIGNAL_SOURCE_LIB_HEADERS} fpga_dynamic_bit_selection.h)
+    set(OPT_SIGNAL_SOURCE_LIB_SOURCES ${OPT_SIGNAL_SOURCE_LIB_SOURCES} fpga_buffer_monitor.cc)
+    set(OPT_SIGNAL_SOURCE_LIB_HEADERS ${OPT_SIGNAL_SOURCE_LIB_HEADERS} fpga_buffer_monitor.h)
 endif()
 
 set(SIGNAL_SOURCE_LIB_SOURCES
@@ -36,9 +38,21 @@ set(SIGNAL_SOURCE_LIB_HEADERS
 list(SORT SIGNAL_SOURCE_LIB_HEADERS)
 list(SORT SIGNAL_SOURCE_LIB_SOURCES)
 
-source_group(Headers FILES ${SIGNAL_SOURCE_LIB_HEADERS})
-
-add_library(signal_source_libs ${SIGNAL_SOURCE_LIB_SOURCES} ${SIGNAL_SOURCE_LIB_HEADERS})
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(signal_source_libs STATIC)
+    target_sources(signal_source_libs
+        PRIVATE
+            ${SIGNAL_SOURCE_LIB_SOURCES}
+        PUBLIC
+            ${SIGNAL_SOURCE_LIB_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${SIGNAL_SOURCE_LIB_HEADERS})
+    add_library(signal_source_libs
+        ${SIGNAL_SOURCE_LIB_SOURCES}
+        ${SIGNAL_SOURCE_LIB_HEADERS}
+    )
+endif()
 
 target_link_libraries(signal_source_libs
     PUBLIC
@@ -53,6 +67,7 @@ target_link_libraries(signal_source_libs
 target_include_directories(signal_source_libs
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/core/receiver
+        ${CMAKE_SOURCE_DIR}/src/core/interfaces
 )
 
 if(GNURADIO_USES_STD_POINTERS)
@@ -75,6 +90,13 @@ if(ENABLE_FMCOMMS2 OR ENABLE_AD9361)
             )
         endif()
     endif()
+endif()
+
+if(ENABLE_FPGA OR ENABLE_AD9361)
+    target_link_libraries(signal_source_libs
+        PUBLIC
+            algorithms_libs
+        )
 endif()
 
 if(ENABLE_CLANG_TIDY)

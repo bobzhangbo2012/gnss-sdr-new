@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 set(TRACKING_LIB_SOURCES
@@ -42,20 +39,14 @@ set(TRACKING_LIB_HEADERS
     exponential_smoother.h
 )
 
-set(OPT_TRACKING_LIBRARIES "")
-set(OPT_TRACKING_INCLUDES "")
 if(ENABLE_CUDA)
+    list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_30,code=sm_30; -O3; -use_fast_math -default-stream per-thread")
     if(CMAKE_VERSION VERSION_GREATER 3.11)
         set(TRACKING_LIB_SOURCES ${TRACKING_LIB_SOURCES} cuda_multicorrelator.cu)
         set(TRACKING_LIB_HEADERS ${TRACKING_LIB_HEADERS} cuda_multicorrelator.h)
     else()
-        list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_30,code=sm_30; -std=c++11;-O3; -use_fast_math -default-stream per-thread")
-        set(CUDA_PROPAGATE_HOST_FLAGS OFF)
         cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-        set(LIB_TYPE STATIC) #set the lib type
-        cuda_add_library(CUDA_CORRELATOR_LIB ${LIB_TYPE} cuda_multicorrelator.h cuda_multicorrelator.cu)
-        set(OPT_TRACKING_LIBRARIES ${OPT_TRACKING_LIBRARIES} CUDA_CORRELATOR_LIB)
-        set(OPT_TRACKING_INCLUDES ${OPT_TRACKING_INCLUDES} ${CUDA_INCLUDE_DIRS})
+        cuda_add_library(cuda_correlator_lib STATIC cuda_multicorrelator.h cuda_multicorrelator.cu)
     endif()
 endif()
 
@@ -73,9 +64,18 @@ endif()
 list(SORT TRACKING_LIB_HEADERS)
 list(SORT TRACKING_LIB_SOURCES)
 
-source_group(Headers FILES ${TRACKING_LIB_HEADERS})
-
-add_library(tracking_libs ${TRACKING_LIB_SOURCES} ${TRACKING_LIB_HEADERS})
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(tracking_libs STATIC)
+    target_sources(tracking_libs
+        PRIVATE
+            ${TRACKING_LIB_SOURCES}
+        PUBLIC
+            ${TRACKING_LIB_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${TRACKING_LIB_HEADERS})
+    add_library(tracking_libs ${TRACKING_LIB_SOURCES} ${TRACKING_LIB_HEADERS})
+endif()
 
 target_link_libraries(tracking_libs
     PUBLIC
@@ -85,28 +85,35 @@ target_link_libraries(tracking_libs
         Volkgnsssdr::volkgnsssdr
         core_system_parameters
         algorithms_libs
-        ${OPT_TRACKING_LIBRARIES}
     PRIVATE
         gnss_sdr_flags
-        Gflags::gflags
         Glog::glog
 )
 
-if(NOT CMAKE_VERSION VERSION_GREATER 3.11)
-    target_link_libraries(tracking_libs
-        PUBLIC
-            ${OPT_TRACKING_LIBRARIES}
-    )
-    target_include_directories(tracking_libs
-        PUBLIC
-            ${OPT_TRACKING_INCLUDES}
+if(ENABLE_CUDA)
+    if(CMAKE_VERSION VERSION_GREATER 3.11)
+        target_include_directories(tracking_libs
+            PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        )
+    else()
+        target_link_libraries(tracking_libs
+            PUBLIC ${CUDA_LIBRARIES}
+        )
+        target_include_directories(tracking_libs
+            PUBLIC ${CUDA_INCLUDE_DIRS}
+        )
+    endif()
+    set_target_properties(tracking_libs PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
     )
 endif()
 
-if(Boost_VERSION_STRING VERSION_GREATER 1.65.99)
+if(USE_BOOST_ASIO_IO_CONTEXT)
     target_compile_definitions(tracking_libs
         PUBLIC
-            -DBOOST_GREATER_1_65
+            -DUSE_BOOST_ASIO_IO_CONTEXT=1
     )
 endif()
 

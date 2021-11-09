@@ -3,22 +3,20 @@
  * \brief Interface of a Position Velocity and Time computation block
  * \author Javier Arribas, 2017. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "rtklib_pvt_gs.h"
 #include "MATH_CONSTANTS.h"
+#include "an_packet_printer.h"
 #include "beidou_dnav_almanac.h"
 #include "beidou_dnav_ephemeris.h"
 #include "beidou_dnav_iono.h"
@@ -27,6 +25,7 @@
 #include "galileo_almanac.h"
 #include "galileo_almanac_helper.h"
 #include "galileo_ephemeris.h"
+#include "galileo_has_data.h"
 #include "galileo_iono.h"
 #include "galileo_utc_model.h"
 #include "geojson_printer.h"
@@ -34,7 +33,10 @@
 #include "glonass_gnav_ephemeris.h"
 #include "glonass_gnav_utc_model.h"
 #include "gnss_frequencies.h"
+#include "gnss_satellite.h"
 #include "gnss_sdr_create_directory.h"
+#include "gnss_sdr_filesystem.h"
+#include "gnss_sdr_make_unique.h"
 #include "gps_almanac.h"
 #include "gps_cnav_ephemeris.h"
 #include "gps_cnav_iono.h"
@@ -43,18 +45,19 @@
 #include "gps_iono.h"
 #include "gps_utc_model.h"
 #include "gpx_printer.h"
+#include "has_simple_printer.h"
 #include "kml_printer.h"
+#include "monitor_ephemeris_udp_sink.h"
 #include "monitor_pvt.h"
 #include "monitor_pvt_udp_sink.h"
 #include "nmea_printer.h"
 #include "pvt_conf.h"
 #include "rinex_printer.h"
 #include "rtcm_printer.h"
+#include "rtklib_rtkcmn.h"
 #include "rtklib_solver.h"
-#include <boost/any.hpp>                   // for any_cast, any
 #include <boost/archive/xml_iarchive.hpp>  // for xml_iarchive
 #include <boost/archive/xml_oarchive.hpp>  // for xml_oarchive
-#include <boost/bind/bind.hpp>             // for bind_t, bind
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/exception.hpp>
 #include <boost/serialization/map.hpp>
@@ -74,25 +77,15 @@
 #include <stdexcept>                    // for length_error
 #include <sys/ipc.h>                    // for IPC_CREAT
 #include <sys/msg.h>                    // for msgctl
+#include <typeinfo>                     // for std::type_info, typeid
+#include <utility>                      // for pair
 
-#if HAS_STD_FILESYSTEM
-#include <system_error>
-namespace errorlib = std;
-#if HAS_STD_FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
+#if HAS_GENERIC_LAMBDA
 #else
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
-#else
-#include <boost/filesystem/path.hpp>
-#include <boost/system/error_code.hpp>  // for error_code
-namespace fs = boost::filesystem;
-namespace errorlib = boost::system;
+#include <boost/bind/bind.hpp>
 #endif
 
-#if OLD_BOOST
+#if USE_OLD_BOOST_MATH_COMMON_FACTOR
 #include <boost/math/common_factor_rt.hpp>
 namespace bc = boost::math;
 #else
@@ -100,6 +93,13 @@ namespace bc = boost::math;
 namespace bc = boost::integer;
 #endif
 
+#if PMT_USES_BOOST_ANY
+#include <boost/any.hpp>
+namespace wht = boost;
+#else
+#include <any>
+namespace wht = std;
+#endif
 
 rtklib_pvt_gs_sptr rtklib_make_pvt_gs(uint32_t nchannels,
     const Pvt_Conf& conf_,
@@ -113,40 +113,99 @@ rtklib_pvt_gs_sptr rtklib_make_pvt_gs(uint32_t nchannels,
 
 rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
     const Pvt_Conf& conf_,
-    const rtk_t& rtk) : gr::sync_block("rtklib_pvt_gs",
-                            gr::io_signature::make(nchannels, nchannels, sizeof(Gnss_Synchro)),
-                            gr::io_signature::make(0, 0, 0))
+    const rtk_t& rtk)
+    : gr::sync_block("rtklib_pvt_gs",
+          gr::io_signature::make(nchannels, nchannels, sizeof(Gnss_Synchro)),
+          gr::io_signature::make(0, 0, 0)),
+      d_dump_filename(conf_.dump_filename),
+      d_gps_ephemeris_sptr_type_hash_code(typeid(std::shared_ptr<Gps_Ephemeris>).hash_code()),
+      d_gps_iono_sptr_type_hash_code(typeid(std::shared_ptr<Gps_Iono>).hash_code()),
+      d_gps_utc_model_sptr_type_hash_code(typeid(std::shared_ptr<Gps_Utc_Model>).hash_code()),
+      d_gps_cnav_ephemeris_sptr_type_hash_code(typeid(std::shared_ptr<Gps_CNAV_Ephemeris>).hash_code()),
+      d_gps_cnav_iono_sptr_type_hash_code(typeid(std::shared_ptr<Gps_CNAV_Iono>).hash_code()),
+      d_gps_cnav_utc_model_sptr_type_hash_code(typeid(std::shared_ptr<Gps_CNAV_Utc_Model>).hash_code()),
+      d_gps_almanac_sptr_type_hash_code(typeid(std::shared_ptr<Gps_Almanac>).hash_code()),
+      d_galileo_ephemeris_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_Ephemeris>).hash_code()),
+      d_galileo_iono_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_Iono>).hash_code()),
+      d_galileo_utc_model_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_Utc_Model>).hash_code()),
+      d_galileo_almanac_helper_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_Almanac_Helper>).hash_code()),
+      d_galileo_almanac_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_Almanac>).hash_code()),
+      d_glonass_gnav_ephemeris_sptr_type_hash_code(typeid(std::shared_ptr<Glonass_Gnav_Ephemeris>).hash_code()),
+      d_glonass_gnav_utc_model_sptr_type_hash_code(typeid(std::shared_ptr<Glonass_Gnav_Utc_Model>).hash_code()),
+      d_glonass_gnav_almanac_sptr_type_hash_code(typeid(std::shared_ptr<Glonass_Gnav_Almanac>).hash_code()),
+      d_beidou_dnav_ephemeris_sptr_type_hash_code(typeid(std::shared_ptr<Beidou_Dnav_Ephemeris>).hash_code()),
+      d_beidou_dnav_iono_sptr_type_hash_code(typeid(std::shared_ptr<Beidou_Dnav_Iono>).hash_code()),
+      d_beidou_dnav_utc_model_sptr_type_hash_code(typeid(std::shared_ptr<Beidou_Dnav_Utc_Model>).hash_code()),
+      d_beidou_dnav_almanac_sptr_type_hash_code(typeid(std::shared_ptr<Beidou_Dnav_Almanac>).hash_code()),
+      d_galileo_has_data_sptr_type_hash_code(typeid(std::shared_ptr<Galileo_HAS_data>).hash_code()),
+      d_rinex_version(conf_.rinex_version),
+      d_rx_time(0.0),
+      d_local_counter_ms(0ULL),
+      d_rinexobs_rate_ms(conf_.rinexobs_rate_ms),
+      d_kml_rate_ms(conf_.kml_rate_ms),
+      d_gpx_rate_ms(conf_.gpx_rate_ms),
+      d_geojson_rate_ms(conf_.geojson_rate_ms),
+      d_nmea_rate_ms(conf_.nmea_rate_ms),
+      d_an_rate_ms(conf_.an_rate_ms),
+      d_output_rate_ms(conf_.output_rate_ms),
+      d_display_rate_ms(conf_.display_rate_ms),
+      d_report_rate_ms(1000),
+      d_max_obs_block_rx_clock_offset_ms(conf_.max_obs_block_rx_clock_offset_ms),
+      d_nchannels(nchannels),
+      d_type_of_rx(conf_.type_of_receiver),
+      d_observable_interval_ms(conf_.observable_interval_ms),
+      d_dump(conf_.dump),
+      d_dump_mat(conf_.dump_mat && conf_.dump),
+      d_rinex_output_enabled(conf_.rinex_output_enabled),
+      d_geojson_output_enabled(conf_.geojson_output_enabled),
+      d_gpx_output_enabled(conf_.gpx_output_enabled),
+      d_kml_output_enabled(conf_.kml_output_enabled),
+      d_nmea_output_file_enabled(conf_.nmea_output_file_enabled || conf_.flag_nmea_tty_port),
+      d_xml_storage(conf_.xml_output_enabled),
+      d_flag_monitor_pvt_enabled(conf_.monitor_enabled),
+      d_flag_monitor_ephemeris_enabled(conf_.monitor_ephemeris_enabled),
+      d_show_local_time_zone(conf_.show_local_time_zone),
+      d_waiting_obs_block_rx_clock_offset_correction_msg(false),
+      d_enable_rx_clock_correction(conf_.enable_rx_clock_correction),
+      d_an_printer_enabled(conf_.an_output_enabled)
 {
     // Send feedback message to observables block with the receiver clock offset
     this->message_port_register_out(pmt::mp("pvt_to_observables"));
+
     // Send PVT status to gnss_flowgraph
     this->message_port_register_out(pmt::mp("status"));
 
-    mapStringValues_["1C"] = evGPS_1C;
-    mapStringValues_["2S"] = evGPS_2S;
-    mapStringValues_["L5"] = evGPS_L5;
-    mapStringValues_["1B"] = evGAL_1B;
-    mapStringValues_["5X"] = evGAL_5X;
-    mapStringValues_["1G"] = evGLO_1G;
-    mapStringValues_["2G"] = evGLO_2G;
-    mapStringValues_["B1"] = evBDS_B1;
-    mapStringValues_["B2"] = evBDS_B2;
-    mapStringValues_["B3"] = evBDS_B3;
+    // GPS Ephemeris data message port in
+    this->message_port_register_in(pmt::mp("telemetry"));
+    this->set_msg_handler(pmt::mp("telemetry"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_telemetry(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&rtklib_pvt_gs::msg_handler_telemetry, this, boost::placeholders::_1));
+#else
+        boost::bind(&rtklib_pvt_gs::msg_handler_telemetry, this, _1));
+#endif
+#endif
 
+    // Galileo E6 HAS messages port in
+    this->message_port_register_in(pmt::mp("E6_HAS_to_PVT"));
+    this->set_msg_handler(pmt::mp("E6_HAS_to_PVT"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_has_data(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&rtklib_pvt_gs::msg_handler_has_data, this, boost::placeholders::_1));
+#else
+        boost::bind(&rtklib_pvt_gs::msg_handler_has_data, this, _1));
+#endif
+#endif
 
-    initial_carrier_phase_offset_estimation_rads = std::vector<double>(nchannels, 0.0);
-    channel_initialized = std::vector<bool>(nchannels, false);
+    d_initial_carrier_phase_offset_estimation_rads = std::vector<double>(nchannels, 0.0);
+    d_channel_initialized = std::vector<bool>(nchannels, false);
 
-    max_obs_block_rx_clock_offset_ms = conf_.max_obs_block_rx_clock_offset_ms;
-
-
-    d_output_rate_ms = conf_.output_rate_ms;
-    d_display_rate_ms = conf_.display_rate_ms;
-    d_report_rate_ms = 1000;  // report every second PVT to gnss_synchro
-    d_dump = conf_.dump;
-    d_dump_mat = conf_.dump_mat and d_dump;
-    d_dump_filename = conf_.dump_filename;
     std::string dump_ls_pvt_filename = conf_.dump_filename;
+
     if (d_dump)
         {
             std::string dump_path;
@@ -175,31 +234,20 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
             // create directory
             if (!gnss_sdr_create_directory(dump_path))
                 {
-                    std::cerr << "GNSS-SDR cannot create dump file for the PVT block. Wrong permissions?" << std::endl;
+                    std::cerr << "GNSS-SDR cannot create dump file for the PVT block. Wrong permissions?\n";
                     d_dump = false;
                 }
         }
 
-    d_nchannels = nchannels;
-
-    type_of_rx = conf_.type_of_receiver;
-
-    // GPS Ephemeris data message port in
-    this->message_port_register_in(pmt::mp("telemetry"));
-    this->set_msg_handler(pmt::mp("telemetry"), boost::bind(&rtklib_pvt_gs::msg_handler_telemetry, this, _1));
-
     // initialize kml_printer
-    std::string kml_dump_filename;
-    kml_dump_filename = d_dump_filename;
-    d_kml_output_enabled = conf_.kml_output_enabled;
-    d_kml_rate_ms = conf_.kml_rate_ms;
+    const std::string kml_dump_filename = d_dump_filename;
     if (d_kml_rate_ms == 0)
         {
             d_kml_output_enabled = false;
         }
     if (d_kml_output_enabled)
         {
-            d_kml_dump = std::make_shared<Kml_Printer>(conf_.kml_output_path);
+            d_kml_dump = std::make_unique<Kml_Printer>(conf_.kml_output_path);
             d_kml_dump->set_headers(kml_dump_filename);
         }
     else
@@ -208,17 +256,14 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
         }
 
     // initialize gpx_printer
-    std::string gpx_dump_filename;
-    gpx_dump_filename = d_dump_filename;
-    d_gpx_output_enabled = conf_.gpx_output_enabled;
-    d_gpx_rate_ms = conf_.gpx_rate_ms;
+    const std::string gpx_dump_filename = d_dump_filename;
     if (d_gpx_rate_ms == 0)
         {
             d_gpx_output_enabled = false;
         }
     if (d_gpx_output_enabled)
         {
-            d_gpx_dump = std::make_shared<Gpx_Printer>(conf_.gpx_output_path);
+            d_gpx_dump = std::make_unique<Gpx_Printer>(conf_.gpx_output_path);
             d_gpx_dump->set_headers(gpx_dump_filename);
         }
     else
@@ -227,17 +272,14 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
         }
 
     // initialize geojson_printer
-    std::string geojson_dump_filename;
-    geojson_dump_filename = d_dump_filename;
-    d_geojson_output_enabled = conf_.geojson_output_enabled;
-    d_geojson_rate_ms = conf_.geojson_rate_ms;
+    const std::string geojson_dump_filename = d_dump_filename;
     if (d_geojson_rate_ms == 0)
         {
             d_geojson_output_enabled = false;
         }
     if (d_geojson_output_enabled)
         {
-            d_geojson_printer = std::make_shared<GeoJSON_Printer>(conf_.geojson_output_path);
+            d_geojson_printer = std::make_unique<GeoJSON_Printer>(conf_.geojson_output_path);
             d_geojson_printer->set_headers(geojson_dump_filename);
         }
     else
@@ -246,8 +288,6 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
         }
 
     // initialize nmea_printer
-    d_nmea_output_file_enabled = (conf_.nmea_output_file_enabled or conf_.flag_nmea_tty_port);
-    d_nmea_rate_ms = conf_.nmea_rate_ms;
     if (d_nmea_rate_ms == 0)
         {
             d_nmea_output_file_enabled = false;
@@ -255,7 +295,7 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
 
     if (d_nmea_output_file_enabled)
         {
-            d_nmea_printer = std::make_shared<Nmea_Printer>(conf_.nmea_dump_filename, conf_.nmea_output_file_enabled, conf_.flag_nmea_tty_port, conf_.nmea_dump_devname, conf_.nmea_output_file_path);
+            d_nmea_printer = std::make_unique<Nmea_Printer>(conf_.nmea_dump_filename, conf_.nmea_output_file_enabled, conf_.flag_nmea_tty_port, conf_.nmea_dump_devname, conf_.nmea_output_file_path);
         }
     else
         {
@@ -263,11 +303,10 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
         }
 
     // initialize rtcm_printer
-    std::string rtcm_dump_filename;
-    rtcm_dump_filename = d_dump_filename;
-    if (conf_.flag_rtcm_server or conf_.flag_rtcm_tty_port or conf_.rtcm_output_file_enabled)
+    const std::string rtcm_dump_filename = d_dump_filename;
+    if (conf_.flag_rtcm_server || conf_.flag_rtcm_tty_port || conf_.rtcm_output_file_enabled)
         {
-            d_rtcm_printer = std::make_shared<Rtcm_Printer>(rtcm_dump_filename, conf_.rtcm_output_file_enabled, conf_.flag_rtcm_server, conf_.flag_rtcm_tty_port, conf_.rtcm_tcp_port, conf_.rtcm_station_id, conf_.rtcm_dump_devname, true, conf_.rtcm_output_file_path);
+            d_rtcm_printer = std::make_unique<Rtcm_Printer>(rtcm_dump_filename, conf_.rtcm_output_file_enabled, conf_.flag_rtcm_server, conf_.flag_rtcm_tty_port, conf_.rtcm_tcp_port, conf_.rtcm_station_id, conf_.rtcm_dump_devname, true, conf_.rtcm_output_file_path);
             std::map<int, int> rtcm_msg_rate_ms = conf_.rtcm_msg_rate_ms;
             if (rtcm_msg_rate_ms.find(1019) != rtcm_msg_rate_ms.end())
                 {
@@ -319,8 +358,7 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
                     d_rtcm_MT1097_rate_ms = bc::lcm(1000, d_output_rate_ms);  // default value if not set
                     d_rtcm_MSM_rate_ms = bc::lcm(1000, d_output_rate_ms);     // default value if not set
                 }
-            b_rtcm_writing_started = false;
-            b_rtcm_enabled = true;
+            d_rtcm_enabled = true;
         }
     else
         {
@@ -331,38 +369,31 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
             d_rtcm_MT1087_rate_ms = 0;
             d_rtcm_MT1097_rate_ms = 0;
             d_rtcm_MSM_rate_ms = 0;
-            b_rtcm_enabled = false;
-            b_rtcm_writing_started = false;
+            d_rtcm_enabled = false;
             d_rtcm_printer = nullptr;
         }
 
     // initialize RINEX printer
-    b_rinex_header_written = false;
-    b_rinex_header_updated = false;
-    b_rinex_output_enabled = conf_.rinex_output_enabled;
-    d_rinex_version = conf_.rinex_version;
-    if (b_rinex_output_enabled)
+    if (d_rinex_output_enabled)
         {
-            rp = std::make_shared<Rinex_Printer>(d_rinex_version, conf_.rinex_output_path, conf_.rinex_name);
-            rp->set_pre_2009_file(conf_.pre_2009_file);
+            d_rp = std::make_unique<Rinex_Printer>(d_rinex_version, conf_.rinex_output_path, conf_.rinex_name);
+            d_rp->set_pre_2009_file(conf_.pre_2009_file);
         }
     else
         {
-            rp = nullptr;
+            d_rp = nullptr;
         }
-    d_rinexobs_rate_ms = conf_.rinexobs_rate_ms;
 
     // XML printer
-    d_xml_storage = conf_.xml_output_enabled;
     if (d_xml_storage)
         {
-            xml_base_path = conf_.xml_output_path;
+            d_xml_base_path = conf_.xml_output_path;
             fs::path full_path(fs::current_path());
-            const fs::path p(xml_base_path);
+            const fs::path p(d_xml_base_path);
             if (!fs::exists(p))
                 {
                     std::string new_folder;
-                    for (auto& folder : fs::path(xml_base_path))
+                    for (const auto& folder : fs::path(d_xml_base_path))
                         {
                             new_folder += folder.string();
                             errorlib::error_code ec;
@@ -370,8 +401,8 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
                                 {
                                     if (!fs::create_directory(new_folder, ec))
                                         {
-                                            std::cout << "Could not create the " << new_folder << " folder." << std::endl;
-                                            xml_base_path = full_path.string();
+                                            std::cout << "Could not create the " << new_folder << " folder.\n";
+                                            d_xml_base_path = full_path.string();
                                         }
                                 }
                             new_folder += fs::path::preferred_separator;
@@ -379,47 +410,78 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
                 }
             else
                 {
-                    xml_base_path = p.string();
+                    d_xml_base_path = p.string();
                 }
-            if (xml_base_path != ".")
+            if (d_xml_base_path != ".")
                 {
-                    std::cout << "XML files will be stored at " << xml_base_path << std::endl;
+                    std::cout << "XML files will be stored at " << d_xml_base_path << '\n';
                 }
 
-            xml_base_path = xml_base_path + fs::path::preferred_separator;
+            d_xml_base_path = d_xml_base_path + fs::path::preferred_separator;
         }
 
-    d_rx_time = 0.0;
-    d_last_status_print_seg = 0;
+    // Initialize HAS simple printer
+    d_enable_has_messages = (((d_type_of_rx >= 100) && (d_type_of_rx < 107)) && (conf_.output_enabled));
+    if (d_enable_has_messages)
+        {
+            d_has_simple_printer = std::make_unique<Has_Simple_Printer>();
+        }
+    else
+        {
+            d_has_simple_printer = nullptr;
+        }
+
+    // Initialize AN printer
+    if (d_an_printer_enabled)
+        {
+            d_an_printer = std::make_unique<An_Packet_Printer>(conf_.an_dump_devname);
+        }
+    else
+        {
+            d_an_printer = nullptr;
+        }
 
     // PVT MONITOR
-    flag_monitor_pvt_enabled = conf_.monitor_enabled;
-    if (flag_monitor_pvt_enabled)
+    if (d_flag_monitor_pvt_enabled)
         {
             std::string address_string = conf_.udp_addresses;
             std::vector<std::string> udp_addr_vec = split_string(address_string, '_');
             std::sort(udp_addr_vec.begin(), udp_addr_vec.end());
             udp_addr_vec.erase(std::unique(udp_addr_vec.begin(), udp_addr_vec.end()), udp_addr_vec.end());
 
-            udp_sink_ptr = std::unique_ptr<Monitor_Pvt_Udp_Sink>(new Monitor_Pvt_Udp_Sink(udp_addr_vec, conf_.udp_port, conf_.protobuf_enabled));
+            d_udp_sink_ptr = std::make_unique<Monitor_Pvt_Udp_Sink>(udp_addr_vec, conf_.udp_port, conf_.protobuf_enabled);
         }
     else
         {
-            udp_sink_ptr = nullptr;
+            d_udp_sink_ptr = nullptr;
+        }
+
+    // EPHEMERIS MONITOR
+    if (d_flag_monitor_ephemeris_enabled)
+        {
+            std::string address_string = conf_.udp_eph_addresses;
+            std::vector<std::string> udp_addr_vec = split_string(address_string, '_');
+            std::sort(udp_addr_vec.begin(), udp_addr_vec.end());
+            udp_addr_vec.erase(std::unique(udp_addr_vec.begin(), udp_addr_vec.end()), udp_addr_vec.end());
+
+            d_eph_udp_sink_ptr = std::make_unique<Monitor_Ephemeris_Udp_Sink>(udp_addr_vec, conf_.udp_eph_port, conf_.protobuf_enabled);
+        }
+    else
+        {
+            d_eph_udp_sink_ptr = nullptr;
         }
 
     // Create Sys V message queue
-    first_fix = true;
-    sysv_msg_key = 1101;
-    int msgflg = IPC_CREAT | 0666;
-    if ((sysv_msqid = msgget(sysv_msg_key, msgflg)) == -1)
+    d_first_fix = true;
+    d_sysv_msg_key = 1101;
+    const int msgflg = IPC_CREAT | 0666;
+    if ((d_sysv_msqid = msgget(d_sysv_msg_key, msgflg)) == -1)
         {
-            std::cout << "GNSS-SDR cannot create System V message queues." << std::endl;
-            LOG(WARNING) << "The System V message queue is not available. Error: " << errno << " - " << strerror(errno) << std::endl;
+            std::cout << "GNSS-SDR cannot create System V message queues.\n";
+            LOG(WARNING) << "The System V message queue is not available. Error: " << errno << " - " << strerror(errno);
         }
 
     // Display time in local time zone
-    d_show_local_time_zone = conf_.show_local_time_zone;
     std::ostringstream os;
 #ifdef HAS_PUT_TIME
     time_t when = std::time(nullptr);
@@ -431,14 +493,14 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
         {
             utc_diff_str = "+0000";
         }
-    int h = std::stoi(utc_diff_str.substr(0, 3), nullptr, 10);
-    int m = std::stoi(utc_diff_str[0] + utc_diff_str.substr(3), nullptr, 10);
+    const int h = std::stoi(utc_diff_str.substr(0, 3), nullptr, 10);
+    const int m = std::stoi(utc_diff_str[0] + utc_diff_str.substr(3), nullptr, 10);
     d_utc_diff_time = boost::posix_time::hours(h) + boost::posix_time::minutes(m);
     std::ostringstream os2;
 #ifdef HAS_PUT_TIME
     os2 << std::put_time(&tm, "%Z");
 #endif
-    std::string time_zone_abrv = os2.str();
+    const std::string time_zone_abrv = os2.str();
     if (time_zone_abrv.empty())
         {
             if (utc_diff_str == "+0000")
@@ -455,50 +517,63 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
             d_local_time_str = std::string(" ") + time_zone_abrv + " (UTC " + utc_diff_str.substr(0, 3) + ":" + utc_diff_str.substr(3, 2) + ")";
         }
 
-    d_waiting_obs_block_rx_clock_offset_correction_msg = false;
-
-    d_enable_rx_clock_correction = conf_.enable_rx_clock_correction;
-
     if (d_enable_rx_clock_correction == true)
         {
             // setup two PVT solvers: internal solver for rx clock and user solver
             // user PVT solver
-            d_user_pvt_solver = std::make_shared<Rtklib_Solver>(static_cast<int32_t>(nchannels), dump_ls_pvt_filename, d_dump, d_dump_mat, rtk);
+            d_user_pvt_solver = std::make_shared<Rtklib_Solver>(rtk, dump_ls_pvt_filename, d_dump, d_dump_mat);
             d_user_pvt_solver->set_averaging_depth(1);
             d_user_pvt_solver->set_pre_2009_file(conf_.pre_2009_file);
 
             // internal PVT solver, mainly used to estimate the receiver clock
             rtk_t internal_rtk = rtk;
             internal_rtk.opt.mode = PMODE_SINGLE;  // use single positioning mode in internal PVT solver
-            d_internal_pvt_solver = std::make_shared<Rtklib_Solver>(static_cast<int32_t>(nchannels), dump_ls_pvt_filename, false, false, internal_rtk);
+            d_internal_pvt_solver = std::make_shared<Rtklib_Solver>(internal_rtk, dump_ls_pvt_filename, false, false);
             d_internal_pvt_solver->set_averaging_depth(1);
             d_internal_pvt_solver->set_pre_2009_file(conf_.pre_2009_file);
         }
     else
         {
             // only one solver, customized by the user options
-            d_internal_pvt_solver = std::make_shared<Rtklib_Solver>(static_cast<int32_t>(nchannels), dump_ls_pvt_filename, d_dump, d_dump_mat, rtk);
+            d_internal_pvt_solver = std::make_shared<Rtklib_Solver>(rtk, dump_ls_pvt_filename, d_dump, d_dump_mat);
             d_internal_pvt_solver->set_averaging_depth(1);
             d_internal_pvt_solver->set_pre_2009_file(conf_.pre_2009_file);
             d_user_pvt_solver = d_internal_pvt_solver;
         }
 
-    start = std::chrono::system_clock::now();
+    d_mapStringValues["1C"] = evGPS_1C;
+    d_mapStringValues["2S"] = evGPS_2S;
+    d_mapStringValues["L5"] = evGPS_L5;
+    d_mapStringValues["1B"] = evGAL_1B;
+    d_mapStringValues["5X"] = evGAL_5X;
+    d_mapStringValues["E6"] = evGAL_E6;
+    d_mapStringValues["7X"] = evGAL_7X;
+    d_mapStringValues["1G"] = evGLO_1G;
+    d_mapStringValues["2G"] = evGLO_2G;
+    d_mapStringValues["B1"] = evBDS_B1;
+    d_mapStringValues["B2"] = evBDS_B2;
+    d_mapStringValues["B3"] = evBDS_B3;
+
+    // set the RTKLIB trace (debug) level
+    tracelevel(conf_.rtk_trace_level);
+
+    d_start = std::chrono::system_clock::now();
 }
 
 
 rtklib_pvt_gs::~rtklib_pvt_gs()
 {
-    if (sysv_msqid != -1)
+    DLOG(INFO) << "PVT block destructor called.";
+    if (d_sysv_msqid != -1)
         {
-            msgctl(sysv_msqid, IPC_RMID, nullptr);
+            msgctl(d_sysv_msqid, IPC_RMID, nullptr);
         }
     try
         {
             if (d_xml_storage)
                 {
                     // save GPS L2CM ephemeris to XML file
-                    std::string file_name = xml_base_path + "gps_cnav_ephemeris.xml";
+                    std::string file_name = d_xml_base_path + "gps_cnav_ephemeris.xml";
                     if (d_internal_pvt_solver->gps_cnav_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -524,7 +599,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save GPS L1 CA ephemeris to XML file
-                    file_name = xml_base_path + "gps_ephemeris.xml";
+                    file_name = d_xml_base_path + "gps_ephemeris.xml";
                     if (d_internal_pvt_solver->gps_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -550,7 +625,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save Galileo E1 ephemeris to XML file
-                    file_name = xml_base_path + "gal_ephemeris.xml";
+                    file_name = d_xml_base_path + "gal_ephemeris.xml";
                     if (d_internal_pvt_solver->galileo_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -580,7 +655,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save GLONASS GNAV ephemeris to XML file
-                    file_name = xml_base_path + "eph_GLONASS_GNAV.xml";
+                    file_name = d_xml_base_path + "eph_GLONASS_GNAV.xml";
                     if (d_internal_pvt_solver->glonass_gnav_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -610,7 +685,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save GPS UTC model parameters
-                    file_name = xml_base_path + "gps_utc_model.xml";
+                    file_name = d_xml_base_path + "gps_utc_model.xml";
                     if (d_internal_pvt_solver->gps_utc_model.valid)
                         {
                             std::ofstream ofs;
@@ -640,8 +715,8 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save Galileo UTC model parameters
-                    file_name = xml_base_path + "gal_utc_model.xml";
-                    if (d_internal_pvt_solver->galileo_utc_model.Delta_tLS_6 != 0.0)
+                    file_name = d_xml_base_path + "gal_utc_model.xml";
+                    if (d_internal_pvt_solver->galileo_utc_model.Delta_tLS != 0.0)
                         {
                             std::ofstream ofs;
                             try
@@ -670,7 +745,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save GPS iono parameters
-                    file_name = xml_base_path + "gps_iono.xml";
+                    file_name = d_xml_base_path + "gps_iono.xml";
                     if (d_internal_pvt_solver->gps_iono.valid == true)
                         {
                             std::ofstream ofs;
@@ -700,7 +775,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save GPS CNAV iono parameters
-                    file_name = xml_base_path + "gps_cnav_iono.xml";
+                    file_name = d_xml_base_path + "gps_cnav_iono.xml";
                     if (d_internal_pvt_solver->gps_cnav_iono.valid == true)
                         {
                             std::ofstream ofs;
@@ -730,8 +805,8 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save Galileo iono parameters
-                    file_name = xml_base_path + "gal_iono.xml";
-                    if (d_internal_pvt_solver->galileo_iono.ai0_5 != 0.0)
+                    file_name = d_xml_base_path + "gal_iono.xml";
+                    if (d_internal_pvt_solver->galileo_iono.ai0 != 0.0)
                         {
                             std::ofstream ofs;
                             try
@@ -760,7 +835,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save GPS almanac to XML file
-                    file_name = xml_base_path + "gps_almanac.xml";
+                    file_name = d_xml_base_path + "gps_almanac.xml";
                     if (d_internal_pvt_solver->gps_almanac_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -790,7 +865,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save Galileo almanac
-                    file_name = xml_base_path + "gal_almanac.xml";
+                    file_name = d_xml_base_path + "gal_almanac.xml";
                     if (d_internal_pvt_solver->galileo_almanac_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -820,7 +895,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save GPS CNAV UTC model parameters
-                    file_name = xml_base_path + "gps_cnav_utc_model.xml";
+                    file_name = d_xml_base_path + "gps_cnav_utc_model.xml";
                     if (d_internal_pvt_solver->gps_cnav_utc_model.valid)
                         {
                             std::ofstream ofs;
@@ -850,7 +925,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save GLONASS GNAV ephemeris to XML file
-                    file_name = xml_base_path + "glo_gnav_ephemeris.xml";
+                    file_name = d_xml_base_path + "glo_gnav_ephemeris.xml";
                     if (d_internal_pvt_solver->glonass_gnav_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -880,7 +955,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save GLONASS UTC model parameters to XML file
-                    file_name = xml_base_path + "glo_utc_model.xml";
+                    file_name = d_xml_base_path + "glo_utc_model.xml";
                     if (d_internal_pvt_solver->glonass_gnav_utc_model.valid)
                         {
                             std::ofstream ofs;
@@ -910,7 +985,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save BeiDou DNAV ephemeris to XML file
-                    file_name = xml_base_path + "bds_dnav_ephemeris.xml";
+                    file_name = d_xml_base_path + "bds_dnav_ephemeris.xml";
                     if (d_internal_pvt_solver->beidou_dnav_ephemeris_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -940,7 +1015,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save BeiDou DNAV iono parameters
-                    file_name = xml_base_path + "bds_dnav_iono.xml";
+                    file_name = d_xml_base_path + "bds_dnav_iono.xml";
                     if (d_internal_pvt_solver->beidou_dnav_iono.valid)
                         {
                             std::ofstream ofs;
@@ -970,7 +1045,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // save BeiDou DNAV almanac to XML file
-                    file_name = xml_base_path + "bds_dnav_almanac.xml";
+                    file_name = d_xml_base_path + "bds_dnav_almanac.xml";
                     if (d_internal_pvt_solver->beidou_dnav_almanac_map.empty() == false)
                         {
                             std::ofstream ofs;
@@ -1000,7 +1075,7 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                         }
 
                     // Save BeiDou UTC model parameters
-                    file_name = xml_base_path + "bds_dnav_utc_model.xml";
+                    file_name = d_xml_base_path + "bds_dnav_utc_model.xml";
                     if (d_internal_pvt_solver->beidou_dnav_utc_model.valid)
                         {
                             std::ofstream ofs;
@@ -1041,28 +1116,35 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
 {
     try
         {
-            // ************* GPS telemetry *****************
-            if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_Ephemeris>))
+            const size_t msg_type_hash_code = pmt::any_ref(msg).type().hash_code();
+            // ************************* GPS telemetry *************************
+            if (msg_type_hash_code == d_gps_ephemeris_sptr_type_hash_code)
                 {
                     // ### GPS EPHEMERIS ###
-                    std::shared_ptr<Gps_Ephemeris> gps_eph;
-                    gps_eph = boost::any_cast<std::shared_ptr<Gps_Ephemeris>>(pmt::any_ref(msg));
+                    const auto gps_eph = wht::any_cast<std::shared_ptr<Gps_Ephemeris>>(pmt::any_ref(msg));
                     DLOG(INFO) << "Ephemeris record has arrived from SAT ID "
-                               << gps_eph->i_satellite_PRN << " (Block "
-                               << gps_eph->satelliteBlock[gps_eph->i_satellite_PRN] << ")"
-                               << "inserted with Toe=" << gps_eph->d_Toe << " and GPS Week="
-                               << gps_eph->i_GPS_week;
+                               << gps_eph->PRN << " (Block "
+                               << gps_eph->satelliteBlock[gps_eph->PRN] << ")"
+                               << "inserted with Toe=" << gps_eph->toe << " and GPS Week="
+                               << gps_eph->WN;
+
+                    // todo: Send only new sets of ephemeris (new TOE), not sent to the client
+                    // send the new eph to the eph monitor (if enabled)
+                    if (d_flag_monitor_ephemeris_enabled)
+                        {
+                            d_eph_udp_sink_ptr->write_gps_ephemeris(gps_eph);
+                        }
                     // update/insert new ephemeris record to the global ephemeris map
-                    if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
                         {
                             bool new_annotation = false;
-                            if (d_internal_pvt_solver->gps_ephemeris_map.find(gps_eph->i_satellite_PRN) == d_internal_pvt_solver->gps_ephemeris_map.cend())
+                            if (d_internal_pvt_solver->gps_ephemeris_map.find(gps_eph->PRN) == d_internal_pvt_solver->gps_ephemeris_map.cend())
                                 {
                                     new_annotation = true;
                                 }
                             else
                                 {
-                                    if (d_internal_pvt_solver->gps_ephemeris_map[gps_eph->i_satellite_PRN].d_Toe != gps_eph->d_Toe)
+                                    if (d_internal_pvt_solver->gps_ephemeris_map[gps_eph->PRN].toe != gps_eph->toe)
                                         {
                                             new_annotation = true;
                                         }
@@ -1071,74 +1153,25 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                 {
                                     // New record!
                                     std::map<int32_t, Gps_Ephemeris> new_eph;
-                                    std::map<int32_t, Galileo_Ephemeris> new_gal_eph;
-                                    std::map<int32_t, Glonass_Gnav_Ephemeris> new_glo_eph;
-                                    new_eph[gps_eph->i_satellite_PRN] = *gps_eph;
-                                    switch (type_of_rx)
-                                        {
-                                        case 1:  // GPS L1 C/A only
-                                            rp->log_rinex_nav(rp->navFile, new_eph);
-                                            break;
-                                        case 8:  // L1+L5
-                                            rp->log_rinex_nav(rp->navFile, new_eph);
-                                            break;
-                                        case 9:  // GPS L1 C/A + Galileo E1B
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 10:  // GPS L1 C/A + Galileo E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 11:  // GPS L1 C/A + Galileo E5b
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 26:  // GPS L1 C/A + GLONASS L1 C/A
-                                            if (d_rinex_version == 3)
-                                                {
-                                                    rp->log_rinex_nav(rp->navMixFile, new_eph, new_glo_eph);
-                                                }
-                                            if (d_rinex_version == 2)
-                                                {
-                                                    rp->log_rinex_nav(rp->navFile, new_glo_eph);
-                                                }
-                                            break;
-                                        case 29:  // GPS L1 C/A + GLONASS L2 C/A
-                                            if (d_rinex_version == 3)
-                                                {
-                                                    rp->log_rinex_nav(rp->navMixFile, new_eph, new_glo_eph);
-                                                }
-                                            if (d_rinex_version == 2)
-                                                {
-                                                    rp->log_rinex_nav(rp->navFile, new_eph);
-                                                }
-                                            break;
-                                        case 32:  // L1+E1+L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 33:  // L1+E1+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 1000:  // L1+L2+L5
-                                            rp->log_rinex_nav(rp->navFile, new_eph);
-                                            break;
-                                        case 1001:  // L1+E1+L2+L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        default:
-                                            break;
-                                        }
+                                    new_eph[gps_eph->PRN] = *gps_eph;
+                                    d_rp->log_rinex_nav_gps_nav(d_type_of_rx, new_eph);
                                 }
                         }
-                    d_internal_pvt_solver->gps_ephemeris_map[gps_eph->i_satellite_PRN] = *gps_eph;
+                    d_internal_pvt_solver->gps_ephemeris_map[gps_eph->PRN] = *gps_eph;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->gps_ephemeris_map[gps_eph->i_satellite_PRN] = *gps_eph;
+                            d_user_pvt_solver->gps_ephemeris_map[gps_eph->PRN] = *gps_eph;
+                        }
+                    if (gps_eph->SV_health != 0)
+                        {
+                            std::cout << TEXT_RED << "Satellite " << Gnss_Satellite(std::string("GPS"), gps_eph->PRN)
+                                      << " is not healthy, not used for navigation" << TEXT_RESET << '\n';
                         }
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_Iono>))
+            else if (msg_type_hash_code == d_gps_iono_sptr_type_hash_code)
                 {
                     // ### GPS IONO ###
-                    std::shared_ptr<Gps_Iono> gps_iono;
-                    gps_iono = boost::any_cast<std::shared_ptr<Gps_Iono>>(pmt::any_ref(msg));
+                    const auto gps_iono = wht::any_cast<std::shared_ptr<Gps_Iono>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->gps_iono = *gps_iono;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1146,11 +1179,10 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New IONO record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_Utc_Model>))
+            else if (msg_type_hash_code == d_gps_utc_model_sptr_type_hash_code)
                 {
                     // ### GPS UTC MODEL ###
-                    std::shared_ptr<Gps_Utc_Model> gps_utc_model;
-                    gps_utc_model = boost::any_cast<std::shared_ptr<Gps_Utc_Model>>(pmt::any_ref(msg));
+                    const auto gps_utc_model = wht::any_cast<std::shared_ptr<Gps_Utc_Model>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->gps_utc_model = *gps_utc_model;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1158,22 +1190,21 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New UTC record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_CNAV_Ephemeris>))
+            else if (msg_type_hash_code == d_gps_cnav_ephemeris_sptr_type_hash_code)
                 {
                     // ### GPS CNAV message ###
-                    std::shared_ptr<Gps_CNAV_Ephemeris> gps_cnav_ephemeris;
-                    gps_cnav_ephemeris = boost::any_cast<std::shared_ptr<Gps_CNAV_Ephemeris>>(pmt::any_ref(msg));
+                    const auto gps_cnav_ephemeris = wht::any_cast<std::shared_ptr<Gps_CNAV_Ephemeris>>(pmt::any_ref(msg));
                     // update/insert new ephemeris record to the global ephemeris map
-                    if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
                         {
                             bool new_annotation = false;
-                            if (d_internal_pvt_solver->gps_cnav_ephemeris_map.find(gps_cnav_ephemeris->i_satellite_PRN) == d_internal_pvt_solver->gps_cnav_ephemeris_map.cend())
+                            if (d_internal_pvt_solver->gps_cnav_ephemeris_map.find(gps_cnav_ephemeris->PRN) == d_internal_pvt_solver->gps_cnav_ephemeris_map.cend())
                                 {
                                     new_annotation = true;
                                 }
                             else
                                 {
-                                    if (d_internal_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->i_satellite_PRN].d_Toe1 != gps_cnav_ephemeris->d_Toe1)
+                                    if (d_internal_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->PRN].toe1 != gps_cnav_ephemeris->toe1)
                                         {
                                             new_annotation = true;
                                         }
@@ -1181,47 +1212,27 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                             if (new_annotation == true)
                                 {
                                     // New record!
-                                    std::map<int32_t, Galileo_Ephemeris> new_gal_eph;
                                     std::map<int32_t, Gps_CNAV_Ephemeris> new_cnav_eph;
-                                    std::map<int32_t, Glonass_Gnav_Ephemeris> new_glo_eph;
-                                    new_cnav_eph[gps_cnav_ephemeris->i_satellite_PRN] = *gps_cnav_ephemeris;
-                                    switch (type_of_rx)
-                                        {
-                                        case 2:  // GPS L2C only
-                                            rp->log_rinex_nav(rp->navFile, new_cnav_eph);
-                                            break;
-                                        case 3:  // GPS L5 only
-                                            rp->log_rinex_nav(rp->navFile, new_cnav_eph);
-                                            break;
-                                        case 7:  // GPS L1 C/A + GPS L2C
-                                            rp->log_rinex_nav(rp->navFile, new_cnav_eph);
-                                            break;
-                                        case 13:  // L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_gal_eph);
-                                            break;
-                                        case 28:  // GPS L2C + GLONASS L1 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_glo_eph);
-                                            break;
-                                        case 31:  // GPS L2C + GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_glo_eph);
-                                            break;
-                                        default:
-                                            break;
-                                        }
+                                    new_cnav_eph[gps_cnav_ephemeris->PRN] = *gps_cnav_ephemeris;
+                                    d_rp->log_rinex_nav_gps_cnav(d_type_of_rx, new_cnav_eph);
                                 }
                         }
-                    d_internal_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->i_satellite_PRN] = *gps_cnav_ephemeris;
+                    d_internal_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->PRN] = *gps_cnav_ephemeris;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->i_satellite_PRN] = *gps_cnav_ephemeris;
+                            d_user_pvt_solver->gps_cnav_ephemeris_map[gps_cnav_ephemeris->PRN] = *gps_cnav_ephemeris;
+                        }
+                    if (gps_cnav_ephemeris->signal_health != 0)
+                        {
+                            std::cout << TEXT_RED << "Satellite " << Gnss_Satellite(std::string("GPS"), gps_cnav_ephemeris->PRN)
+                                      << " is not healthy, not used for navigation" << TEXT_RESET << '\n';
                         }
                     DLOG(INFO) << "New GPS CNAV ephemeris record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_CNAV_Iono>))
+            else if (msg_type_hash_code == d_gps_cnav_iono_sptr_type_hash_code)
                 {
                     // ### GPS CNAV IONO ###
-                    std::shared_ptr<Gps_CNAV_Iono> gps_cnav_iono;
-                    gps_cnav_iono = boost::any_cast<std::shared_ptr<Gps_CNAV_Iono>>(pmt::any_ref(msg));
+                    const auto gps_cnav_iono = wht::any_cast<std::shared_ptr<Gps_CNAV_Iono>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->gps_cnav_iono = *gps_cnav_iono;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1229,11 +1240,10 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New CNAV IONO record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_CNAV_Utc_Model>))
+            else if (msg_type_hash_code == d_gps_cnav_utc_model_sptr_type_hash_code)
                 {
                     // ### GPS CNAV UTC MODEL ###
-                    std::shared_ptr<Gps_CNAV_Utc_Model> gps_cnav_utc_model;
-                    gps_cnav_utc_model = boost::any_cast<std::shared_ptr<Gps_CNAV_Utc_Model>>(pmt::any_ref(msg));
+                    const auto gps_cnav_utc_model = wht::any_cast<std::shared_ptr<Gps_CNAV_Utc_Model>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->gps_cnav_utc_model = *gps_cnav_utc_model;
                     {
                         d_user_pvt_solver->gps_cnav_utc_model = *gps_cnav_utc_model;
@@ -1241,40 +1251,44 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                     DLOG(INFO) << "New CNAV UTC record has arrived ";
                 }
 
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Gps_Almanac>))
+            else if (msg_type_hash_code == d_gps_almanac_sptr_type_hash_code)
                 {
                     // ### GPS ALMANAC ###
-                    std::shared_ptr<Gps_Almanac> gps_almanac;
-                    gps_almanac = boost::any_cast<std::shared_ptr<Gps_Almanac>>(pmt::any_ref(msg));
-                    d_internal_pvt_solver->gps_almanac_map[gps_almanac->i_satellite_PRN] = *gps_almanac;
+                    const auto gps_almanac = wht::any_cast<std::shared_ptr<Gps_Almanac>>(pmt::any_ref(msg));
+                    d_internal_pvt_solver->gps_almanac_map[gps_almanac->PRN] = *gps_almanac;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->gps_almanac_map[gps_almanac->i_satellite_PRN] = *gps_almanac;
+                            d_user_pvt_solver->gps_almanac_map[gps_almanac->PRN] = *gps_almanac;
                         }
                     DLOG(INFO) << "New GPS almanac record has arrived ";
                 }
 
-            // **************** Galileo telemetry ********************
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Galileo_Ephemeris>))
+            // *********************** Galileo telemetry ***********************
+            else if (msg_type_hash_code == d_galileo_ephemeris_sptr_type_hash_code)
                 {
                     // ### Galileo EPHEMERIS ###
-                    std::shared_ptr<Galileo_Ephemeris> galileo_eph;
-                    galileo_eph = boost::any_cast<std::shared_ptr<Galileo_Ephemeris>>(pmt::any_ref(msg));
+                    const auto galileo_eph = wht::any_cast<std::shared_ptr<Galileo_Ephemeris>>(pmt::any_ref(msg));
                     // insert new ephemeris record
-                    DLOG(INFO) << "Galileo New Ephemeris record inserted in global map with TOW =" << galileo_eph->TOW_5
-                               << ", GALILEO Week Number =" << galileo_eph->WN_5
+                    DLOG(INFO) << "Galileo New Ephemeris record inserted in global map with TOW =" << galileo_eph->tow
+                               << ", GALILEO Week Number =" << galileo_eph->WN
                                << " and Ephemeris IOD = " << galileo_eph->IOD_ephemeris;
+                    // todo: Send only new sets of ephemeris (new TOE), not sent to the client
+                    // send the new eph to the eph monitor (if enabled)
+                    if (d_flag_monitor_ephemeris_enabled)
+                        {
+                            d_eph_udp_sink_ptr->write_galileo_ephemeris(galileo_eph);
+                        }
                     // update/insert new ephemeris record to the global ephemeris map
-                    if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
                         {
                             bool new_annotation = false;
-                            if (d_internal_pvt_solver->galileo_ephemeris_map.find(galileo_eph->i_satellite_PRN) == d_internal_pvt_solver->galileo_ephemeris_map.cend())
+                            if (d_internal_pvt_solver->galileo_ephemeris_map.find(galileo_eph->PRN) == d_internal_pvt_solver->galileo_ephemeris_map.cend())
                                 {
                                     new_annotation = true;
                                 }
                             else
                                 {
-                                    if (d_internal_pvt_solver->galileo_ephemeris_map[galileo_eph->i_satellite_PRN].t0e_1 != galileo_eph->t0e_1)
+                                    if (d_internal_pvt_solver->galileo_ephemeris_map[galileo_eph->PRN].toe != galileo_eph->toe)
                                         {
                                             new_annotation = true;
                                         }
@@ -1283,67 +1297,27 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                 {
                                     // New record!
                                     std::map<int32_t, Galileo_Ephemeris> new_gal_eph;
-                                    std::map<int32_t, Gps_CNAV_Ephemeris> new_cnav_eph;
-                                    std::map<int32_t, Gps_Ephemeris> new_eph;
-                                    std::map<int32_t, Glonass_Gnav_Ephemeris> new_glo_eph;
-                                    new_gal_eph[galileo_eph->i_satellite_PRN] = *galileo_eph;
-                                    switch (type_of_rx)
-                                        {
-                                        case 4:  // Galileo E1B only
-                                            rp->log_rinex_nav(rp->navGalFile, new_gal_eph);
-                                            break;
-                                        case 5:  // Galileo E5a only
-                                            rp->log_rinex_nav(rp->navGalFile, new_gal_eph);
-                                            break;
-                                        case 6:  // Galileo E5b only
-                                            rp->log_rinex_nav(rp->navGalFile, new_gal_eph);
-                                            break;
-                                        case 9:  // GPS L1 C/A + Galileo E1B
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 10:  // GPS L1 C/A + Galileo E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 11:  // GPS L1 C/A + Galileo E5b
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 13:  // L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_gal_eph);
-                                            break;
-                                        case 15:  // Galileo E1B + Galileo E5b
-                                            rp->log_rinex_nav(rp->navGalFile, new_gal_eph);
-                                            break;
-                                        case 27:  // Galileo E1B + GLONASS L1 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_gal_eph, new_glo_eph);
-                                            break;
-                                        case 30:  // Galileo E1B + GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_gal_eph, new_glo_eph);
-                                            break;
-                                        case 32:  // L1+E1+L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 33:  // L1+E1+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        case 1001:  // L1+E1+L2+L5+E5a
-                                            rp->log_rinex_nav(rp->navMixFile, new_eph, new_gal_eph);
-                                            break;
-                                        default:
-                                            break;
-                                        }
+                                    new_gal_eph[galileo_eph->PRN] = *galileo_eph;
+                                    d_rp->log_rinex_nav_gal_nav(d_type_of_rx, new_gal_eph);
                                 }
                         }
-                    d_internal_pvt_solver->galileo_ephemeris_map[galileo_eph->i_satellite_PRN] = *galileo_eph;
+                    d_internal_pvt_solver->galileo_ephemeris_map[galileo_eph->PRN] = *galileo_eph;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->galileo_ephemeris_map[galileo_eph->i_satellite_PRN] = *galileo_eph;
+                            d_user_pvt_solver->galileo_ephemeris_map[galileo_eph->PRN] = *galileo_eph;
+                        }
+                    if (((galileo_eph->E1B_HS != 0) || (galileo_eph->E1B_DVS == true)) ||
+                        ((galileo_eph->E5a_HS != 0) || (galileo_eph->E5a_DVS == true)) ||
+                        ((galileo_eph->E5b_HS != 0) || (galileo_eph->E5b_DVS == true)))
+                        {
+                            std::cout << TEXT_RED << "Satellite " << Gnss_Satellite(std::string("Galileo"), galileo_eph->PRN)
+                                      << " is not healthy, not used for navigation" << TEXT_RESET << '\n';
                         }
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Galileo_Iono>))
+            else if (msg_type_hash_code == d_galileo_iono_sptr_type_hash_code)
                 {
                     // ### Galileo IONO ###
-                    std::shared_ptr<Galileo_Iono> galileo_iono;
-                    galileo_iono = boost::any_cast<std::shared_ptr<Galileo_Iono>>(pmt::any_ref(msg));
+                    const auto galileo_iono = wht::any_cast<std::shared_ptr<Galileo_Iono>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->galileo_iono = *galileo_iono;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1351,11 +1325,10 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New IONO record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Galileo_Utc_Model>))
+            else if (msg_type_hash_code == d_galileo_utc_model_sptr_type_hash_code)
                 {
                     // ### Galileo UTC MODEL ###
-                    std::shared_ptr<Galileo_Utc_Model> galileo_utc_model;
-                    galileo_utc_model = boost::any_cast<std::shared_ptr<Galileo_Utc_Model>>(pmt::any_ref(msg));
+                    const auto galileo_utc_model = wht::any_cast<std::shared_ptr<Galileo_Utc_Model>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->galileo_utc_model = *galileo_utc_model;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1363,61 +1336,57 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New UTC record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Galileo_Almanac_Helper>))
+            else if (msg_type_hash_code == d_galileo_almanac_helper_sptr_type_hash_code)
                 {
                     // ### Galileo Almanac ###
-                    std::shared_ptr<Galileo_Almanac_Helper> galileo_almanac_helper;
-                    galileo_almanac_helper = boost::any_cast<std::shared_ptr<Galileo_Almanac_Helper>>(pmt::any_ref(msg));
+                    const auto galileo_almanac_helper = wht::any_cast<std::shared_ptr<Galileo_Almanac_Helper>>(pmt::any_ref(msg));
+                    const Galileo_Almanac sv1 = galileo_almanac_helper->get_almanac(1);
+                    const Galileo_Almanac sv2 = galileo_almanac_helper->get_almanac(2);
+                    const Galileo_Almanac sv3 = galileo_almanac_helper->get_almanac(3);
 
-                    Galileo_Almanac sv1 = galileo_almanac_helper->get_almanac(1);
-                    Galileo_Almanac sv2 = galileo_almanac_helper->get_almanac(2);
-                    Galileo_Almanac sv3 = galileo_almanac_helper->get_almanac(3);
-
-                    if (sv1.i_satellite_PRN != 0)
+                    if (sv1.PRN != 0)
                         {
-                            d_internal_pvt_solver->galileo_almanac_map[sv1.i_satellite_PRN] = sv1;
+                            d_internal_pvt_solver->galileo_almanac_map[sv1.PRN] = sv1;
                             if (d_enable_rx_clock_correction == true)
                                 {
-                                    d_user_pvt_solver->galileo_almanac_map[sv1.i_satellite_PRN] = sv1;
+                                    d_user_pvt_solver->galileo_almanac_map[sv1.PRN] = sv1;
                                 }
                         }
-                    if (sv2.i_satellite_PRN != 0)
+                    if (sv2.PRN != 0)
                         {
-                            d_internal_pvt_solver->galileo_almanac_map[sv2.i_satellite_PRN] = sv2;
+                            d_internal_pvt_solver->galileo_almanac_map[sv2.PRN] = sv2;
                             if (d_enable_rx_clock_correction == true)
                                 {
-                                    d_user_pvt_solver->galileo_almanac_map[sv2.i_satellite_PRN] = sv2;
+                                    d_user_pvt_solver->galileo_almanac_map[sv2.PRN] = sv2;
                                 }
                         }
-                    if (sv3.i_satellite_PRN != 0)
+                    if (sv3.PRN != 0)
                         {
-                            d_internal_pvt_solver->galileo_almanac_map[sv3.i_satellite_PRN] = sv3;
+                            d_internal_pvt_solver->galileo_almanac_map[sv3.PRN] = sv3;
                             if (d_enable_rx_clock_correction == true)
                                 {
-                                    d_user_pvt_solver->galileo_almanac_map[sv3.i_satellite_PRN] = sv3;
+                                    d_user_pvt_solver->galileo_almanac_map[sv3.PRN] = sv3;
                                 }
                         }
                     DLOG(INFO) << "New Galileo Almanac data have arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Galileo_Almanac>))
+            else if (msg_type_hash_code == d_galileo_almanac_sptr_type_hash_code)
                 {
                     // ### Galileo Almanac ###
-                    std::shared_ptr<Galileo_Almanac> galileo_alm;
-                    galileo_alm = boost::any_cast<std::shared_ptr<Galileo_Almanac>>(pmt::any_ref(msg));
+                    const auto galileo_alm = wht::any_cast<std::shared_ptr<Galileo_Almanac>>(pmt::any_ref(msg));
                     // update/insert new almanac record to the global almanac map
-                    d_internal_pvt_solver->galileo_almanac_map[galileo_alm->i_satellite_PRN] = *galileo_alm;
+                    d_internal_pvt_solver->galileo_almanac_map[galileo_alm->PRN] = *galileo_alm;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->galileo_almanac_map[galileo_alm->i_satellite_PRN] = *galileo_alm;
+                            d_user_pvt_solver->galileo_almanac_map[galileo_alm->PRN] = *galileo_alm;
                         }
                 }
 
-            // **************** GLONASS GNAV Telemetry **************************
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Glonass_Gnav_Ephemeris>))
+            // **************** GLONASS GNAV Telemetry *************************
+            else if (msg_type_hash_code == d_glonass_gnav_ephemeris_sptr_type_hash_code)
                 {
                     // ### GLONASS GNAV EPHEMERIS ###
-                    std::shared_ptr<Glonass_Gnav_Ephemeris> glonass_gnav_eph;
-                    glonass_gnav_eph = boost::any_cast<std::shared_ptr<Glonass_Gnav_Ephemeris>>(pmt::any_ref(msg));
+                    const auto glonass_gnav_eph = wht::any_cast<std::shared_ptr<Glonass_Gnav_Ephemeris>>(pmt::any_ref(msg));
                     // TODO Add GLONASS with gps week number and tow,
                     // insert new ephemeris record
                     DLOG(INFO) << "GLONASS GNAV New Ephemeris record inserted in global map with TOW =" << glonass_gnav_eph->d_TOW
@@ -1425,16 +1394,16 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                << " and Ephemeris IOD in UTC = " << glonass_gnav_eph->compute_GLONASS_time(glonass_gnav_eph->d_t_b)
                                << " from SV = " << glonass_gnav_eph->i_satellite_slot_number;
                     // update/insert new ephemeris record to the global ephemeris map
-                    if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
                         {
                             bool new_annotation = false;
-                            if (d_internal_pvt_solver->glonass_gnav_ephemeris_map.find(glonass_gnav_eph->i_satellite_PRN) == d_internal_pvt_solver->glonass_gnav_ephemeris_map.cend())
+                            if (d_internal_pvt_solver->glonass_gnav_ephemeris_map.find(glonass_gnav_eph->PRN) == d_internal_pvt_solver->glonass_gnav_ephemeris_map.cend())
                                 {
                                     new_annotation = true;
                                 }
                             else
                                 {
-                                    if (d_internal_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->i_satellite_PRN].d_t_b != glonass_gnav_eph->d_t_b)
+                                    if (d_internal_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->PRN].d_t_b != glonass_gnav_eph->d_t_b)
                                         {
                                             new_annotation = true;
                                         }
@@ -1442,70 +1411,21 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                             if (new_annotation == true)
                                 {
                                     // New record!
-                                    std::map<int32_t, Galileo_Ephemeris> new_gal_eph;
-                                    std::map<int32_t, Gps_CNAV_Ephemeris> new_cnav_eph;
-                                    std::map<int32_t, Gps_Ephemeris> new_eph;
                                     std::map<int32_t, Glonass_Gnav_Ephemeris> new_glo_eph;
-                                    new_glo_eph[glonass_gnav_eph->i_satellite_PRN] = *glonass_gnav_eph;
-                                    switch (type_of_rx)
-                                        {
-                                        case 23:  // GLONASS L1 C/A
-                                            rp->log_rinex_nav(rp->navGloFile, new_glo_eph);
-                                            break;
-                                        case 24:  // GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navGloFile, new_glo_eph);
-                                            break;
-                                        case 25:  // GLONASS L1 C/A + GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navGloFile, new_glo_eph);
-                                            break;
-                                        case 26:  // GPS L1 C/A + GLONASS L1 C/A
-                                            if (d_rinex_version == 3)
-                                                {
-                                                    rp->log_rinex_nav(rp->navMixFile, new_eph, new_glo_eph);
-                                                }
-                                            if (d_rinex_version == 2)
-                                                {
-                                                    rp->log_rinex_nav(rp->navGloFile, new_glo_eph);
-                                                }
-                                            break;
-                                        case 27:  // Galileo E1B + GLONASS L1 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_gal_eph, new_glo_eph);
-                                            break;
-                                        case 28:  // GPS L2C + GLONASS L1 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_glo_eph);
-                                            break;
-                                        case 29:  // GPS L1 C/A + GLONASS L2 C/A
-                                            if (d_rinex_version == 3)
-                                                {
-                                                    rp->log_rinex_nav(rp->navMixFile, new_eph, new_glo_eph);
-                                                }
-                                            if (d_rinex_version == 2)
-                                                {
-                                                    rp->log_rinex_nav(rp->navGloFile, new_glo_eph);
-                                                }
-                                            break;
-                                        case 30:  // Galileo E1B + GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_gal_eph, new_glo_eph);
-                                            break;
-                                        case 31:  // GPS L2C + GLONASS L2 C/A
-                                            rp->log_rinex_nav(rp->navMixFile, new_cnav_eph, new_glo_eph);
-                                            break;
-                                        default:
-                                            break;
-                                        }
+                                    new_glo_eph[glonass_gnav_eph->PRN] = *glonass_gnav_eph;
+                                    d_rp->log_rinex_nav_glo_gnav(d_type_of_rx, new_glo_eph);
                                 }
                         }
-                    d_internal_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->i_satellite_PRN] = *glonass_gnav_eph;
+                    d_internal_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->PRN] = *glonass_gnav_eph;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->i_satellite_PRN] = *glonass_gnav_eph;
+                            d_user_pvt_solver->glonass_gnav_ephemeris_map[glonass_gnav_eph->PRN] = *glonass_gnav_eph;
                         }
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Glonass_Gnav_Utc_Model>))
+            else if (msg_type_hash_code == d_glonass_gnav_utc_model_sptr_type_hash_code)
                 {
                     // ### GLONASS GNAV UTC MODEL ###
-                    std::shared_ptr<Glonass_Gnav_Utc_Model> glonass_gnav_utc_model;
-                    glonass_gnav_utc_model = boost::any_cast<std::shared_ptr<Glonass_Gnav_Utc_Model>>(pmt::any_ref(msg));
+                    const auto glonass_gnav_utc_model = wht::any_cast<std::shared_ptr<Glonass_Gnav_Utc_Model>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->glonass_gnav_utc_model = *glonass_gnav_utc_model;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1513,11 +1433,10 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New GLONASS GNAV UTC record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Glonass_Gnav_Almanac>))
+            else if (msg_type_hash_code == d_glonass_gnav_almanac_sptr_type_hash_code)
                 {
                     // ### GLONASS GNAV Almanac ###
-                    std::shared_ptr<Glonass_Gnav_Almanac> glonass_gnav_almanac;
-                    glonass_gnav_almanac = boost::any_cast<std::shared_ptr<Glonass_Gnav_Almanac>>(pmt::any_ref(msg));
+                    const auto glonass_gnav_almanac = wht::any_cast<std::shared_ptr<Glonass_Gnav_Almanac>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->glonass_gnav_almanac = *glonass_gnav_almanac;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1527,28 +1446,27 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                << ", GLONASS GNAV Slot Number =" << glonass_gnav_almanac->d_n_A;
                 }
 
-            // ************* BeiDou telemetry *****************
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Beidou_Dnav_Ephemeris>))
+            // *********************** BeiDou telemetry ************************
+            else if (msg_type_hash_code == d_beidou_dnav_ephemeris_sptr_type_hash_code)
                 {
                     // ### Beidou EPHEMERIS ###
-                    std::shared_ptr<Beidou_Dnav_Ephemeris> bds_dnav_eph;
-                    bds_dnav_eph = boost::any_cast<std::shared_ptr<Beidou_Dnav_Ephemeris>>(pmt::any_ref(msg));
+                    const auto bds_dnav_eph = wht::any_cast<std::shared_ptr<Beidou_Dnav_Ephemeris>>(pmt::any_ref(msg));
                     DLOG(INFO) << "Ephemeris record has arrived from SAT ID "
-                               << bds_dnav_eph->i_satellite_PRN << " (Block "
-                               << bds_dnav_eph->satelliteBlock[bds_dnav_eph->i_satellite_PRN] << ")"
-                               << "inserted with Toe=" << bds_dnav_eph->d_Toe << " and BDS Week="
-                               << bds_dnav_eph->i_BEIDOU_week;
+                               << bds_dnav_eph->PRN << " (Block "
+                               << bds_dnav_eph->satelliteBlock[bds_dnav_eph->PRN] << ")"
+                               << "inserted with Toe=" << bds_dnav_eph->toe << " and BDS Week="
+                               << bds_dnav_eph->WN;
                     // update/insert new ephemeris record to the global ephemeris map
-                    if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
                         {
                             bool new_annotation = false;
-                            if (d_internal_pvt_solver->beidou_dnav_ephemeris_map.find(bds_dnav_eph->i_satellite_PRN) == d_internal_pvt_solver->beidou_dnav_ephemeris_map.cend())
+                            if (d_internal_pvt_solver->beidou_dnav_ephemeris_map.find(bds_dnav_eph->PRN) == d_internal_pvt_solver->beidou_dnav_ephemeris_map.cend())
                                 {
                                     new_annotation = true;
                                 }
                             else
                                 {
-                                    if (d_internal_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->i_satellite_PRN].d_Toc != bds_dnav_eph->d_Toc)
+                                    if (d_internal_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->PRN].toc != bds_dnav_eph->toc)
                                         {
                                             new_annotation = true;
                                         }
@@ -1557,31 +1475,25 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                                 {
                                     // New record!
                                     std::map<int32_t, Beidou_Dnav_Ephemeris> new_bds_eph;
-                                    new_bds_eph[bds_dnav_eph->i_satellite_PRN] = *bds_dnav_eph;
-                                    switch (type_of_rx)
-                                        {
-                                        case 500:  // BDS B1I only
-                                            rp->log_rinex_nav(rp->navFile, new_bds_eph);
-                                            break;
-                                        case 600:  // BDS B3I only
-                                            rp->log_rinex_nav(rp->navFile, new_bds_eph);
-                                            break;
-                                        default:
-                                            break;
-                                        }
+                                    new_bds_eph[bds_dnav_eph->PRN] = *bds_dnav_eph;
+                                    d_rp->log_rinex_nav_bds_dnav(d_type_of_rx, new_bds_eph);
                                 }
                         }
-                    d_internal_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->i_satellite_PRN] = *bds_dnav_eph;
+                    d_internal_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->PRN] = *bds_dnav_eph;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->i_satellite_PRN] = *bds_dnav_eph;
+                            d_user_pvt_solver->beidou_dnav_ephemeris_map[bds_dnav_eph->PRN] = *bds_dnav_eph;
+                        }
+                    if (bds_dnav_eph->SV_health != 0)
+                        {
+                            std::cout << TEXT_RED << "Satellite " << Gnss_Satellite(std::string("Beidou"), bds_dnav_eph->PRN)
+                                      << " is not healthy, not used for navigation" << TEXT_RESET << '\n';
                         }
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Beidou_Dnav_Iono>))
+            else if (msg_type_hash_code == d_beidou_dnav_iono_sptr_type_hash_code)
                 {
                     // ### BeiDou IONO ###
-                    std::shared_ptr<Beidou_Dnav_Iono> bds_dnav_iono;
-                    bds_dnav_iono = boost::any_cast<std::shared_ptr<Beidou_Dnav_Iono>>(pmt::any_ref(msg));
+                    const auto bds_dnav_iono = wht::any_cast<std::shared_ptr<Beidou_Dnav_Iono>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->beidou_dnav_iono = *bds_dnav_iono;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1589,11 +1501,10 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New BeiDou DNAV IONO record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Beidou_Dnav_Utc_Model>))
+            else if (msg_type_hash_code == d_beidou_dnav_utc_model_sptr_type_hash_code)
                 {
                     // ### BeiDou UTC MODEL ###
-                    std::shared_ptr<Beidou_Dnav_Utc_Model> bds_dnav_utc_model;
-                    bds_dnav_utc_model = boost::any_cast<std::shared_ptr<Beidou_Dnav_Utc_Model>>(pmt::any_ref(msg));
+                    const auto bds_dnav_utc_model = wht::any_cast<std::shared_ptr<Beidou_Dnav_Utc_Model>>(pmt::any_ref(msg));
                     d_internal_pvt_solver->beidou_dnav_utc_model = *bds_dnav_utc_model;
                     if (d_enable_rx_clock_correction == true)
                         {
@@ -1601,15 +1512,14 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New BeiDou DNAV UTC record has arrived ";
                 }
-            else if (pmt::any_ref(msg).type() == typeid(std::shared_ptr<Beidou_Dnav_Almanac>))
+            else if (msg_type_hash_code == d_beidou_dnav_almanac_sptr_type_hash_code)
                 {
                     // ### BeiDou ALMANAC ###
-                    std::shared_ptr<Beidou_Dnav_Almanac> bds_dnav_almanac;
-                    bds_dnav_almanac = boost::any_cast<std::shared_ptr<Beidou_Dnav_Almanac>>(pmt::any_ref(msg));
-                    d_internal_pvt_solver->beidou_dnav_almanac_map[bds_dnav_almanac->i_satellite_PRN] = *bds_dnav_almanac;
+                    const auto bds_dnav_almanac = wht::any_cast<std::shared_ptr<Beidou_Dnav_Almanac>>(pmt::any_ref(msg));
+                    d_internal_pvt_solver->beidou_dnav_almanac_map[bds_dnav_almanac->PRN] = *bds_dnav_almanac;
                     if (d_enable_rx_clock_correction == true)
                         {
-                            d_user_pvt_solver->beidou_dnav_almanac_map[bds_dnav_almanac->i_satellite_PRN] = *bds_dnav_almanac;
+                            d_user_pvt_solver->beidou_dnav_almanac_map[bds_dnav_almanac->PRN] = *bds_dnav_almanac;
                         }
                     DLOG(INFO) << "New BeiDou DNAV almanac record has arrived ";
                 }
@@ -1618,9 +1528,30 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                     LOG(WARNING) << "msg_handler_telemetry unknown object type!";
                 }
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_telemetry Bad any_cast: " << e.what();
+        }
+}
+
+
+void rtklib_pvt_gs::msg_handler_has_data(const pmt::pmt_t& msg) const
+{
+    try
+        {
+            const size_t msg_type_hash_code = pmt::any_ref(msg).type().hash_code();
+            if (msg_type_hash_code == d_galileo_has_data_sptr_type_hash_code)
+                {
+                    if (d_enable_has_messages)
+                        {
+                            const auto has_data = wht::any_cast<std::shared_ptr<Galileo_HAS_data>>(pmt::any_ref(msg));
+                            d_has_simple_printer->print_message(has_data.get());
+                        }
+                }
+        }
+    catch (const wht::bad_any_cast& e)
+        {
+            LOG(WARNING) << "msg_handler_has_data Bad any_cast: " << e.what();
         }
 }
 
@@ -1681,20 +1612,20 @@ void rtklib_pvt_gs::clear_ephemeris()
 }
 
 
-bool rtklib_pvt_gs::send_sys_v_ttff_msg(ttff_msgbuf ttff)
+bool rtklib_pvt_gs::send_sys_v_ttff_msg(d_ttff_msgbuf ttff) const
 {
-    if (sysv_msqid != -1)
+    if (d_sysv_msqid != -1)
         {
             // Fill Sys V message structures
             int msgsend_size;
-            ttff_msgbuf msg;
+            d_ttff_msgbuf msg;
             msg.ttff = ttff.ttff;
             msgsend_size = sizeof(msg.ttff);
             msg.mtype = 1;  // default message ID
 
             // SEND SOLUTION OVER A MESSAGE QUEUE
             // non-blocking Sys V message send
-            msgsnd(sysv_msqid, &msg, msgsend_size, IPC_NOWAIT);
+            msgsnd(d_sysv_msqid, &msg, msgsend_size, IPC_NOWAIT);
             return true;
         }
     return false;
@@ -1703,14 +1634,14 @@ bool rtklib_pvt_gs::send_sys_v_ttff_msg(ttff_msgbuf ttff)
 
 bool rtklib_pvt_gs::save_gnss_synchro_map_xml(const std::string& file_name)
 {
-    if (gnss_observables_map.empty() == false)
+    if (d_gnss_observables_map.empty() == false)
         {
             std::ofstream ofs;
             try
                 {
                     ofs.open(file_name.c_str(), std::ofstream::trunc | std::ofstream::out);
                     boost::archive::xml_oarchive xml(ofs);
-                    xml << boost::serialization::make_nvp("GNSS-SDR_gnss_synchro_map", gnss_observables_map);
+                    xml << boost::serialization::make_nvp("GNSS-SDR_gnss_synchro_map", d_gnss_observables_map);
                     LOG(INFO) << "Saved gnss_sychro map data";
                 }
             catch (const std::exception& e)
@@ -1734,9 +1665,9 @@ bool rtklib_pvt_gs::load_gnss_synchro_map_xml(const std::string& file_name)
         {
             ifs.open(file_name.c_str(), std::ifstream::binary | std::ifstream::in);
             boost::archive::xml_iarchive xml(ifs);
-            gnss_observables_map.clear();
-            xml >> boost::serialization::make_nvp("GNSS-SDR_gnss_synchro_map", gnss_observables_map);
-            // std::cout << "Loaded gnss_synchro map data with " << gnss_synchro_map.size() << " pseudoranges" << std::endl;
+            d_gnss_observables_map.clear();
+            xml >> boost::serialization::make_nvp("GNSS-SDR_gnss_synchro_map", d_gnss_observables_map);
+            // std::cout << "Loaded gnss_synchro map data with " << gnss_synchro_map.size() << " pseudoranges\n";
         }
     catch (const std::exception& e)
         {
@@ -1812,42 +1743,42 @@ void rtklib_pvt_gs::apply_rx_clock_offset(std::map<int, Gnss_Synchro>& observabl
         {
             // all observables in the map are valid
             observables_iter->second.RX_time -= rx_clock_offset_s;
-            observables_iter->second.Pseudorange_m -= rx_clock_offset_s * SPEED_OF_LIGHT;
+            observables_iter->second.Pseudorange_m -= rx_clock_offset_s * SPEED_OF_LIGHT_M_S;
 
-            switch (mapStringValues_[observables_iter->second.Signal])
+            switch (d_mapStringValues[observables_iter->second.Signal])
                 {
                 case evGPS_1C:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1 * PI_2;
+                case evSBAS_1C:
+                case evGAL_1B:
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1 * TWO_PI;
                     break;
                 case evGPS_L5:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ5 * PI_2;
-                    break;
-                case evSBAS_1C:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1 * PI_2;
-                    break;
-                case evGAL_1B:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1 * PI_2;
-                    break;
                 case evGAL_5X:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ5 * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ5 * TWO_PI;
+                    break;
+                case evGAL_E6:
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ6 * TWO_PI;
+                    break;
+                case evGAL_7X:
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ7 * TWO_PI;
                     break;
                 case evGPS_2S:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2 * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2 * TWO_PI;
                     break;
                 case evBDS_B3:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ3_BDS * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ3_BDS * TWO_PI;
                     break;
                 case evGLO_1G:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1_GLO * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1_GLO * TWO_PI;
                     break;
                 case evGLO_2G:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2_GLO * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2_GLO * TWO_PI;
                     break;
                 case evBDS_B1:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1_BDS * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1_BDS * TWO_PI;
                     break;
                 case evBDS_B2:
-                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2_BDS * PI_2;
+                    observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ2_BDS * TWO_PI;
                     break;
                 default:
                     break;
@@ -1856,8 +1787,8 @@ void rtklib_pvt_gs::apply_rx_clock_offset(std::map<int, Gnss_Synchro>& observabl
 }
 
 
-std::map<int, Gnss_Synchro> rtklib_pvt_gs::interpolate_observables(std::map<int, Gnss_Synchro>& observables_map_t0,
-    std::map<int, Gnss_Synchro>& observables_map_t1,
+std::map<int, Gnss_Synchro> rtklib_pvt_gs::interpolate_observables(const std::map<int, Gnss_Synchro>& observables_map_t0,
+    const std::map<int, Gnss_Synchro>& observables_map_t1,
     double rx_time_s)
 {
     std::map<int, Gnss_Synchro> interp_observables_map;
@@ -1909,58 +1840,58 @@ void rtklib_pvt_gs::initialize_and_apply_carrier_phase_offset()
 {
     // we have a valid PVT. First check if we need to reset the initial carrier phase offsets to match their pseudoranges
     std::map<int, Gnss_Synchro>::iterator observables_iter;
-    for (observables_iter = gnss_observables_map.begin(); observables_iter != gnss_observables_map.end(); observables_iter++)
+    for (observables_iter = d_gnss_observables_map.begin(); observables_iter != d_gnss_observables_map.end(); observables_iter++)
         {
             // check if an initialization is required (new satellite or loss of lock)
             // it is set to false by the work function if the gnss_synchro is not valid
-            if (channel_initialized.at(observables_iter->second.Channel_ID) == false)
+            if (d_channel_initialized.at(observables_iter->second.Channel_ID) == false)
                 {
                     double wavelength_m = 0;
-                    switch (mapStringValues_[observables_iter->second.Signal])
+                    switch (d_mapStringValues[observables_iter->second.Signal])
                         {
                         case evGPS_1C:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ1;
+                        case evSBAS_1C:
+                        case evGAL_1B:
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ1;
                             break;
                         case evGPS_L5:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ5;
-                            break;
-                        case evSBAS_1C:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ1;
-                            break;
-                        case evGAL_1B:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ1;
-                            break;
                         case evGAL_5X:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ5;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ5;
+                            break;
+                        case evGAL_E6:
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ6;
+                            break;
+                        case evGAL_7X:
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ7;
                             break;
                         case evGPS_2S:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ2;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ2;
                             break;
                         case evBDS_B3:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ3_BDS;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ3_BDS;
                             break;
                         case evGLO_1G:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ1_GLO;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ1_GLO;
                             break;
                         case evGLO_2G:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ2_GLO;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ2_GLO;
                             break;
                         case evBDS_B1:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ1_BDS;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ1_BDS;
                             break;
                         case evBDS_B2:
-                            wavelength_m = SPEED_OF_LIGHT / FREQ2_BDS;
+                            wavelength_m = SPEED_OF_LIGHT_M_S / FREQ2_BDS;
                             break;
                         default:
                             break;
                         }
-                    double wrap_carrier_phase_rad = fmod(observables_iter->second.Carrier_phase_rads, PI_2);
-                    initial_carrier_phase_offset_estimation_rads.at(observables_iter->second.Channel_ID) = PI_2 * round(observables_iter->second.Pseudorange_m / wavelength_m) - observables_iter->second.Carrier_phase_rads + wrap_carrier_phase_rad;
-                    channel_initialized.at(observables_iter->second.Channel_ID) = true;
+                    const double wrap_carrier_phase_rad = fmod(observables_iter->second.Carrier_phase_rads, TWO_PI);
+                    d_initial_carrier_phase_offset_estimation_rads.at(observables_iter->second.Channel_ID) = TWO_PI * round(observables_iter->second.Pseudorange_m / wavelength_m) - observables_iter->second.Carrier_phase_rads + wrap_carrier_phase_rad;
+                    d_channel_initialized.at(observables_iter->second.Channel_ID) = true;
                     DLOG(INFO) << "initialized carrier phase at channel " << observables_iter->second.Channel_ID;
                 }
             // apply the carrier phase offset to this satellite
-            observables_iter->second.Carrier_phase_rads = observables_iter->second.Carrier_phase_rads + initial_carrier_phase_offset_estimation_rads.at(observables_iter->second.Channel_ID);
+            observables_iter->second.Carrier_phase_rads = observables_iter->second.Carrier_phase_rads + d_initial_carrier_phase_offset_estimation_rads.at(observables_iter->second.Channel_ID);
         }
 }
 
@@ -1977,58 +1908,62 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
             bool flag_write_RTCM_1045_output = false;
             bool flag_write_RTCM_MSM_output = false;
             bool flag_write_RINEX_obs_output = false;
+            d_local_counter_ms += static_cast<uint64_t>(d_observable_interval_ms);
 
-            gnss_observables_map.clear();
+            d_gnss_observables_map.clear();
             const auto** in = reinterpret_cast<const Gnss_Synchro**>(&input_items[0]);  // Get the input buffer pointer
             // ############ 1. READ PSEUDORANGES ####
             for (uint32_t i = 0; i < d_nchannels; i++)
                 {
                     if (in[i][epoch].Flag_valid_pseudorange)
                         {
-                            auto tmp_eph_iter_gps = d_internal_pvt_solver->gps_ephemeris_map.find(in[i][epoch].PRN);
-                            auto tmp_eph_iter_gal = d_internal_pvt_solver->galileo_ephemeris_map.find(in[i][epoch].PRN);
-                            auto tmp_eph_iter_cnav = d_internal_pvt_solver->gps_cnav_ephemeris_map.find(in[i][epoch].PRN);
-                            auto tmp_eph_iter_glo_gnav = d_internal_pvt_solver->glonass_gnav_ephemeris_map.find(in[i][epoch].PRN);
-                            auto tmp_eph_iter_bds_dnav = d_internal_pvt_solver->beidou_dnav_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_gps = d_internal_pvt_solver->gps_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_gal = d_internal_pvt_solver->galileo_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_cnav = d_internal_pvt_solver->gps_cnav_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_glo_gnav = d_internal_pvt_solver->glonass_gnav_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_bds_dnav = d_internal_pvt_solver->beidou_dnav_ephemeris_map.find(in[i][epoch].PRN);
 
                             bool store_valid_observable = false;
 
                             if (tmp_eph_iter_gps != d_internal_pvt_solver->gps_ephemeris_map.cend())
                                 {
-                                    uint32_t prn_aux = tmp_eph_iter_gps->second.i_satellite_PRN;
-                                    if ((prn_aux == in[i][epoch].PRN) and (std::string(in[i][epoch].Signal) == "1C"))
+                                    const uint32_t prn_aux = tmp_eph_iter_gps->second.PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) && (std::string(in[i][epoch].Signal) == std::string("1C")) && (tmp_eph_iter_gps->second.SV_health == 0))
                                         {
                                             store_valid_observable = true;
                                         }
                                 }
                             if (tmp_eph_iter_gal != d_internal_pvt_solver->galileo_ephemeris_map.cend())
                                 {
-                                    uint32_t prn_aux = tmp_eph_iter_gal->second.i_satellite_PRN;
-                                    if ((prn_aux == in[i][epoch].PRN) and ((std::string(in[i][epoch].Signal) == "1B") or (std::string(in[i][epoch].Signal) == "5X")))
+                                    const uint32_t prn_aux = tmp_eph_iter_gal->second.PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) &&
+                                        (((std::string(in[i][epoch].Signal) == std::string("1B")) && (tmp_eph_iter_gal->second.E1B_DVS == false) && (tmp_eph_iter_gal->second.E1B_HS == 0)) ||
+                                            ((std::string(in[i][epoch].Signal) == std::string("5X")) && (tmp_eph_iter_gal->second.E5a_DVS == false) && (tmp_eph_iter_gal->second.E5a_HS == 0)) ||
+                                            ((std::string(in[i][epoch].Signal) == std::string("7X")) && (tmp_eph_iter_gal->second.E5b_DVS == false) && (tmp_eph_iter_gal->second.E5b_HS == 0))))
                                         {
                                             store_valid_observable = true;
                                         }
                                 }
                             if (tmp_eph_iter_cnav != d_internal_pvt_solver->gps_cnav_ephemeris_map.cend())
                                 {
-                                    uint32_t prn_aux = tmp_eph_iter_cnav->second.i_satellite_PRN;
-                                    if ((prn_aux == in[i][epoch].PRN) and ((std::string(in[i][epoch].Signal) == "2S") or (std::string(in[i][epoch].Signal) == "L5")))
+                                    const uint32_t prn_aux = tmp_eph_iter_cnav->second.PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) && (((std::string(in[i][epoch].Signal) == std::string("2S")) || (std::string(in[i][epoch].Signal) == std::string("L5"))) && (tmp_eph_iter_cnav->second.signal_health == 0)))
                                         {
                                             store_valid_observable = true;
                                         }
                                 }
                             if (tmp_eph_iter_glo_gnav != d_internal_pvt_solver->glonass_gnav_ephemeris_map.cend())
                                 {
-                                    uint32_t prn_aux = tmp_eph_iter_glo_gnav->second.i_satellite_PRN;
-                                    if ((prn_aux == in[i][epoch].PRN) and ((std::string(in[i][epoch].Signal) == "1G") or (std::string(in[i][epoch].Signal) == "2G")))
+                                    const uint32_t prn_aux = tmp_eph_iter_glo_gnav->second.PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) && ((std::string(in[i][epoch].Signal) == std::string("1G")) || (std::string(in[i][epoch].Signal) == std::string("2G"))))
                                         {
                                             store_valid_observable = true;
                                         }
                                 }
                             if (tmp_eph_iter_bds_dnav != d_internal_pvt_solver->beidou_dnav_ephemeris_map.cend())
                                 {
-                                    uint32_t prn_aux = tmp_eph_iter_bds_dnav->second.i_satellite_PRN;
-                                    if ((prn_aux == in[i][epoch].PRN) and ((std::string(in[i][epoch].Signal) == "B1") or (std::string(in[i][epoch].Signal) == "B3")))
+                                    const uint32_t prn_aux = tmp_eph_iter_bds_dnav->second.PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) && (((std::string(in[i][epoch].Signal) == std::string("B1")) || (std::string(in[i][epoch].Signal) == std::string("B3"))) && (tmp_eph_iter_bds_dnav->second.SV_health == 0)))
                                         {
                                             store_valid_observable = true;
                                         }
@@ -2037,10 +1972,10 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             if (store_valid_observable)
                                 {
                                     // store valid observables in a map.
-                                    gnss_observables_map.insert(std::pair<int, Gnss_Synchro>(i, in[i][epoch]));
+                                    d_gnss_observables_map.insert(std::pair<int, Gnss_Synchro>(i, in[i][epoch]));
                                 }
 
-                            if (b_rtcm_enabled)
+                            if (d_rtcm_enabled)
                                 {
                                     try
                                         {
@@ -2075,34 +2010,34 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                         }
                                     catch (const boost::exception& ex)
                                         {
-                                            std::cout << "RTCM boost exception: " << boost::diagnostic_information(ex) << std::endl;
+                                            std::cout << "RTCM boost exception: " << boost::diagnostic_information(ex) << '\n';
                                             LOG(ERROR) << "RTCM boost exception: " << boost::diagnostic_information(ex);
                                         }
                                     catch (const std::exception& ex)
                                         {
-                                            std::cout << "RTCM std exception: " << ex.what() << std::endl;
+                                            std::cout << "RTCM std exception: " << ex.what() << '\n';
                                             LOG(ERROR) << "RTCM std exception: " << ex.what();
                                         }
                                 }
                         }
                     else
                         {
-                            channel_initialized.at(i) = false;  // the current channel is not reporting valid observable
+                            d_channel_initialized.at(i) = false;  // the current channel is not reporting valid observable
                         }
                 }
 
             // ############ 2 COMPUTE THE PVT ################################
             bool flag_pvt_valid = false;
-            if (gnss_observables_map.empty() == false)
+            if (d_gnss_observables_map.empty() == false)
                 {
-                    // LOG(INFO) << "diff raw obs time: " << gnss_observables_map.cbegin()->second.RX_time * 1000.0 - old_time_debug;
-                    // old_time_debug = gnss_observables_map.cbegin()->second.RX_time * 1000.0;
+                    // LOG(INFO) << "diff raw obs time: " << d_gnss_observables_map.cbegin()->second.RX_time * 1000.0 - old_time_debug;
+                    // old_time_debug = d_gnss_observables_map.cbegin()->second.RX_time * 1000.0;
                     uint32_t current_RX_time_ms = 0;
                     // #### solve PVT and store the corrected observable set
-                    if (d_internal_pvt_solver->get_PVT(gnss_observables_map, false))
+                    if (d_internal_pvt_solver->get_PVT(d_gnss_observables_map, false))
                         {
-                            double Rx_clock_offset_s = d_internal_pvt_solver->get_time_offset_s();
-                            if (fabs(Rx_clock_offset_s) * 1000.0 > max_obs_block_rx_clock_offset_ms)
+                            const double Rx_clock_offset_s = d_internal_pvt_solver->get_time_offset_s();
+                            if (fabs(Rx_clock_offset_s) * 1000.0 > d_max_obs_block_rx_clock_offset_ms)
                                 {
                                     if (!d_waiting_obs_block_rx_clock_offset_correction_msg)
                                         {
@@ -2116,42 +2051,42 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                     if (d_enable_rx_clock_correction == true)
                                         {
                                             d_waiting_obs_block_rx_clock_offset_correction_msg = false;
-                                            gnss_observables_map_t0 = gnss_observables_map_t1;
-                                            apply_rx_clock_offset(gnss_observables_map, Rx_clock_offset_s);
-                                            gnss_observables_map_t1 = gnss_observables_map;
+                                            d_gnss_observables_map_t0 = d_gnss_observables_map_t1;
+                                            apply_rx_clock_offset(d_gnss_observables_map, Rx_clock_offset_s);
+                                            d_gnss_observables_map_t1 = d_gnss_observables_map;
 
                                             // ### select the rx_time and interpolate observables at that time
-                                            if (!gnss_observables_map_t0.empty())
+                                            if (!d_gnss_observables_map_t0.empty())
                                                 {
-                                                    uint32_t t0_int_ms = static_cast<uint32_t>(gnss_observables_map_t0.cbegin()->second.RX_time * 1000.0);
-                                                    uint32_t adjust_next_20ms = 20 - t0_int_ms % 20;
-                                                    current_RX_time_ms = t0_int_ms + adjust_next_20ms;
+                                                    const auto t0_int_ms = static_cast<uint32_t>(d_gnss_observables_map_t0.cbegin()->second.RX_time * 1000.0);
+                                                    const uint32_t adjust_next_obs_interval_ms = d_observable_interval_ms - t0_int_ms % d_observable_interval_ms;
+                                                    current_RX_time_ms = t0_int_ms + adjust_next_obs_interval_ms;
 
                                                     if (current_RX_time_ms % d_output_rate_ms == 0)
                                                         {
                                                             d_rx_time = static_cast<double>(current_RX_time_ms) / 1000.0;
-                                                            // std::cout << " obs time t0: " << gnss_observables_map_t0.cbegin()->second.RX_time
-                                                            //           << " t1: " << gnss_observables_map_t1.cbegin()->second.RX_time
-                                                            //           << " interp time: " << d_rx_time << std::endl;
-                                                            gnss_observables_map = interpolate_observables(gnss_observables_map_t0,
-                                                                gnss_observables_map_t1,
+                                                            // std::cout << " obs time t0: " << d_gnss_observables_map_t0.cbegin()->second.RX_time
+                                                            //           << " t1: " << d_gnss_observables_map_t1.cbegin()->second.RX_time
+                                                            //           << " interp time: " << d_rx_time << '\n';
+                                                            d_gnss_observables_map = interpolate_observables(d_gnss_observables_map_t0,
+                                                                d_gnss_observables_map_t1,
                                                                 d_rx_time);
                                                             flag_compute_pvt_output = true;
                                                             // d_rx_time = current_RX_time;
                                                             // std::cout.precision(17);
-                                                            // std::cout << "current_RX_time: " << current_RX_time << " map time: " << gnss_observables_map.begin()->second.RX_time << std::endl;
+                                                            // std::cout << "current_RX_time: " << current_RX_time << " map time: " << d_gnss_observables_map.begin()->second.RX_time << '\n';
                                                         }
                                                 }
                                         }
                                     else
                                         {
-                                            d_rx_time = gnss_observables_map.begin()->second.RX_time;
+                                            d_rx_time = d_gnss_observables_map.begin()->second.RX_time;
                                             current_RX_time_ms = static_cast<uint32_t>(d_rx_time * 1000.0);
                                             if (current_RX_time_ms % d_output_rate_ms == 0)
                                                 {
                                                     flag_compute_pvt_output = true;
                                                     // std::cout.precision(17);
-                                                    // std::cout << "current_RX_time: " << current_RX_time << " map time: " << gnss_observables_map.begin()->second.RX_time << std::endl;
+                                                    // std::cout << "current_RX_time: " << current_RX_time << " map time: " << d_gnss_observables_map.begin()->second.RX_time << '\n';
                                                 }
                                             flag_pvt_valid = true;
                                         }
@@ -2166,7 +2101,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                     // compute on the fly PVT solution
                     if (flag_compute_pvt_output == true)
                         {
-                            flag_pvt_valid = d_user_pvt_solver->get_PVT(gnss_observables_map, false);
+                            flag_pvt_valid = d_user_pvt_solver->get_PVT(d_gnss_observables_map, false);
                         }
 
                     if (flag_pvt_valid == true)
@@ -2175,8 +2110,8 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             // required to report accumulated phase cycles comparable to pseudoranges
                             initialize_and_apply_carrier_phase_offset();
 
-                            double Rx_clock_offset_s = d_user_pvt_solver->get_time_offset_s();
-                            if (d_enable_rx_clock_correction == true and fabs(Rx_clock_offset_s) > 0.000001)  // 1us !!
+                            const double Rx_clock_offset_s = d_user_pvt_solver->get_time_offset_s();
+                            if (d_enable_rx_clock_correction == true && fabs(Rx_clock_offset_s) > 0.000001)  // 1us !!
                                 {
                                     LOG(INFO) << "Warning: Rx clock offset at interpolated RX time: " << Rx_clock_offset_s * 1000.0 << "[ms]"
                                               << " at RX time: " << static_cast<uint32_t>(d_rx_time * 1000.0) << " [ms]";
@@ -2186,7 +2121,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                     DLOG(INFO) << "Rx clock offset at interpolated RX time: " << Rx_clock_offset_s * 1000.0 << "[s]"
                                                << " at RX time: " << static_cast<uint32_t>(d_rx_time * 1000.0) << " [ms]";
                                     // Optional debug code: export observables snapshot for rtklib unit testing
-                                    // std::cout << "step 1: save gnss_synchro map" << std::endl;
+                                    // std::cout << "step 1: save gnss_synchro map\n";
                                     // save_gnss_synchro_map_xml("./gnss_synchro_map.xml");
                                     // getchar(); // stop the execution
                                     // end debug
@@ -2219,15 +2154,15 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                 }
                                         }
                                     // TODO: RTCM 1077, 1087 and 1097 are not used, so, disable the output rates
-                                    // if (current_RX_time_ms % d_rtcm_MT1077_rate_ms==0 and d_rtcm_MT1077_rate_ms != 0)
+                                    // if (current_RX_time_ms % d_rtcm_MT1077_rate_ms==0 && d_rtcm_MT1077_rate_ms != 0)
                                     //     {
                                     //         last_RTCM_1077_output_time = current_RX_time;
                                     //     }
-                                    // if (current_RX_time_ms % d_rtcm_MT1087_rate_ms==0 and d_rtcm_MT1087_rate_ms != 0)
+                                    // if (current_RX_time_ms % d_rtcm_MT1087_rate_ms==0 && d_rtcm_MT1087_rate_ms != 0)
                                     //     {
                                     //         last_RTCM_1087_output_time = current_RX_time;
                                     //     }
-                                    // if (current_RX_time_ms % d_rtcm_MT1097_rate_ms==0 and d_rtcm_MT1097_rate_ms != 0)
+                                    // if (current_RX_time_ms % d_rtcm_MT1097_rate_ms==0 && d_rtcm_MT1097_rate_ms != 0)
                                     //     {
                                     //         last_RTCM_1097_output_time = current_RX_time;
                                     //     }
@@ -2246,11 +2181,11 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                 }
                                         }
 
-                                    if (first_fix == true)
+                                    if (d_first_fix == true)
                                         {
                                             if (d_show_local_time_zone)
                                                 {
-                                                    boost::posix_time::ptime time_first_solution = d_user_pvt_solver->get_position_UTC_time() + d_utc_diff_time;
+                                                    const boost::posix_time::ptime time_first_solution = d_user_pvt_solver->get_position_UTC_time() + d_utc_diff_time;
                                                     std::cout << "First position fix at " << time_first_solution << d_local_time_str;
                                                 }
                                             else
@@ -2258,1959 +2193,70 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                     std::cout << "First position fix at " << d_user_pvt_solver->get_position_UTC_time() << " UTC";
                                                 }
                                             std::cout << " is Lat = " << d_user_pvt_solver->get_latitude() << " [deg], Long = " << d_user_pvt_solver->get_longitude()
-                                                      << " [deg], Height= " << d_user_pvt_solver->get_height() << " [m]" << std::endl;
-                                            ttff_msgbuf ttff;
+                                                      << " [deg], Height= " << d_user_pvt_solver->get_height() << " [m]\n";
+                                            d_ttff_msgbuf ttff;
                                             ttff.mtype = 1;
-                                            end = std::chrono::system_clock::now();
-                                            std::chrono::duration<double> elapsed_seconds = end - start;
+                                            d_end = std::chrono::system_clock::now();
+                                            std::chrono::duration<double> elapsed_seconds = d_end - d_start;
                                             ttff.ttff = elapsed_seconds.count();
                                             send_sys_v_ttff_msg(ttff);
-                                            first_fix = false;
+                                            d_first_fix = false;
                                         }
                                     if (d_kml_output_enabled)
                                         {
                                             if (current_RX_time_ms % d_kml_rate_ms == 0)
                                                 {
-                                                    d_kml_dump->print_position(d_user_pvt_solver, false);
+                                                    d_kml_dump->print_position(d_user_pvt_solver.get(), false);
                                                 }
                                         }
                                     if (d_gpx_output_enabled)
                                         {
                                             if (current_RX_time_ms % d_gpx_rate_ms == 0)
                                                 {
-                                                    d_gpx_dump->print_position(d_user_pvt_solver, false);
+                                                    d_gpx_dump->print_position(d_user_pvt_solver.get(), false);
                                                 }
                                         }
                                     if (d_geojson_output_enabled)
                                         {
                                             if (current_RX_time_ms % d_geojson_rate_ms == 0)
                                                 {
-                                                    d_geojson_printer->print_position(d_user_pvt_solver, false);
+                                                    d_geojson_printer->print_position(d_user_pvt_solver.get(), false);
                                                 }
                                         }
                                     if (d_nmea_output_file_enabled)
                                         {
                                             if (current_RX_time_ms % d_nmea_rate_ms == 0)
                                                 {
-                                                    d_nmea_printer->Print_Nmea_Line(d_user_pvt_solver, false);
+                                                    d_nmea_printer->Print_Nmea_Line(d_user_pvt_solver.get(), false);
                                                 }
                                         }
-
-                                    /*
-                                     *   TYPE  |  RECEIVER
-                                     *     0   |  Unknown
-                                     *     1   |  GPS L1 C/A
-                                     *     2   |  GPS L2C
-                                     *     3   |  GPS L5
-                                     *     4   |  Galileo E1B
-                                     *     5   |  Galileo E5a
-                                     *     6   |  Galileo E5b
-                                     *     7   |  GPS L1 C/A + GPS L2C
-                                     *     8   |  GPS L1 C/A + GPS L5
-                                     *     9   |  GPS L1 C/A + Galileo E1B
-                                     *    10   |  GPS L1 C/A + Galileo E5a
-                                     *    11   |  GPS L1 C/A + Galileo E5b
-                                     *    12   |  Galileo E1B + GPS L2C
-                                     *    13   |  Galileo E5a + GPS L5
-                                     *    14   |  Galileo E1B + Galileo E5a
-                                     *    15   |  Galileo E1B + Galileo E5b
-                                     *    16   |  GPS L2C + GPS L5
-                                     *    17   |  GPS L2C + Galileo E5a
-                                     *    18   |  GPS L2C + Galileo E5b
-                                     *    21   |  GPS L1 C/A + Galileo E1B + GPS L2C
-                                     *    22   |  GPS L1 C/A + Galileo E1B + GPS L5
-                                     *    23   |  GLONASS L1 C/A
-                                     *    24   |  GLONASS L2 C/A
-                                     *    25   |  GLONASS L1 C/A + GLONASS L2 C/A
-                                     *    26   |  GPS L1 C/A + GLONASS L1 C/A
-                                     *    27   |  Galileo E1B + GLONASS L1 C/A
-                                     *    28   |  GPS L2C + GLONASS L1 C/A
-                                     *    29   |  GPS L1 C/A + GLONASS L2 C/A
-                                     *    30   |  Galileo E1B + GLONASS L2 C/A
-                                     *    31   |  GPS L2C + GLONASS L2 C/A
-                                     *    32   |  GPS L1 C/A + Galileo E1B + GPS L5 + Galileo E5a
-                                     *    500   |  BeiDou B1I
-                                     *    501   |  BeiDou B1I + GPS L1 C/A
-                                     *    502   |  BeiDou B1I + Galileo E1B
-                                     *    503   |  BeiDou B1I + GLONASS L1 C/A
-                                     *    504   |  BeiDou B1I + GPS L1 C/A + Galileo E1B
-                                     *    505   |  BeiDou B1I + GPS L1 C/A + GLONASS L1 C/A + Galileo E1B
-                                     *    506   |  BeiDou B1I + Beidou B3I
-                                     *    600   |  BeiDou B3I
-                                     *    601   |  BeiDou B3I + GPS L2C
-                                     *    602   |  BeiDou B3I + GLONASS L2 C/A
-                                     *    603   |  BeiDou B3I + GPS L2C + GLONASS L2 C/A
-                                     *    604   |  BeiDou B3I + GPS L1 C/A
-                                     *    605   |  BeiDou B3I + Galileo E1B
-                                     *    606   |  BeiDou B3I + GLONASS L1 C/A
-                                     *    607   |  BeiDou B3I + GPS L1 C/A + Galileo E1B
-                                     *    608   |  BeiDou B3I + GPS L1 C/A + Galileo E1B + BeiDou B1I
-                                     *    609   |  BeiDou B3I + GPS L1 C/A + Galileo E1B + GLONASS L1 C/A
-                                     *    610   |  BeiDou B3I + GPS L1 C/A + Galileo E1B + GLONASS L1 C/A + BeiDou B1I
-                                     *   1000   |  GPS L1 C/A + GPS L2C + GPS L5
-                                     *   1001   |  GPS L1 C/A + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
-                                     */
-
-                                    // ####################### RINEX FILES #################
-                                    if (b_rinex_output_enabled)
+                                    if (d_rinex_output_enabled)
                                         {
-                                            std::map<int, Galileo_Ephemeris>::const_iterator galileo_ephemeris_iter;
-                                            std::map<int, Gps_Ephemeris>::const_iterator gps_ephemeris_iter;
-                                            std::map<int, Gps_CNAV_Ephemeris>::const_iterator gps_cnav_ephemeris_iter;
-                                            std::map<int, Glonass_Gnav_Ephemeris>::const_iterator glonass_gnav_ephemeris_iter;
-                                            std::map<int, Beidou_Dnav_Ephemeris>::const_iterator beidou_dnav_ephemeris_iter;
-                                            if (!b_rinex_header_written)  // & we have utc data in nav message!
-                                                {
-                                                    galileo_ephemeris_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                    gps_ephemeris_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                    gps_cnav_ephemeris_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                    glonass_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                    beidou_dnav_ephemeris_iter = d_user_pvt_solver->beidou_dnav_ephemeris_map.cbegin();
-                                                    switch (type_of_rx)
-                                                        {
-                                                        case 1:  // GPS L1 C/A only
-                                                            if (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, d_rx_time);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 2:  // GPS L2C only
-                                                            if (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("2S");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_cnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_cnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 3:  // GPS L5 only
-                                                            if (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_cnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_cnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 4:  // Galileo E1B only
-                                                            if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time);
-                                                                    rp->rinex_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navGalFile, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 5:  // Galileo E5a only
-                                                            if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("5X");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navGalFile, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 6:  // Galileo E5b only
-                                                            if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("7X");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navGalFile, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 7:  // GPS L1 C/A + GPS L2C
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string signal("1C 2S");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_cnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 8:  // GPS L1 + GPS L5
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string signal("1C L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 9:  // GPS L1 C/A + Galileo E1B
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 10:  // GPS L1 C/A + Galileo E5a
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("5X");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 11:  // GPS L1 C/A + Galileo E5b
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("7X");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 13:  // L5+E5a
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("5X");
-                                                                    std::string gps_signal("L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gps_signal, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_cnav_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 14:  // Galileo E1B + Galileo E5a
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B 5X");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navGalFile, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 15:  // Galileo E1B + Galileo E5b
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B 7X");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navGalFile, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 23:  // GLONASS L1 C/A only
-                                                            if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("1G");
-                                                                    rp->rinex_obs_header(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, glonass_gnav_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navGloFile, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 24:  // GLONASS L2 C/A only
-                                                            if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("2G");
-                                                                    rp->rinex_obs_header(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, glonass_gnav_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navGloFile, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 25:  // GLONASS L1 C/A + GLONASS L2 C/A
-                                                            if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                {
-                                                                    std::string signal("1G 2G");
-                                                                    rp->rinex_obs_header(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, signal);
-                                                                    rp->rinex_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, glonass_gnav_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navGloFile, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 26:  // GPS L1 C/A + GLONASS L1 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("1G");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal);
-                                                                    if (d_rinex_version == 3)
-                                                                        {
-                                                                            rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                        }
-                                                                    if (d_rinex_version == 2)
-                                                                        {
-                                                                            rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                            rp->rinex_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, glonass_gnav_ephemeris_iter->second);
-                                                                            rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_ephemeris_map);
-                                                                            rp->log_rinex_nav(rp->navGloFile, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                        }
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 27:  // Galileo E1B + GLONASS L1 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("1G");
-                                                                    std::string gal_signal("1B");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->galileo_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 28:  // GPS L2C + GLONASS L1 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("1G");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_cnav_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_cnav_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 29:  // GPS L1 C/A + GLONASS L2 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("2G");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal);
-                                                                    if (d_rinex_version == 3)
-                                                                        {
-                                                                            rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                        }
-                                                                    if (d_rinex_version == 2)
-                                                                        {
-                                                                            rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                            rp->rinex_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, glonass_gnav_ephemeris_iter->second);
-                                                                            rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_ephemeris_map);
-                                                                            rp->log_rinex_nav(rp->navGloFile, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                        }
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 30:  // Galileo E1B + GLONASS L2 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("2G");
-                                                                    std::string gal_signal("1B");
-                                                                    rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->galileo_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 31:  // GPS L2C + GLONASS L2 C/A
-                                                            if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string glo_signal("2G");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_cnav_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, glo_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_cnav_ephemeris_map, d_user_pvt_solver->glonass_gnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 32:  // L1+E1+L5+E5a
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()) and
-                                                                (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B 5X");
-                                                                    std::string gps_signal("1C L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gps_signal, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 33:  // L1+E1+E5a
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B 5X");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 500:  // BDS B1I only
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B1");
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 501:  // BeiDou B1I + GPS L1 C/A
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string bds_signal("B1");
-                                                                    // rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, beidou_dnav_ephemeris_iter->second, d_rx_time, bds_signal);
-                                                                    // rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 502:  // BeiDou B1I + Galileo E1B
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string bds_signal("B1");
-                                                                    std::string gal_signal("1B");
-                                                                    // rp->rinex_obs_header(rp->obsFile, galileo_ephemeris_iter->second, beidou_dnav_ephemeris_iter->second, d_rx_time, gal_signal, bds_signal);
-                                                                    // rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 503:  // BeiDou B1I + GLONASS L1 C/A
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    // rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B1");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    // rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 504:  // BeiDou B1I + GPS L1 C/A + Galileo E1B
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    // rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B1");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    // rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 505:  // BeiDou B1I + GPS L1 C/A + GLONASS L1 C/A + Galileo E1B
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    // rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B1");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    // rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 506:  // BeiDou B1I + Beidou B3I
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    // rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B1");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    // rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 600:  // BDS B3I only
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B3");
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->beidou_dnav_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 601:  // BeiDou B3I + GPS L2C
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B3");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 602:  // BeiDou B3I + GLONASS L2 C/A
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B3");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 603:  // BeiDou B3I + GPS L2C + GLONASS L2 C/A
-                                                            if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                {
-                                                                    rp->rinex_obs_header(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, "B3");
-                                                                    // rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_iono, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-
-                                                            break;
-                                                        case 1000:  // GPS L1 C/A + GPS L2C + GPS L5
-                                                            if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gps_signal("1C 2S L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, gps_signal);
-                                                                    rp->rinex_nav_header(rp->navFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second);
-                                                                    rp->log_rinex_nav(rp->navFile, d_user_pvt_solver->gps_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        case 1001:  // GPS L1 C/A + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
-                                                            if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and
-                                                                (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                {
-                                                                    std::string gal_signal("1B 5X");
-                                                                    std::string gps_signal("1C 2S L5");
-                                                                    rp->rinex_obs_header(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gps_signal, gal_signal);
-                                                                    rp->rinex_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                    rp->log_rinex_nav(rp->navMixFile, d_user_pvt_solver->gps_ephemeris_map, d_user_pvt_solver->galileo_ephemeris_map);
-                                                                    b_rinex_header_written = true;  // do not write header anymore
-                                                                }
-                                                            break;
-                                                        default:
-                                                            break;
-                                                        }
-                                                }
-                                            if (b_rinex_header_written)  // The header is already written, we can now log the navigation message data
-                                                {
-                                                    galileo_ephemeris_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                    gps_ephemeris_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                    gps_cnav_ephemeris_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                    glonass_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                    beidou_dnav_ephemeris_iter = d_user_pvt_solver->beidou_dnav_ephemeris_map.cbegin();
-
-                                                    // Log observables into the RINEX file
-                                                    if (flag_write_RINEX_obs_output)
-                                                        {
-                                                            switch (type_of_rx)
-                                                                {
-                                                                case 1:  // GPS L1 C/A only
-                                                                    if (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_utc_model, d_user_pvt_solver->gps_iono, gps_ephemeris_iter->second);
-                                                                                    b_rinex_header_updated = true;
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 2:  // GPS L2C only
-                                                                    if (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_cnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->gps_cnav_iono);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 3:  // GPS L5
-                                                                    if (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_cnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->gps_cnav_iono);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 4:  // Galileo E1B only
-                                                                    if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, "1B");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 5:  // Galileo E5a only
-                                                                    if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, "5X");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 6:  // Galileo E5b only
-                                                                    if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, "7X");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 7:  // GPS L1 C/A + GPS L2C
-                                                                    if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_utc_model, d_user_pvt_solver->gps_iono, gps_ephemeris_iter->second);
-                                                                                    b_rinex_header_updated = true;
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 8:  // L1+L5
-                                                                    if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and ((d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0) or (d_user_pvt_solver->gps_utc_model.d_A0 != 0)))
-                                                                                {
-                                                                                    if (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0)
-                                                                                        {
-                                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->gps_cnav_iono);
-                                                                                        }
-                                                                                    else
-                                                                                        {
-                                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_utc_model, d_user_pvt_solver->gps_iono, gps_ephemeris_iter->second);
-                                                                                        }
-                                                                                    b_rinex_header_updated = true;
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 9:  // GPS L1 C/A + Galileo E1B
-                                                                    if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                                    b_rinex_header_updated = true;
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 13:  // L5+E5a
-                                                                    if ((gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0) and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;  // do not write header anymore
-                                                                        }
-                                                                    break;
-                                                                case 14:  // Galileo E1B + Galileo E5a
-                                                                    if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, "1B 5X");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 15:  // Galileo E1B + Galileo E5b
-                                                                    if (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, "1B 7X");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGalFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 23:  // GLONASS L1 C/A only
-                                                                    if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, "1C");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->glonass_gnav_utc_model.d_tau_c != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 24:  // GLONASS L2 C/A only
-                                                                    if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, "2C");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->glonass_gnav_utc_model.d_tau_c != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navGloFile, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 25:  // GLONASS L1 C/A + GLONASS L2 C/A
-                                                                    if (glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, "1C 2C");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->glonass_gnav_utc_model.d_tau_c != 0))
-                                                                        {
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 26:  // GPS L1 C/A + GLONASS L1 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                                    b_rinex_header_updated = true;  // do not write header anymore
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 27:  // Galileo E1B + GLONASS L1 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            b_rinex_header_updated = true;  // do not write header anymore
-                                                                        }
-                                                                    break;
-                                                                case 28:  // GPS L2C + GLONASS L1 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_cnav_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            b_rinex_header_updated = true;  // do not write header anymore
-                                                                        }
-                                                                    break;
-                                                                case 29:  // GPS L1 C/A + GLONASS L2 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                                    b_rinex_header_updated = true;  // do not write header anymore
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 30:  // Galileo E1B + GLONASS L2 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, galileo_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->galileo_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            b_rinex_header_updated = true;  // do not write header anymore
-                                                                        }
-                                                                    break;
-                                                                case 31:  // GPS L2C + GLONASS L2 C/A
-                                                                    if ((glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_cnav_ephemeris_iter->second, glonass_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->glonass_gnav_utc_model, d_user_pvt_solver->glonass_gnav_almanac);
-                                                                            b_rinex_header_updated = true;  // do not write header anymore
-                                                                        }
-                                                                    break;
-                                                                case 32:  // L1+E1+L5+E5a
-                                                                    if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and ((d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0) or (d_user_pvt_solver->gps_utc_model.d_A0 != 0)) and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                                {
-                                                                                    if (d_user_pvt_solver->gps_cnav_utc_model.d_A0 != 0)
-                                                                                        {
-                                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_cnav_utc_model);
-                                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_cnav_utc_model, d_user_pvt_solver->gps_cnav_iono, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                                        }
-                                                                                    else
-                                                                                        {
-                                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                                        }
-                                                                                    b_rinex_header_updated = true;  // do not write header anymore
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 33:  // L1+E1+E5a
-                                                                    if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map);
-                                                                            if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0) and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                                {
-                                                                                    rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                                    rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                                    b_rinex_header_updated = true;  // do not write header anymore
-                                                                                }
-                                                                        }
-                                                                    break;
-                                                                case 500:  // BDS B1I only
-                                                                    if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, "B1");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->beidou_dnav_utc_model.d_A0_UTC != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_utc_model, d_user_pvt_solver->beidou_dnav_iono);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 600:  // BDS B3I only
-                                                                    if (beidou_dnav_ephemeris_iter != d_user_pvt_solver->beidou_dnav_ephemeris_map.cend())
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, beidou_dnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, "B3");
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->beidou_dnav_utc_model.d_A0_UTC != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->beidou_dnav_utc_model);
-                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->beidou_dnav_utc_model, d_user_pvt_solver->beidou_dnav_iono);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 1000:  // GPS L1 C/A + GPS L2C + GPS L5
-                                                                    if ((gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                        (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, true);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                            rp->update_nav_header(rp->navFile, d_user_pvt_solver->gps_utc_model, d_user_pvt_solver->gps_iono, gps_ephemeris_iter->second);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                case 1001:  // GPS L1 C/A + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
-                                                                    if ((galileo_ephemeris_iter != d_user_pvt_solver->galileo_ephemeris_map.cend()) and
-                                                                        (gps_ephemeris_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and
-                                                                        (gps_cnav_ephemeris_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            rp->log_rinex_obs(rp->obsFile, gps_ephemeris_iter->second, gps_cnav_ephemeris_iter->second, galileo_ephemeris_iter->second, d_rx_time, gnss_observables_map, true);
-                                                                        }
-                                                                    if (!b_rinex_header_updated and (d_user_pvt_solver->gps_utc_model.d_A0 != 0) and (d_user_pvt_solver->galileo_utc_model.A0_6 != 0))
-                                                                        {
-                                                                            rp->update_obs_header(rp->obsFile, d_user_pvt_solver->gps_utc_model);
-                                                                            rp->update_nav_header(rp->navMixFile, d_user_pvt_solver->gps_iono, d_user_pvt_solver->gps_utc_model, gps_ephemeris_iter->second, d_user_pvt_solver->galileo_iono, d_user_pvt_solver->galileo_utc_model);
-                                                                            b_rinex_header_updated = true;
-                                                                        }
-                                                                    break;
-                                                                default:
-                                                                    break;
-                                                                }
-                                                        }
-                                                }
+                                            d_rp->print_rinex_annotation(d_user_pvt_solver.get(), d_gnss_observables_map, d_rx_time, d_type_of_rx, flag_write_RINEX_obs_output);
                                         }
-
-                                    // ####################### RTCM MESSAGES #################
-                                    try
+                                    if (d_rtcm_enabled)
                                         {
-                                            if (b_rtcm_writing_started and b_rtcm_enabled)
-                                                {
-                                                    switch (type_of_rx)
-                                                        {
-                                                        case 1:  // GPS L1 C/A
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 4:
-                                                        case 5:
-                                                        case 6:
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 7:  // GPS L1 C/A + GPS L2C
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                                    if ((gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, gps_cnav_eph_iter->second, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 8:  // L1+L5
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                                    if ((gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, gps_cnav_eph_iter->second, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 9:  // GPS L1 C/A + Galileo E1B
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int gal_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 13:  // L5+E5a
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-
-                                                            if (flag_write_RTCM_MSM_output and d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                                    int gal_channel = 0;
-                                                                    int gps_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend() and (d_rtcm_MT1097_rate_ms != 0))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend() and (d_rtcm_MT1077_rate_ms != 0))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, gps_cnav_eph_iter->second, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 14:
-                                                        case 15:
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 23:
-                                                        case 24:
-                                                        case 25:
-                                                            if (flag_write_RTCM_1020_output == true)
-                                                                {
-                                                                    for (auto glonass_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_ephemeris_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    auto glo_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    if (glo_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glo_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 26:  // GPS L1 C/A + GLONASS L1 C/A
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1020_output == true)
-                                                                {
-                                                                    for (auto glonass_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_ephemeris_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_ephemeris_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 27:  // GLONASS L1 C/A + Galileo E1B
-                                                            if (flag_write_RTCM_1020_output == true)
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    int gal_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 29:  // GPS L1 C/A + GLONASS L2 C/A
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1020_output == true)
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 30:  // GLONASS L2 C/A + Galileo E1B
-                                                            if (flag_write_RTCM_1020_output == true)
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    int gal_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        case 32:  // L1+E1+L5+E5a
-                                                            if (flag_write_RTCM_1019_output == true)
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_1045_output == true)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (flag_write_RTCM_MSM_output == true)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    int gal_channel = 0;
-                                                                    int gps_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            break;
-                                                        default:
-                                                            break;
-                                                        }
-                                                }
-
-                                            if (!b_rtcm_writing_started and b_rtcm_enabled)  // the first time
-                                                {
-                                                    switch (type_of_rx)
-                                                        {
-                                                        case 1:                              // GPS L1 C/A
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 4:
-                                                        case 5:
-                                                        case 6:
-                                                            if (d_rtcm_MT1045_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 7:                              // GPS L1 C/A + GPS L2C
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                                    if ((gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, gps_cnav_eph_iter->second, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 8:                              // L1+L5
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto gps_cnav_eph_iter = d_user_pvt_solver->gps_cnav_ephemeris_map.cbegin();
-                                                                    if ((gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend()) and (gps_cnav_eph_iter != d_user_pvt_solver->gps_cnav_ephemeris_map.cend()))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, gps_cnav_eph_iter->second, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 9:                              // GPS L1 C/A + Galileo E1B
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1045_rate_ms != 0)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int gal_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-
-                                                        case 13:  // L5+E5a
-                                                            if (d_rtcm_MT1045_rate_ms != 0)
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    int gal_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend() and (d_rtcm_MT1097_rate_ms != 0))
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 14:
-                                                        case 15:
-                                                            if (d_rtcm_MT1045_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 23:
-                                                        case 24:
-                                                        case 25:
-                                                            if (d_rtcm_MT1020_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto glo_gnav_ephemeris_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    if (glo_gnav_ephemeris_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glo_gnav_ephemeris_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 26:                             // GPS L1 C/A + GLONASS L1 C/A
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1020_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 27:                             // GLONASS L1 C/A + Galileo E1B
-                                                            if (d_rtcm_MT1020_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1045_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    int gal_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 29:                             // GPS L1 C/A + GLONASS L2 C/A
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1020_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    int gps_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 30:                             // GLONASS L2 C/A + Galileo E1B
-                                                            if (d_rtcm_MT1020_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin(); glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend(); glonass_gnav_eph_iter++)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1020(glonass_gnav_eph_iter->second, d_user_pvt_solver->glonass_gnav_utc_model);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1045_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    int gal_channel = 0;
-                                                                    int glo_channel = 0;
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.cbegin();
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (glo_channel == 0)
-                                                                                {
-                                                                                    if (system == "R")
-                                                                                        {
-                                                                                            glonass_gnav_eph_iter = d_user_pvt_solver->glonass_gnav_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    glo_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (glonass_gnav_eph_iter != d_user_pvt_solver->glonass_gnav_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, {}, glonass_gnav_eph_iter->second, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        case 32:                             // L1+E1+L5+E5a
-                                                            if (d_rtcm_MT1019_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gps_eph_iter : d_user_pvt_solver->gps_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1019(gps_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MT1045_rate_ms != 0)  // allows deactivating messages by setting rate = 0
-                                                                {
-                                                                    for (const auto& gal_eph_iter : d_user_pvt_solver->galileo_ephemeris_map)
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MT1045(gal_eph_iter.second);
-                                                                        }
-                                                                }
-                                                            if (d_rtcm_MSM_rate_ms != 0)
-                                                                {
-                                                                    std::map<int, Gnss_Synchro>::const_iterator gnss_observables_iter;
-                                                                    auto gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.cbegin();
-                                                                    auto gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.cbegin();
-                                                                    int gps_channel = 0;
-                                                                    int gal_channel = 0;
-                                                                    for (gnss_observables_iter = gnss_observables_map.cbegin(); gnss_observables_iter != gnss_observables_map.cend(); gnss_observables_iter++)
-                                                                        {
-                                                                            std::string system(&gnss_observables_iter->second.System, 1);
-                                                                            if (gps_channel == 0)
-                                                                                {
-                                                                                    if (system == "G")
-                                                                                        {
-                                                                                            // This is a channel with valid GPS signal
-                                                                                            gps_eph_iter = d_user_pvt_solver->gps_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gps_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                            if (gal_channel == 0)
-                                                                                {
-                                                                                    if (system == "E")
-                                                                                        {
-                                                                                            gal_eph_iter = d_user_pvt_solver->galileo_ephemeris_map.find(gnss_observables_iter->second.PRN);
-                                                                                            if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                                                {
-                                                                                                    gal_channel = 1;
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                    if (gps_eph_iter != d_user_pvt_solver->gps_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, gps_eph_iter->second, {}, {}, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                    if (gal_eph_iter != d_user_pvt_solver->galileo_ephemeris_map.cend())
-                                                                        {
-                                                                            d_rtcm_printer->Print_Rtcm_MSM(7, {}, {}, gal_eph_iter->second, {}, d_rx_time, gnss_observables_map, d_enable_rx_clock_correction, 0, 0, false, false);
-                                                                        }
-                                                                }
-                                                            b_rtcm_writing_started = true;
-                                                            break;
-                                                        default:
-                                                            break;
-                                                        }
-                                                }
-                                        }
-                                    catch (const boost::exception& ex)
-                                        {
-                                            std::cout << "RTCM boost exception: " << boost::diagnostic_information(ex) << std::endl;
-                                            LOG(ERROR) << "RTCM boost exception: " << boost::diagnostic_information(ex);
-                                        }
-                                    catch (const std::exception& ex)
-                                        {
-                                            std::cout << "RTCM std exception: " << ex.what() << std::endl;
-                                            LOG(ERROR) << "RTCM std exception: " << ex.what();
+                                            d_rtcm_printer->Print_Rtcm_Messages(d_user_pvt_solver.get(),
+                                                d_gnss_observables_map,
+                                                d_rx_time,
+                                                d_type_of_rx,
+                                                d_rtcm_MSM_rate_ms,
+                                                d_rtcm_MT1019_rate_ms,
+                                                d_rtcm_MT1020_rate_ms,
+                                                d_rtcm_MT1045_rate_ms,
+                                                d_rtcm_MT1077_rate_ms,
+                                                d_rtcm_MT1097_rate_ms,
+                                                flag_write_RTCM_MSM_output,
+                                                flag_write_RTCM_1019_output,
+                                                flag_write_RTCM_1020_output,
+                                                flag_write_RTCM_1045_output,
+                                                d_enable_rx_clock_correction);
                                         }
                                 }
                         }
 
                     // DEBUG MESSAGE: Display position in console output
-                    if (d_user_pvt_solver->is_valid_position() and flag_display_pvt)
+                    if (d_user_pvt_solver->is_valid_position() && flag_display_pvt)
                         {
                             boost::posix_time::ptime time_solution;
                             std::string UTC_solution_str;
@@ -4226,7 +2272,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                 }
                             std::streamsize ss = std::cout.precision();  // save current precision
                             std::cout.setf(std::ios::fixed, std::ios::floatfield);
-                            auto facet = new boost::posix_time::time_facet("%Y-%b-%d %H:%M:%S.%f %z");
+                            auto* facet = new boost::posix_time::time_facet("%Y-%b-%d %H:%M:%S.%f %z");
                             std::cout.imbue(std::locale(std::cout.getloc(), facet));
                             std::cout
                                 << TEXT_BOLD_GREEN
@@ -4235,7 +2281,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                 << std::fixed << std::setprecision(9)
                                 << " observations is Lat = " << d_user_pvt_solver->get_latitude() << " [deg], Long = " << d_user_pvt_solver->get_longitude()
                                 << std::fixed << std::setprecision(3)
-                                << " [deg], Height = " << d_user_pvt_solver->get_height() << " [m]" << TEXT_RESET << std::endl;
+                                << " [deg], Height = " << d_user_pvt_solver->get_height() << " [m]" << TEXT_RESET << '\n';
 
                             std::cout << std::setprecision(ss);
                             DLOG(INFO) << "RX clock offset: " << d_user_pvt_solver->get_time_offset_s() << "[s]";
@@ -4244,7 +2290,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                 << TEXT_BOLD_GREEN
                                 << "Velocity: " << std::fixed << std::setprecision(3)
                                 << "East: " << d_user_pvt_solver->get_rx_vel()[0] << " [m/s], North: " << d_user_pvt_solver->get_rx_vel()[1]
-                                << " [m/s], Up = " << d_user_pvt_solver->get_rx_vel()[2] << " [m/s]" << TEXT_RESET << std::endl;
+                                << " [m/s], Up = " << d_user_pvt_solver->get_rx_vel()[2] << " [m/s]" << TEXT_RESET << '\n';
 
                             std::cout << std::setprecision(ss);
                             DLOG(INFO) << "RX clock drift: " << d_user_pvt_solver->get_clock_drift_ppm() << " [ppm]";
@@ -4253,7 +2299,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             // gtime_t rtklib_utc_time = gpst2time(adjgpsweek(d_user_pvt_solver->gps_ephemeris_map.cbegin()->second.i_GPS_week), d_rx_time);
                             // p_time = boost::posix_time::from_time_t(rtklib_utc_time.time);
                             // p_time += boost::posix_time::microseconds(round(rtklib_utc_time.sec * 1e6));
-                            // std::cout << TEXT_MAGENTA << "Observable RX time (GPST) " << boost::posix_time::to_simple_string(p_time) << TEXT_RESET << std::endl;
+                            // std::cout << TEXT_MAGENTA << "Observable RX time (GPST) " << boost::posix_time::to_simple_string(p_time) << TEXT_RESET << '\n';
 
                             DLOG(INFO) << "Position at " << boost::posix_time::to_simple_string(d_user_pvt_solver->get_position_UTC_time())
                                        << " UTC using " << d_user_pvt_solver->get_num_valid_observations() << " observations is Lat = " << d_user_pvt_solver->get_latitude() << " [deg], Long = " << d_user_pvt_solver->get_longitude()
@@ -4262,23 +2308,30 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             /* std::cout << "Dilution of Precision at " << boost::posix_time::to_simple_string(d_user_pvt_solver->get_position_UTC_time())
                                          << " UTC using "<< d_user_pvt_solver->get_num_valid_observations() <<" observations is HDOP = " << d_user_pvt_solver->get_hdop() << " VDOP = "
                                          << d_user_pvt_solver->get_vdop()
-                                         << " GDOP = " << d_user_pvt_solver->get_gdop() << std::endl; */
+                                         << " GDOP = " << d_user_pvt_solver->get_gdop() << '\n'; */
                         }
 
                     // PVT MONITOR
                     if (d_user_pvt_solver->is_valid_position())
                         {
-                            std::shared_ptr<Monitor_Pvt> monitor_pvt = std::make_shared<Monitor_Pvt>(d_user_pvt_solver->get_monitor_pvt());
+                            const std::shared_ptr<Monitor_Pvt> monitor_pvt = std::make_shared<Monitor_Pvt>(d_user_pvt_solver->get_monitor_pvt());
 
                             // publish new position to the gnss_flowgraph channel status monitor
                             if (current_RX_time_ms % d_report_rate_ms == 0)
                                 {
                                     this->message_port_pub(pmt::mp("status"), pmt::make_any(monitor_pvt));
                                 }
-                            if (flag_monitor_pvt_enabled)
+                            if (d_flag_monitor_pvt_enabled)
                                 {
-                                    udp_sink_ptr->write_monitor_pvt(monitor_pvt);
+                                    d_udp_sink_ptr->write_monitor_pvt(monitor_pvt.get());
                                 }
+                        }
+                }
+            if (d_an_printer_enabled)
+                {
+                    if (d_local_counter_ms % static_cast<uint64_t>(d_an_rate_ms) == 0)
+                        {
+                            d_an_printer->print_packet(d_user_pvt_solver.get(), d_gnss_observables_map);
                         }
                 }
         }

@@ -3,18 +3,15 @@
  * \brief Adapts an I/Q interleaved byte integer sample stream to a gr_complex (float) stream
  * \author Javier Arribas, jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "ibyte_to_complex.h"
@@ -22,22 +19,22 @@
 #include <glog/logging.h>
 
 
-IbyteToComplex::IbyteToComplex(ConfigurationInterface* configuration, const std::string& role,
-    unsigned int in_streams, unsigned int out_streams) : config_(configuration), role_(role), in_streams_(in_streams), out_streams_(out_streams)
+IbyteToComplex::IbyteToComplex(const ConfigurationInterface* configuration, const std::string& role,
+    unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
-    std::string default_input_item_type = "byte";
-    std::string default_output_item_type = "gr_complex";
-    std::string default_dump_filename = "../data/input_filter.dat";
+    const std::string default_input_item_type("byte");
+    const std::string default_output_item_type("gr_complex");
+    const std::string default_dump_filename("../data/input_filter.dat");
 
     DLOG(INFO) << "role " << role_;
 
-    input_item_type_ = config_->property(role_ + ".input_item_type", default_input_item_type);
+    input_item_type_ = configuration->property(role_ + ".input_item_type", default_input_item_type);
 
-    dump_ = config_->property(role_ + ".dump", false);
-    dump_filename_ = config_->property(role_ + ".dump_filename", default_dump_filename);
+    dump_ = configuration->property(role_ + ".dump", false);
+    dump_filename_ = configuration->property(role_ + ".dump_filename", default_dump_filename);
     inverted_spectrum = configuration->property(role + ".inverted_spectrum", false);
 
-    size_t item_size = sizeof(gr_complex);
+    const size_t item_size = sizeof(gr_complex);
 
     gr_interleaved_char_to_complex_ = gr::blocks::interleaved_char_to_complex::make();
 

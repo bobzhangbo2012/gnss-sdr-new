@@ -6,18 +6,15 @@
  * TODO: put here supl.c author info
  * class that implements a C++ interface to external Secure User Location Protocol (SUPL) client library.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_SUPL_CLIENT_H
@@ -45,6 +42,12 @@ extern "C"
 #include <fstream>
 #include <map>
 #include <string>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup Core_Receiver_Library
+ * \{ */
+
 
 /*!
  * \brief class that implements a C++ interface to external Secure User Location Protocol (SUPL) client library..
@@ -252,16 +255,19 @@ public:
     void print_assistance();
 
 private:
+    bool read_gal_almanac_from_gsa(const std::string& file_name);
+    // assistance protocol structure
+    supl_ctx_t ctx{};
+    // assistance data
+    supl_assist_t assist{};
     // GSM CELL INFO
     int mcc;
     int mns;
     int lac;
     int ci;
-    // assistance protocol structure
-    supl_ctx_t ctx{};
-    // assistance data
-    supl_assist_t assist{};
-    bool read_gal_almanac_from_gsa(const std::string& file_name);
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_SUPL_CLIENT_H

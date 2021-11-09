@@ -8,18 +8,15 @@
  * instantiated directly if all inherited pure virtual methods have been
  * implemented by that class or a parent class.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -27,6 +24,12 @@
 #define GNSS_SDR_OBSERVABLES_INTERFACE_H
 
 #include "gnss_block_interface.h"
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup GNSS_Block_Interfaces
+ * \{ */
+
 
 /*!
  * \brief This abstract class represents an interface to an observables block.
@@ -43,4 +46,7 @@ public:
     virtual void reset() = 0;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_OBSERVABLES_INTERFACE_H

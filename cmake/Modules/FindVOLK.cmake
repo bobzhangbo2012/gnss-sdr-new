@@ -1,10 +1,8 @@
-# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2011-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 #
 # Provides the following imported target:
@@ -16,6 +14,10 @@
 ########################################################################
 if(NOT COMMAND feature_summary)
     include(FeatureSummary)
+endif()
+
+if(NOT PKG_CONFIG_FOUND)
+    include(FindPkgConfig)
 endif()
 
 pkg_check_modules(PC_VOLK volk QUIET)
@@ -124,12 +126,22 @@ endif()
 
 mark_as_advanced(VOLK_LIBRARIES VOLK_INCLUDE_DIRS VOLK_VERSION)
 
+if(NOT ORC_FOUND)
+    find_package(ORC QUIET)
+endif()
+if(ORC_LIBRARIES_STATIC)
+    set(VOLK_LINK_LIBRARIES ${VOLK_LIBRARIES} ${ORC_LIBRARIES_STATIC})
+    set(VOLK_INCLUDE_DIRS ${VOLK_INCLUDE_DIRS} ${ORC_INCLUDE_DIRS})
+else()
+    set(VOLK_LINK_LIBRARIES ${VOLK_LIBRARIES})
+endif()
+
 if(VOLK_FOUND AND NOT TARGET Volk::volk)
     add_library(Volk::volk SHARED IMPORTED)
     set_target_properties(Volk::volk PROPERTIES
         IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
         IMPORTED_LOCATION "${VOLK_LIBRARIES}"
         INTERFACE_INCLUDE_DIRECTORIES "${VOLK_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${VOLK_LIBRARIES}"
+        INTERFACE_LINK_LIBRARIES "${VOLK_LINK_LIBRARIES}"
     )
 endif()

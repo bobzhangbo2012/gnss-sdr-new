@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 set(INPUT_FILTER_GR_BLOCKS_SOURCES
@@ -25,19 +22,36 @@ set(INPUT_FILTER_GR_BLOCKS_HEADERS
 list(SORT INPUT_FILTER_GR_BLOCKS_HEADERS)
 list(SORT INPUT_FILTER_GR_BLOCKS_SOURCES)
 
-source_group(Headers FILES ${INPUT_FILTER_GR_BLOCKS_HEADERS})
-
-add_library(input_filter_gr_blocks
-    ${INPUT_FILTER_GR_BLOCKS_SOURCES}
-    ${INPUT_FILTER_GR_BLOCKS_HEADERS})
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(input_filter_gr_blocks STATIC)
+    target_sources(input_filter_gr_blocks
+        PRIVATE
+            ${INPUT_FILTER_GR_BLOCKS_SOURCES}
+        PUBLIC
+            ${INPUT_FILTER_GR_BLOCKS_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${INPUT_FILTER_GR_BLOCKS_HEADERS})
+    add_library(input_filter_gr_blocks
+        ${INPUT_FILTER_GR_BLOCKS_SOURCES}
+        ${INPUT_FILTER_GR_BLOCKS_HEADERS}
+    )
+endif()
 
 target_link_libraries(input_filter_gr_blocks
     PUBLIC
         Gnuradio::blocks
         Gnuradio::filter
+        Volkgnsssdr::volkgnsssdr
+        algorithms_libs
     PRIVATE
         Volk::volk
         Log4cpp::log4cpp
+)
+
+target_include_directories(input_filter_gr_blocks
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/core/interfaces
 )
 
 if(GNURADIO_USES_STD_POINTERS)

@@ -5,57 +5,55 @@
  *                    Antonio Ramos, 2018. antonio.ramos(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "acquisition_dump_reader.h"
 #include <matio.h>
 #include <cmath>
 #include <iostream>
+#include <utility>
 
 bool Acquisition_Dump_Reader::read_binary_acq()
 {
     mat_t* matfile = Mat_Open(d_dump_filename.c_str(), MAT_ACC_RDONLY);
     if (matfile == nullptr)
         {
-            std::cout << "¡¡¡Unreachable Acquisition dump file!!!" << std::endl;
+            std::cout << "¡¡¡Unreachable Acquisition dump file!!!\n";
             return false;
         }
     matvar_t* var_ = Mat_VarRead(matfile, "acq_grid");
     if (var_ == nullptr)
         {
-            std::cout << "¡¡¡Unreachable grid variable into Acquisition dump file!!!" << std::endl;
+            std::cout << "¡¡¡Unreachable grid variable into Acquisition dump file!!!\n";
             Mat_Close(matfile);
             return false;
         }
     if (var_->rank != 2)
         {
-            std::cout << "Invalid Acquisition dump file: rank error" << std::endl;
+            std::cout << "Invalid Acquisition dump file: rank error\n";
             Mat_VarFree(var_);
             Mat_Close(matfile);
             return false;
         }
     if ((var_->dims[0] != d_samples_per_code) or (var_->dims[1] != d_num_doppler_bins))
         {
-            std::cout << "Invalid Acquisition dump file: dimension matrix error" << std::endl;
+            std::cout << "Invalid Acquisition dump file: dimension matrix error\n";
             if (var_->dims[0] != d_samples_per_code)
                 {
-                    std::cout << "Expected " << d_samples_per_code << " samples per code. Obtained " << var_->dims[0] << std::endl;
+                    std::cout << "Expected " << d_samples_per_code << " samples per code. Obtained " << var_->dims[0] << '\n';
                 }
             if (var_->dims[1] != d_num_doppler_bins)
                 {
-                    std::cout << "Expected " << d_num_doppler_bins << " Doppler bins. Obtained " << var_->dims[1] << std::endl;
+                    std::cout << "Expected " << d_num_doppler_bins << " Doppler bins. Obtained " << var_->dims[1] << '\n';
                 }
             Mat_VarFree(var_);
             Mat_Close(matfile);
@@ -63,7 +61,7 @@ bool Acquisition_Dump_Reader::read_binary_acq()
         }
     if (var_->data_type != MAT_T_SINGLE)
         {
-            std::cout << "Invalid Acquisition dump file: data type error" << std::endl;
+            std::cout << "Invalid Acquisition dump file: data type error\n";
             Mat_VarFree(var_);
             Mat_Close(matfile);
             return false;
@@ -164,7 +162,7 @@ Acquisition_Dump_Reader::Acquisition_Dump_Reader(const std::string& basename,
         }
     else
         {
-            std::cout << "¡¡¡Unreachable Acquisition dump file!!!" << std::endl;
+            std::cout << "¡¡¡Unreachable Acquisition dump file!!!\n";
         }
     acq_doppler_hz = 0.0;
     acq_delay_samples = 0.0;
@@ -232,7 +230,7 @@ Acquisition_Dump_Reader::Acquisition_Dump_Reader(const std::string& basename,
 }
 
 // Copy constructor
-Acquisition_Dump_Reader::Acquisition_Dump_Reader(Acquisition_Dump_Reader&& other) noexcept
+Acquisition_Dump_Reader::Acquisition_Dump_Reader(const Acquisition_Dump_Reader& other) noexcept
 {
     *this = other;
 }
@@ -251,9 +249,9 @@ Acquisition_Dump_Reader& Acquisition_Dump_Reader::operator=(const Acquisition_Du
 
 
 // Move constructor
-Acquisition_Dump_Reader::Acquisition_Dump_Reader(const Acquisition_Dump_Reader& other) noexcept
+Acquisition_Dump_Reader::Acquisition_Dump_Reader(Acquisition_Dump_Reader&& other) noexcept
 {
-    *this = other;
+    *this = std::move(other);
 }
 
 

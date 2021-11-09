@@ -3,18 +3,15 @@
  * \brief Adapts a byte (8-bits) interleaved sample stream into a std::complex<short> stream
  * \author Javier Arribas (jarribas(at)cttc.es)
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -30,12 +27,13 @@ interleaved_byte_to_complex_short_sptr make_interleaved_byte_to_complex_short()
 }
 
 
-interleaved_byte_to_complex_short::interleaved_byte_to_complex_short() : sync_decimator("interleaved_byte_to_complex_short",
-                                                                             gr::io_signature::make(1, 1, sizeof(int8_t)),
-                                                                             gr::io_signature::make(1, 1, sizeof(lv_16sc_t)),  // lv_16sc_t is a Volk's typedef for std::complex<short int>
-                                                                             2)
+interleaved_byte_to_complex_short::interleaved_byte_to_complex_short()
+    : sync_decimator("interleaved_byte_to_complex_short",
+          gr::io_signature::make(1, 1, sizeof(int8_t)),
+          gr::io_signature::make(1, 1, sizeof(lv_16sc_t)),  // lv_16sc_t is a Volk's typedef for std::complex<short int>
+          2)
 {
-    const int alignment_multiple = volk_get_alignment() / sizeof(lv_16sc_t);
+    const auto alignment_multiple = static_cast<int>(volk_get_alignment() / sizeof(lv_16sc_t));
     set_alignment(std::max(1, alignment_multiple));
 }
 

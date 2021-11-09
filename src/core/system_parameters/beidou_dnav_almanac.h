@@ -1,53 +1,44 @@
 /*!
  * \file beidou_dnav_almanac.h
  * \brief  Interface of a Beidou DNAV Almanac storage
- *
  * \author Sergi Segura, 2018. sergi.segura.munoz(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
 #ifndef GNSS_SDR_BEIDOU_DNAV_ALMANAC_H
 #define GNSS_SDR_BEIDOU_DNAV_ALMANAC_H
 
+#include "gnss_almanac.h"
 #include <boost/serialization/nvp.hpp>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup System_Parameters
+ * \{ */
 
 
 /*!
  * \brief This class is a storage for the BeiDou D1 almanac
  */
-class Beidou_Dnav_Almanac
+class Beidou_Dnav_Almanac : public Gnss_Almanac
 {
 public:
-    unsigned int i_satellite_PRN;  //!< SV PRN NUMBER
-    double d_Delta_i;
-    double d_Toa;             //!< Almanac data reference time of week [s]
-    double d_M_0;             //!< Mean Anomaly at Reference Time [semi-circles]
-    double d_e_eccentricity;  //!< Eccentricity [dimensionless]
-    double d_sqrt_A;          //!< Square Root of the Semi-Major Axis [sqrt(m)]
-    double d_OMEGA0;          //!< Longitude of Ascending Node of Orbit Plane at Weekly Epoch [semi-circles]
-    double d_OMEGA;           //!< Argument of Perigee [semi-cicles]
-    double d_OMEGA_DOT;       //!< Rate of Right Ascension [semi-circles/s]
-    int i_SV_health;          // SV Health
-    double d_A_f0;            //!< Coefficient 0 of code phase offset model [s]
-    double d_A_f1;            //!< Coefficient 1 of code phase offset model [s/s]
-
     /*!
      * Default constructor
      */
-    Beidou_Dnav_Almanac();
+    Beidou_Dnav_Almanac() = default;
+
+    int SV_health{};  //!< SV Health
 
     template <class Archive>
 
@@ -56,21 +47,23 @@ public:
         if (version)
             {
             };
-        ar& BOOST_SERIALIZATION_NVP(i_satellite_PRN);
-        ar& BOOST_SERIALIZATION_NVP(d_Delta_i);
-        ar& BOOST_SERIALIZATION_NVP(d_Toa);
-        // ar& BOOST_SERIALIZATION_NVP(i_WNa);
-        ar& BOOST_SERIALIZATION_NVP(d_M_0);
-        ar& BOOST_SERIALIZATION_NVP(d_e_eccentricity);
-        ar& BOOST_SERIALIZATION_NVP(d_sqrt_A);
-        ar& BOOST_SERIALIZATION_NVP(d_OMEGA0);
-        ar& BOOST_SERIALIZATION_NVP(d_OMEGA);
-        ar& BOOST_SERIALIZATION_NVP(d_OMEGA_DOT);
-        ar& BOOST_SERIALIZATION_NVP(i_SV_health);
-        // ar& BOOST_SERIALIZATION_NVP(i_AS_status);
-        ar& BOOST_SERIALIZATION_NVP(d_A_f0);
-        ar& BOOST_SERIALIZATION_NVP(d_A_f1);
+        ar& BOOST_SERIALIZATION_NVP(PRN);
+        ar& BOOST_SERIALIZATION_NVP(delta_i);
+        ar& BOOST_SERIALIZATION_NVP(toa);
+        ar& BOOST_SERIALIZATION_NVP(WNa);
+        ar& BOOST_SERIALIZATION_NVP(M_0);
+        ar& BOOST_SERIALIZATION_NVP(ecc);
+        ar& BOOST_SERIALIZATION_NVP(sqrtA);
+        ar& BOOST_SERIALIZATION_NVP(OMEGA_0);
+        ar& BOOST_SERIALIZATION_NVP(omega);
+        ar& BOOST_SERIALIZATION_NVP(OMEGAdot);
+        ar& BOOST_SERIALIZATION_NVP(af0);
+        ar& BOOST_SERIALIZATION_NVP(af1);
+        ar& BOOST_SERIALIZATION_NVP(SV_health);
     }
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_BEIDOU_DNAV_ALMANAC_H

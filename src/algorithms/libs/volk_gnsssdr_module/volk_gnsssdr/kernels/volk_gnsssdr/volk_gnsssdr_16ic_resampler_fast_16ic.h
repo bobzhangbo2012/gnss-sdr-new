@@ -8,18 +8,15 @@
  * VOLK_GNSSSDR kernel that multiplies two 16 bits vectors (8 bits the real part
  * and 8 bits the imaginary part) and accumulates them
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -245,7 +242,7 @@ static inline void volk_gnsssdr_16ic_resampler_fast_16ic_u_sse2(lv_16sc_t* resul
 #endif /* LV_HAVE_SSE2 */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_16ic_resampler_fast_16ic_neon(lv_16sc_t* result, const lv_16sc_t* local_code, float rem_code_phase_chips, float code_phase_step_chips, int code_length_chips, unsigned int num_output_samples)  //, int* scratch_buffer, float* scratch_buffer_float)
@@ -331,6 +328,6 @@ static inline void volk_gnsssdr_16ic_resampler_fast_16ic_neon(lv_16sc_t* result,
         }
 }
 
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 #endif /* INCLUDED_volk_gnsssdr_16ic_resampler_fast_16ic_H */

@@ -3,18 +3,15 @@
  * \brief Implements Unit Test for the NotchFilter class.
  * \author Antonio Ramos, 2017. antonio.ramos(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include <gflags/gflags.h>
@@ -23,6 +20,7 @@
 #include <chrono>
 #include <complex>
 #include <cstdint>
+#include <thread>
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
@@ -32,6 +30,7 @@
 #include "file_signal_source.h"
 #include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
+#include "gnss_sdr_make_unique.h"
 #include "gnss_sdr_valve.h"
 #include "in_memory_configuration.h"
 #include "notch_filter.h"
@@ -53,6 +52,14 @@ protected:
     }
     ~NotchFilterTest() override = default;
 
+    bool stop = false;
+    std::thread ch_thread;
+    void start_queue();
+    void wait_message();
+    void process_message();
+    void stop_queue();
+    pmt::pmt_t message;
+
     void init();
     void configure_gr_complex_gr_complex();
     std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
@@ -61,6 +68,36 @@ protected:
     size_t item_size;
     int nsamples;
 };
+
+
+void NotchFilterTest::start_queue()
+{
+    stop = false;
+    ch_thread = std::thread(&NotchFilterTest::wait_message, this);
+}
+
+
+void NotchFilterTest::wait_message()
+{
+    while (!stop)
+        {
+            queue->wait_and_pop(message);
+            process_message();
+        }
+}
+
+
+void NotchFilterTest::process_message()
+{
+    stop_queue();
+    top_block->stop();
+}
+
+
+void NotchFilterTest::stop_queue()
+{
+    stop = true;
+}
 
 
 void NotchFilterTest::init()
@@ -72,17 +109,19 @@ void NotchFilterTest::init()
     config->set_property("InputFilter.segments_reset", "5000000");
 }
 
+
 void NotchFilterTest::configure_gr_complex_gr_complex()
 {
     config->set_property("InputFilter.input_item_type", "gr_complex");
     config->set_property("InputFilter.output_item_type", "gr_complex");
 }
 
+
 TEST_F(NotchFilterTest, InstantiateGrComplexGrComplex)
 {
     init();
     configure_gr_complex_gr_complex();
-    std::unique_ptr<NotchFilter> filter(new NotchFilter(config.get(), "InputFilter", 1, 1));
+    auto filter = std::make_unique<NotchFilter>(config.get(), "InputFilter", 1, 1);
     int res = 0;
     if (filter)
         {
@@ -90,6 +129,7 @@ TEST_F(NotchFilterTest, InstantiateGrComplexGrComplex)
         }
     ASSERT_EQ(1, res);
 }
+
 
 TEST_F(NotchFilterTest, ConnectAndRun)
 {
@@ -100,26 +140,27 @@ TEST_F(NotchFilterTest, ConnectAndRun)
     top_block = gr::make_top_block("Notch filter test");
     init();
     configure_gr_complex_gr_complex();
-    std::shared_ptr<NotchFilter> filter = std::make_shared<NotchFilter>(config.get(), "InputFilter", 1, 1);
+    auto filter = std::make_shared<NotchFilter>(config.get(), "InputFilter", 1, 1);
     item_size = sizeof(gr_complex);
     ASSERT_NO_THROW({
         filter->connect(top_block);
         auto source = gr::analog::sig_source_c::make(fs_in, gr::analog::GR_SIN_WAVE, 1000.0, 1.0, gr_complex(0.0));
-        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue);
+        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue.get());
         auto null_sink = gr::blocks::null_sink::make(item_size);
 
         top_block->connect(source, 0, valve, 0);
         top_block->connect(valve, 0, filter->get_left_block(), 0);
         top_block->connect(filter->get_right_block(), 0, null_sink, 0);
     }) << "Failure connecting the top_block.";
-
+    start_queue();
     EXPECT_NO_THROW({
         start = std::chrono::system_clock::now();
         top_block->run();  // Start threads and wait
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
     }) << "Failure running the top_block.";
-    std::cout << "Filtered " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    ch_thread.join();
+    std::cout << "Filtered " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }
 
 
@@ -131,8 +172,8 @@ TEST_F(NotchFilterTest, ConnectAndRunGrcomplex)
     top_block = gr::make_top_block("Notch filter test");
     init();
     configure_gr_complex_gr_complex();
-    std::shared_ptr<NotchFilter> filter = std::make_shared<NotchFilter>(config.get(), "InputFilter", 1, 1);
-    std::shared_ptr<InMemoryConfiguration> config2 = std::make_shared<InMemoryConfiguration>();
+    auto filter = std::make_shared<NotchFilter>(config.get(), "InputFilter", 1, 1);
+    auto config2 = std::make_shared<InMemoryConfiguration>();
 
     config2->set_property("Test_Source.samples", std::to_string(nsamples));
     config2->set_property("Test_Source.sampling_frequency", "4000000");
@@ -146,7 +187,7 @@ TEST_F(NotchFilterTest, ConnectAndRunGrcomplex)
     ASSERT_NO_THROW({
         filter->connect(top_block);
 
-        std::shared_ptr<FileSignalSource> source(new FileSignalSource(config2.get(), "Test_Source", 0, 1, queue));
+        auto source = std::make_shared<FileSignalSource>(config2.get(), "Test_Source", 0, 1, queue.get());
         source->connect(top_block);
 
         auto null_sink = gr::blocks::null_sink::make(item_size);
@@ -154,12 +195,13 @@ TEST_F(NotchFilterTest, ConnectAndRunGrcomplex)
         top_block->connect(source->get_right_block(), 0, filter->get_left_block(), 0);
         top_block->connect(filter->get_right_block(), 0, null_sink, 0);
     }) << "Failure connecting the top_block.";
-
+    start_queue();
     EXPECT_NO_THROW({
         start = std::chrono::system_clock::now();
         top_block->run();  // Start threads and wait
         end = std::chrono::system_clock::now();
         elapsed_seconds = end - start;
     }) << "Failure running the top_block.";
-    std::cout << "Filtered " << nsamples << " gr_complex samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    ch_thread.join();
+    std::cout << "Filtered " << nsamples << " gr_complex samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }

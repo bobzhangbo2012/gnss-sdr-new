@@ -3,54 +3,51 @@
  * \brief CTTC Experimental GNSS 8 channels array signal source
  * \author Javier Arribas, jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "raw_array_signal_source.h"
 #include "concurrent_queue.h"
 #include "configuration_interface.h"
+#include "gnss_sdr_string_literals.h"
 #include <glog/logging.h>
 #include <gnuradio/blocks/file_sink.h>
 #include <pmt/pmt.h>
 #include <dbfcttc/raw_array.h>
 
 
-RawArraySignalSource::RawArraySignalSource(ConfigurationInterface* configuration,
-    std::string role, unsigned int in_stream, unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(queue)
+using namespace std::string_literals;
+
+RawArraySignalSource::RawArraySignalSource(const ConfigurationInterface* configuration,
+    std::string role, unsigned int in_stream, unsigned int out_stream, Concurrent_Queue<pmt::pmt_t>* queue)
+    : SignalSourceBase(configuration, role, "Raw_Array_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream)
 {
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_file = "./data/raw_array_source.dat";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_file("./data/raw_array_source.dat");
     item_type_ = configuration->property(role + ".item_type", default_item_type);
 
     // dump_ = configuration->property(role + ".dump", false);
     // dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
     dump_ = false;
 
-    std::string default_ethernet_dev = "eth0";
+    const std::string default_ethernet_dev("eth0");
     eth_device_ = configuration->property(role + ".ethernet_dev", default_ethernet_dev);
 
-    int channels_;
-    channels_ = configuration->property(role + ".channels", 8);
+    int channels_ = configuration->property(role + ".channels", 8);
 
-    int snapshots_per_frame_;
-    snapshots_per_frame_ = configuration->property(role + ".snapshots_per_frame", 80);
+    int snapshots_per_frame_ = configuration->property(role + ".snapshots_per_frame", 80);
 
-    int inter_frame_delay_;
-    inter_frame_delay_ = configuration->property(role + ".inter_frame_delay", 10);
+    int inter_frame_delay_ = configuration->property(role + ".inter_frame_delay", 10);
 
-    int sampling_freq_;
-    sampling_freq_ = configuration->property(role + ".sampling_freq", 5000000);
+    int sampling_freq_ = configuration->property(role + ".sampling_freq", 5000000);
 
     if (item_type_ == "gr_complex")
         {

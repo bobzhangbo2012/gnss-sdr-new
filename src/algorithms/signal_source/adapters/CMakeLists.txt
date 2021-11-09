@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 # Optional drivers
@@ -42,19 +39,6 @@ if(ENABLE_AD9361)
     ###############################################
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} ad9361_fpga_signal_source.cc)
     set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} ad9361_fpga_signal_source.h)
-endif()
-
-
-if(ENABLE_GN3S)
-    ##############################################
-    # GN3S (USB dongle)
-    ##############################################
-    if(NOT GRGN3S_FOUND)
-        message(" gr-gn3s not found, install it from https://github.com/gnss-sdr/gr-gn3s")
-        message(FATAL_ERROR "gr-gn3s required for building gnss-sdr with this option enabled")
-    endif()
-    set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} gn3s_signal_source.cc)
-    set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} gn3s_signal_source.h)
 endif()
 
 
@@ -95,7 +79,10 @@ endif()
 
 
 set(SIGNAL_SOURCE_ADAPTER_SOURCES
+    signal_source_base.cc
+    file_source_base.cc
     file_signal_source.cc
+    fifo_signal_source.cc
     multichannel_file_signal_source.cc
     gen_signal_source.cc
     nsr_file_signal_source.cc
@@ -109,7 +96,10 @@ set(SIGNAL_SOURCE_ADAPTER_SOURCES
 )
 
 set(SIGNAL_SOURCE_ADAPTER_HEADERS
+    signal_source_base.h
+    file_source_base.h
     file_signal_source.h
+    fifo_signal_source.h
     multichannel_file_signal_source.h
     gen_signal_source.h
     nsr_file_signal_source.h
@@ -125,29 +115,45 @@ set(SIGNAL_SOURCE_ADAPTER_HEADERS
 list(SORT SIGNAL_SOURCE_ADAPTER_HEADERS)
 list(SORT SIGNAL_SOURCE_ADAPTER_SOURCES)
 
-source_group(Headers FILES ${SIGNAL_SOURCE_ADAPTER_HEADERS})
-
-add_library(signal_source_adapters
-    ${SIGNAL_SOURCE_ADAPTER_SOURCES}
-    ${SIGNAL_SOURCE_ADAPTER_HEADERS}
-)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(signal_source_adapters STATIC)
+    target_sources(signal_source_adapters
+        PRIVATE
+            ${SIGNAL_SOURCE_ADAPTER_SOURCES}
+        PUBLIC
+            ${SIGNAL_SOURCE_ADAPTER_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${SIGNAL_SOURCE_ADAPTER_HEADERS})
+    add_library(signal_source_adapters
+        ${SIGNAL_SOURCE_ADAPTER_SOURCES}
+        ${SIGNAL_SOURCE_ADAPTER_HEADERS}
+    )
+endif()
 
 target_include_directories(signal_source_adapters
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/core/interfaces
 )
 
+if(ENABLE_FPGA OR ENABLE_AD9361)
+    target_link_libraries(signal_source_adapters
+        PUBLIC
+            signal_source_libs
+        PRIVATE
+            core_libs
+    )
+endif()
+
 target_link_libraries(signal_source_adapters
     PUBLIC
         Boost::headers
-        Gnuradio::runtime
         Gnuradio::blocks
         signal_source_gr_blocks
-        signal_source_libs
     PRIVATE
+        algorithms_libs
         gnss_sdr_flags
         core_system_parameters
-        Gflags::gflags
         Glog::glog
         Volk::volk
 )
@@ -169,8 +175,7 @@ if(ENABLE_UHD)
     target_link_libraries(signal_source_adapters
         PUBLIC
             Gnuradio::uhd
-        PRIVATE
-            Uhd::uhd
+            Uhd::uhd  # for uhd/config.hpp in gnuradio/uhd/usrp_source.h
     )
 endif()
 
@@ -205,13 +210,6 @@ if(ENABLE_FLEXIBAND AND TELEORBIT_FOUND)
     )
 endif()
 
-if(ENABLE_GN3S AND GRGN3S_FOUND)
-    target_link_libraries(signal_source_adapters
-        PRIVATE
-            Gnuradio::gn3s
-    )
-endif()
-
 if(ENABLE_ARRAY AND GRDBFCTTC_FOUND)
     target_link_libraries(signal_source_adapters
         PRIVATE
@@ -241,6 +239,11 @@ if(ENABLE_PLUTOSDR OR ENABLE_FMCOMMS2)
         target_link_libraries(signal_source_adapters
             PRIVATE
                 Gnuradio::analog
+        )
+    endif()
+    if(GR_IIO_TEMPLATIZED_API)
+        target_compile_definitions(signal_source_adapters
+            PUBLIC -DGR_IIO_TEMPLATIZED_API=1
         )
     endif()
 endif()

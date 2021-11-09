@@ -3,18 +3,16 @@
  * \brief Conjugate a stream of lv_16sc_t ( std::complex<short> )
  * \author Carles Fernandez Prades, cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
+ * -----------------------------------------------------------------------------
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "conjugate_sc.h"
@@ -32,7 +30,7 @@ conjugate_sc::conjugate_sc() : gr::sync_block("conjugate_sc",
                                    gr::io_signature::make(1, 1, sizeof(lv_16sc_t)),
                                    gr::io_signature::make(1, 1, sizeof(lv_16sc_t)))
 {
-    const int alignment_multiple = volk_gnsssdr_get_alignment() / sizeof(lv_16sc_t);
+    const auto alignment_multiple = static_cast<int>(volk_gnsssdr_get_alignment() / sizeof(lv_16sc_t));
     set_alignment(std::max(1, alignment_multiple));
 }
 

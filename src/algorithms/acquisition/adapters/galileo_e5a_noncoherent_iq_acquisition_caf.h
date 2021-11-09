@@ -2,7 +2,7 @@
  * \file galileo_e5a_noncoherent_iq_acquisition_caf.h
  * \brief Adapts a PCPS acquisition block to an AcquisitionInterface for
  *  Galileo E5a data and pilot Signals
-  * \author Marc Sales, 2014. marcsales92(at)gmail.com
+ * \author Marc Sales, 2014. marcsales92(at)gmail.com
  * \based on work from:
  *          <ul>
  *          <li> Javier Arribas, 2011. jarribas(at)cttc.es
@@ -10,18 +10,15 @@
  *          <li> Marc Molina, 2013. marc.molina.pena@gmail.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_H
@@ -34,12 +31,18 @@
 #include <string>
 #include <vector>
 
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_adapters
+ * \{ */
+
+
 class ConfigurationInterface;
 
 class GalileoE5aNoncoherentIQAcquisitionCaf : public AcquisitionInterface
 {
 public:
-    GalileoE5aNoncoherentIQAcquisitionCaf(ConfigurationInterface* configuration,
+    GalileoE5aNoncoherentIQAcquisitionCaf(const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -144,33 +147,37 @@ public:
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
 private:
-    ConfigurationInterface* configuration_;
+    float calculate_threshold(float pfa) const;
+
+    const ConfigurationInterface* configuration_;
     galileo_e5a_noncoherentIQ_acquisition_caf_cc_sptr acquisition_cc_;
-    size_t item_size_;
-    std::string item_type_;
-    unsigned int vector_length_;
-    unsigned int code_length_;
-    bool bit_transition_flag_;
-    unsigned int channel_;
     std::weak_ptr<ChannelFsm> channel_fsm_;
+    std::vector<std::complex<float>> codeI_;
+    std::vector<std::complex<float>> codeQ_;
+    std::string item_type_;
+    std::string role_;
+    std::string dump_filename_;
+    Gnss_Synchro* gnss_synchro_;
+    int64_t fs_in_;
+    size_t item_size_;
     float threshold_;
+    int Zero_padding;
+    int CAF_window_hz_;
+    int code_length_;
+    unsigned int vector_length_;
+    unsigned int channel_;
     unsigned int doppler_max_;
     unsigned int doppler_step_;
     unsigned int sampled_ms_;
     unsigned int max_dwells_;
-    int64_t fs_in_;
-    bool dump_;
-    std::string dump_filename_;
-    int Zero_padding;
-    int CAF_window_hz_;
-    std::vector<std::complex<float>> codeI_;
-    std::vector<std::complex<float>> codeQ_;
-    bool both_signal_components;
-    Gnss_Synchro* gnss_synchro_;
-    std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-    float calculate_threshold(float pfa);
+    bool bit_transition_flag_;
+    bool both_signal_components;
+    bool dump_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GALILEO_E5A_NONCOHERENT_IQ_ACQUISITION_CAF_H

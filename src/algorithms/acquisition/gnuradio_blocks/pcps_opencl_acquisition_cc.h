@@ -15,7 +15,7 @@
  *
  * Kay Borre book: K.Borre, D.M.Akos, N.Bertelsen, P.Rinder, and S.H.Jensen,
  * "A Software-Defined GPS and Galileo Receiver. A Single-Frequency
- * Approach", Birkha user, 2007. pp 81-84
+ * Approach", Birkhauser, 2007. pp 81-84
  *
  * \authors <ul>
  *          <li> Javier Arribas, 2011. jarribas(at)cttc.es
@@ -23,18 +23,15 @@
  *          <li> Marc Molina, 2013. marc.molina.pena@gmail.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_PCPS_OPENCL_ACQUISITION_CC_H
@@ -42,10 +39,11 @@
 
 #define CL_SILENCE_DEPRECATION
 #include "channel_fsm.h"
+#include "gnss_block_interface.h"
+#include "gnss_sdr_fft.h"
 #include "gnss_synchro.h"
 #include "opencl/fft_internal.h"
 #include <gnuradio/block.h>
-#include <gnuradio/fft/fft.h>
 #include <gnuradio/gr_complex.h>
 #include "opencl/cl.hpp"
 #include <cstdint>
@@ -53,18 +51,16 @@
 #include <memory>  // for weak_ptr
 #include <string>
 #include <vector>
-#if GNURADIO_USES_STD_POINTERS
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_gnuradio_blocks
+ * \{ */
+
 
 class pcps_opencl_acquisition_cc;
 
-#if GNURADIO_USES_STD_POINTERS
-typedef std::shared_ptr<pcps_opencl_acquisition_cc> pcps_opencl_acquisition_cc_sptr;
-#else
-typedef boost::shared_ptr<pcps_opencl_acquisition_cc> pcps_opencl_acquisition_cc_sptr;
-#endif
+using pcps_opencl_acquisition_cc_sptr = gnss_shared_ptr<pcps_opencl_acquisition_cc>;
 
 pcps_opencl_acquisition_cc_sptr pcps_make_opencl_acquisition_cc(
     uint32_t sampled_ms,
@@ -75,7 +71,8 @@ pcps_opencl_acquisition_cc_sptr pcps_make_opencl_acquisition_cc(
     int samples_per_code,
     bool bit_transition_flag,
     bool dump,
-    const std::string& dump_filename);
+    const std::string& dump_filename,
+    bool enable_monitor_output);
 
 /*!
  * \brief This class implements a Parallel Code Phase Search Acquisition.
@@ -210,61 +207,21 @@ private:
         int samples_per_ms, int samples_per_code,
         bool bit_transition_flag,
         bool dump,
-        const std::string& dump_filename);
+        const std::string& dump_filename,
+        bool enable_monitor_output);
 
     pcps_opencl_acquisition_cc(uint32_t sampled_ms, uint32_t max_dwells,
         uint32_t doppler_max, int64_t fs_in,
         int samples_per_ms, int samples_per_code,
         bool bit_transition_flag,
         bool dump,
-        const std::string& dump_filename);
+        const std::string& dump_filename,
+        bool enable_monitor_output);
 
     void calculate_magnitudes(gr_complex* fft_begin, int doppler_shift,
         int doppler_offset);
 
     int init_opencl_environment(const std::string& kernel_filename);
-
-    int64_t d_fs_in;
-    int d_samples_per_ms;
-    int d_samples_per_code;
-    uint32_t d_doppler_resolution;
-    float d_threshold;
-    std::string d_satellite_str;
-    uint32_t d_doppler_max;
-    uint32_t d_doppler_step;
-    uint32_t d_sampled_ms;
-    uint32_t d_max_dwells;
-    uint32_t d_well_count;
-    uint32_t d_fft_size;
-    uint32_t d_fft_size_pow2;
-    int* d_max_doppler_indexs;
-    uint64_t d_sample_counter;
-    std::vector<std::vector<gr_complex>> d_grid_doppler_wipeoffs;
-    uint32_t d_num_doppler_bins;
-    std::vector<gr_complex> d_fft_codes;
-    std::shared_ptr<gr::fft::fft_complex> d_fft_if;
-    std::shared_ptr<gr::fft::fft_complex> d_ifft;
-    Gnss_Synchro* d_gnss_synchro;
-    uint32_t d_code_phase;
-    float d_doppler_freq;
-    float d_mag;
-    std::vector<float> d_magnitude;
-    float d_input_power;
-    float d_test_statistics;
-    bool d_bit_transition_flag;
-    std::ofstream d_dump_file;
-    bool d_active;
-    int d_state;
-    bool d_core_working;
-    bool d_dump;
-    uint32_t d_channel;
-    std::string d_dump_filename;
-    std::vector<gr_complex> d_zero_vector;
-    std::vector<std::vector<gr_complex>> d_in_buffer;
-    std::vector<uint64_t> d_sample_counter_buffer;
-    uint32_t d_in_dwell_count;
-    std::weak_ptr<ChannelFsm> d_channel_fsm;
-    int d_opencl;
 
     cl::Platform d_cl_platform;
     cl::Device d_cl_device;
@@ -279,6 +236,63 @@ private:
     cl::CommandQueue* d_cl_queue;
     clFFT_Plan d_cl_fft_plan;
     cl_int d_cl_fft_batch_size;
+
+    std::weak_ptr<ChannelFsm> d_channel_fsm;
+
+    std::unique_ptr<gnss_fft_complex_fwd> d_fft_if;
+    std::unique_ptr<gnss_fft_complex_rev> d_ifft;
+
+    std::vector<std::vector<gr_complex>> d_grid_doppler_wipeoffs;
+    std::vector<std::vector<gr_complex>> d_in_buffer;
+    std::vector<gr_complex> d_fft_codes;
+    std::vector<gr_complex> d_zero_vector;
+    std::vector<uint64_t> d_sample_counter_buffer;
+    std::vector<float> d_magnitude;
+
+    std::string d_dump_filename;
+    std::string d_satellite_str;
+
+    std::ofstream d_dump_file;
+
+    Gnss_Synchro* d_gnss_synchro;
+
+    int64_t d_fs_in;
+    uint64_t d_sample_counter;
+
+    int* d_max_doppler_indexs;
+
+    float d_threshold;
+    float d_doppler_freq;
+    float d_mag;
+    float d_input_power;
+    float d_test_statistics;
+
+    int d_samples_per_ms;
+    int d_samples_per_code;
+    int d_state;
+    int d_opencl;
+
+    uint32_t d_doppler_resolution;
+    uint32_t d_doppler_max;
+    uint32_t d_doppler_step;
+    uint32_t d_sampled_ms;
+    uint32_t d_max_dwells;
+    uint32_t d_well_count;
+    uint32_t d_fft_size;
+    uint32_t d_fft_size_pow2;
+    uint32_t d_num_doppler_bins;
+    uint32_t d_code_phase;
+    uint32_t d_channel;
+    uint32_t d_in_dwell_count;
+
+    bool d_bit_transition_flag;
+    bool d_active;
+    bool d_core_working;
+    bool d_dump;
+    bool d_enable_monitor_output;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_PCPS_OPENCL_ACQUISITION_CC_H

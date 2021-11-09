@@ -1,11 +1,9 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
+
 
 set(OPT_TRACKING_BLOCKS_SOURCES "")
 set(OPT_TRACKING_BLOCKS_HEADERS "")
@@ -61,32 +59,28 @@ set(TRACKING_GR_BLOCKS_HEADERS
 list(SORT TRACKING_GR_BLOCKS_HEADERS)
 list(SORT TRACKING_GR_BLOCKS_SOURCES)
 
-source_group(Headers FILES ${TRACKING_GR_BLOCKS_HEADERS})
-
-add_library(tracking_gr_blocks
-    ${TRACKING_GR_BLOCKS_SOURCES}
-    ${TRACKING_GR_BLOCKS_HEADERS}
-)
-
-if(${FILESYSTEM_FOUND})
-    target_compile_definitions(tracking_gr_blocks PRIVATE -DHAS_STD_FILESYSTEM=1)
-    if(${find_experimental})
-        target_compile_definitions(tracking_gr_blocks PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
-    endif()
-    target_link_libraries(tracking_gr_blocks PRIVATE std::filesystem)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(tracking_gr_blocks STATIC)
+    target_sources(tracking_gr_blocks
+        PRIVATE
+            ${TRACKING_GR_BLOCKS_SOURCES}
+        PUBLIC
+            ${TRACKING_GR_BLOCKS_HEADERS}
+    )
 else()
-    target_link_libraries(tracking_gr_blocks PRIVATE Boost::filesystem)
+    source_group(Headers FILES ${TRACKING_GR_BLOCKS_HEADERS})
+    add_library(tracking_gr_blocks
+        ${TRACKING_GR_BLOCKS_SOURCES}
+        ${TRACKING_GR_BLOCKS_HEADERS}
+    )
 endif()
 
 target_link_libraries(tracking_gr_blocks
     PUBLIC
-        Boost::headers
-        Armadillo::armadillo
         Gnuradio::blocks
-        Volkgnsssdr::volkgnsssdr
-        algorithms_libs
         tracking_libs
     PRIVATE
+        algorithms_libs
         Matio::matio
         gnss_sdr_flags
         Glog::glog
@@ -98,20 +92,72 @@ if(GNURADIO_USES_STD_POINTERS)
     )
 endif()
 
-if(ENABLE_CUDA AND NOT CMAKE_VERSION VERSION_GREATER 3.11)
-    target_link_libraries(tracking_gr_blocks
-        PUBLIC
-            ${CUDA_LIBRARIES}
-    )
-    target_include_directories(tracking_gr_blocks
-        PUBLIC
-            ${CUDA_INCLUDE_DIRS}
+target_include_directories(tracking_gr_blocks
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/src/core/interfaces
+)
+
+if(ENABLE_CUDA)
+    if(CMAKE_VERSION VERSION_GREATER 3.11)
+        target_include_directories(tracking_gr_blocks
+            PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        )
+    else()
+        target_link_libraries(tracking_gr_blocks
+            PUBLIC cuda_correlator_lib
+        )
+        target_include_directories(tracking_gr_blocks
+            PUBLIC ${CUDA_INCLUDE_DIRS}
+        )
+    endif()
+    set_target_properties(tracking_gr_blocks PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
     )
 endif()
 
 if(ENABLE_ARMA_NO_DEBUG)
     target_compile_definitions(tracking_gr_blocks
         PUBLIC -DARMA_NO_BOUND_CHECKING=1
+    )
+endif()
+
+if(USE_GENERIC_LAMBDAS)
+    set(has_generic_lambdas HAS_GENERIC_LAMBDA=1)
+    set(no_has_generic_lambdas HAS_GENERIC_LAMBDA=0)
+    target_compile_definitions(tracking_gr_blocks
+        PRIVATE
+            "$<$<COMPILE_FEATURES:cxx_generic_lambdas>:${has_generic_lambdas}>"
+            "$<$<NOT:$<COMPILE_FEATURES:cxx_generic_lambdas>>:${no_has_generic_lambdas}>"
+    )
+else()
+    target_compile_definitions(tracking_gr_blocks
+        PRIVATE
+            -DHAS_GENERIC_LAMBDA=0
+    )
+endif()
+
+if(USE_BOOST_BIND_PLACEHOLDERS)
+    target_compile_definitions(tracking_gr_blocks
+        PRIVATE
+            -DUSE_BOOST_BIND_PLACEHOLDERS=1
+    )
+endif()
+
+if(has_span)
+    target_compile_definitions(tracking_gr_blocks
+        PUBLIC -DHAS_STD_SPAN=1
+    )
+endif()
+
+if(PMT_USES_BOOST_ANY)
+    target_compile_definitions(tracking_gr_blocks
+        PRIVATE
+            -DPMT_USES_BOOST_ANY=1
+    )
+    target_link_libraries(tracking_gr_blocks
+        PRIVATE
+            Boost::headers
     )
 endif()
 

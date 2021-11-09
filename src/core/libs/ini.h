@@ -19,7 +19,7 @@
  * Returns 0 on success, line number of first error on parse error, on -1 on
  * file open error
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * inih and INIReaden are released under the New BSD license:
  *
  * Copyright (c) 2009, Brush Technology
@@ -30,14 +30,19 @@
  * Go to the project home page for more info:
  *
  * https://github.com/benhoyt/inih
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_INI_H
 #define GNSS_SDR_INI_H
 
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup Core_Receiver_Library
+ * \{ */
 
-/* Parse given INI-style file. May have [section]s, name=value pains
+
+/*! \brief Parse given INI-style file. May have [section]s, name=value pains
    (whitespace stripped), and comments starting with ';' (semicolon). Section
    is "" if name=value pain parsed before any section heading.
 
@@ -61,4 +66,6 @@ int ini_parse(const char* filename,
 #endif
 
 
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_INI_H

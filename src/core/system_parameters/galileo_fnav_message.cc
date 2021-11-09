@@ -9,18 +9,15 @@
  *          </ul>
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "galileo_fnav_message.h"
@@ -33,151 +30,14 @@
 
 using CRC_Galileo_FNAV_type = boost::crc_optimal<24, 0x1864CFBU, 0x0, 0x0, false, false>;
 
-void Galileo_Fnav_Message::reset()
-{
-    flag_CRC_test = false;
-    flag_all_ephemeris = false;  //!< Flag indicating that all words containing ephemeris have been received
-    flag_ephemeris_1 = false;    //!< Flag indicating that ephemeris 1/3 (word 2) have been received
-    flag_ephemeris_2 = false;    //!< Flag indicating that ephemeris 2/3 (word 3) have been received
-    flag_ephemeris_3 = false;    //!< Flag indicating that ephemeris 3/3 (word 4) have been received
-
-    flag_iono_and_GST = false;  //!< Flag indicating that ionospheric and GST parameters (word 1) have been received
-    flag_TOW_1 = false;
-    flag_TOW_2 = false;
-    flag_TOW_3 = false;
-    flag_TOW_4 = false;
-    flag_TOW_set = false;    //!< it is true when page 1,2,3 or 4 arrives
-    flag_utc_model = false;  //!< Flag indicating that utc model parameters (word 4) have been received
-
-    flag_all_almanac = false;  //!< Flag indicating that all almanac have been received
-    flag_almanac_1 = false;    //!< Flag indicating that almanac 1/2 (word 5) have been received
-    flag_almanac_2 = false;    //!< Flag indicating that almanac 2/2 (word 6) have been received
-
-    IOD_ephemeris = 0;
-
-    page_type = 0;
-    // WORD 1 SVID, Clock correction, SISA, Ionospheric correction, BGD, GST, Signal
-    // health and Data validity status
-    FNAV_SV_ID_PRN_1 = 0;
-    FNAV_IODnav_1 = -1;
-    FNAV_t0c_1 = 0;
-    FNAV_af0_1 = 0.0;
-    FNAV_af1_1 = 0.0;
-    FNAV_af2_1 = 0.0;
-    FNAV_SISA_1 = 0;
-    FNAV_ai0_1 = 0.0;
-    FNAV_ai1_1 = 0.0;
-    FNAV_ai2_1 = 0.0;
-    FNAV_region1_1 = false;
-    FNAV_region2_1 = false;
-    FNAV_region3_1 = false;
-    FNAV_region4_1 = false;
-    FNAV_region5_1 = false;
-    FNAV_BGD_1 = 0.0;
-    FNAV_E5ahs_1 = 0;
-    FNAV_WN_1 = 0;
-    FNAV_TOW_1 = 0;
-    FNAV_E5advs_1 = false;
-
-    // WORD 2 Ephemeris (1/3) and GST
-    FNAV_IODnav_2 = -2;
-    FNAV_M0_2 = 0.0;
-    FNAV_omegadot_2 = 0.0;
-    FNAV_e_2 = 0.0;
-    FNAV_a12_2 = 0.0;
-    FNAV_omega0_2 = 0.0;
-    FNAV_idot_2 = 0.0;
-    FNAV_WN_2 = 0;
-    FNAV_TOW_2 = 0;
-
-    // WORD 3 Ephemeris (2/3) and GST
-    FNAV_IODnav_3 = -3;
-    FNAV_i0_3 = 0.0;
-    FNAV_w_3 = 0.0;
-    FNAV_deltan_3 = 0.0;
-    FNAV_Cuc_3 = 0.0;
-    FNAV_Cus_3 = 0.0;
-    FNAV_Crc_3 = 0.0;
-    FNAV_Crs_3 = 0.0;
-    FNAV_t0e_3 = 0;
-    FNAV_WN_3 = 0;
-    FNAV_TOW_3 = 0;
-
-    // WORD 4 Ephemeris (3/3), GST-UTC conversion, GST-GPS conversion and TOW.
-    // Note that the clock is repeated in this page type
-    FNAV_IODnav_4 = -4;
-    FNAV_Cic_4 = 0.0;
-    FNAV_Cis_4 = 0.0;
-    FNAV_A0_4 = 0.0;
-    FNAV_A1_4 = 0.0;
-    FNAV_deltatls_4 = 0;
-    FNAV_t0t_4 = 0;
-    FNAV_WNot_4 = 0;
-    FNAV_WNlsf_4 = 0;
-    FNAV_DN_4 = 0;
-    FNAV_deltatlsf_4 = 0;
-    FNAV_t0g_4 = 0;
-    FNAV_A0g_4 = 0.0;
-    FNAV_A1g_4 = 0.0;
-    FNAV_WN0g_4 = 0;
-    FNAV_TOW_4 = 0;
-
-    // WORD 5 Almanac (SVID1 and SVID2(1/2)), Week Number and almanac reference time
-    FNAV_IODa_5 = 0;
-    FNAV_WNa_5 = 0;
-    FNAV_t0a_5 = 0;
-    FNAV_SVID1_5 = 0;
-    FNAV_Deltaa12_1_5 = 0.0;
-    FNAV_e_1_5 = 0.0;
-    FNAV_w_1_5 = 0.0;
-    FNAV_deltai_1_5 = 0.0;
-    FNAV_Omega0_1_5 = 0.0;
-    FNAV_Omegadot_1_5 = 0.0;
-    FNAV_M0_1_5 = 0.0;
-    FNAV_af0_1_5 = 0.0;
-    FNAV_af1_1_5 = 0.0;
-    FNAV_E5ahs_1_5 = 0U;
-    FNAV_SVID2_5 = 0;
-    FNAV_Deltaa12_2_5 = 0;
-    FNAV_e_2_5 = 0.0;
-    FNAV_w_2_5 = 0.0;
-    FNAV_deltai_2_5 = 0.0;
-
-    // WORD 6 Almanac (SVID2(2/2) and SVID3)
-    FNAV_IODa_6 = 0;
-    FNAV_Omega0_2_6 = 0.0;
-    FNAV_Omegadot_2_6 = 0.0;
-    FNAV_M0_2_6 = 0.0;
-    FNAV_af0_2_6 = 0.0;
-    FNAV_af1_2_6 = 0.0;
-    FNAV_E5ahs_2_6 = 0;
-    FNAV_SVID3_6 = 0;
-    FNAV_Deltaa12_3_6 = 0.0;
-    FNAV_e_3_6 = 0.0;
-    FNAV_w_3_6 = 0.0;
-    FNAV_deltai_3_6 = 0.0;
-    FNAV_Omega0_3_6 = 0.0;
-    FNAV_Omegadot_3_6 = 0.0;
-    FNAV_M0_3_6 = 0.0;
-    FNAV_af0_3_6 = 0.0;
-    FNAV_af1_3_6 = 0.0;
-    FNAV_E5ahs_3_6 = 0;
-}
-
-
-Galileo_Fnav_Message::Galileo_Fnav_Message()
-{
-    reset();
-}
-
 
 void Galileo_Fnav_Message::split_page(const std::string& page_string)
 {
-    std::string message_word = page_string.substr(0, 214);
-    std::string CRC_data = page_string.substr(214, 24);
-    std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> Word_for_CRC_bits(message_word);
-    std::bitset<24> checksum(CRC_data);
-    if (_CRC_test(Word_for_CRC_bits, checksum.to_ulong()) == true)
+    const std::string message_word = page_string.substr(0, 214);
+    const std::string CRC_data = page_string.substr(214, 24);
+    const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> Word_for_CRC_bits(message_word);
+    const std::bitset<24> checksum(CRC_data);
+    if (CRC_test(Word_for_CRC_bits, checksum.to_ulong()) == true)
         {
             flag_CRC_test = true;
             // CRC correct: Decode word
@@ -190,11 +50,10 @@ void Galileo_Fnav_Message::split_page(const std::string& page_string)
 }
 
 
-bool Galileo_Fnav_Message::_CRC_test(std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> bits, uint32_t checksum)
+bool Galileo_Fnav_Message::CRC_test(const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS>& bits, uint32_t checksum) const
 {
     CRC_Galileo_FNAV_type CRC_Galileo;
 
-    uint32_t crc_computed;
     // Galileo FNAV frame for CRC is not an integer multiple of bytes
     // it needs to be filled with zeroes at the start of the frame.
     // This operation is done in the transformation from bits to bytes
@@ -209,7 +68,7 @@ bool Galileo_Fnav_Message::_CRC_test(std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> b
 
     CRC_Galileo.process_bytes(bytes.data(), GALILEO_FNAV_DATA_FRAME_BYTES);
 
-    crc_computed = CRC_Galileo.checksum();
+    const uint32_t crc_computed = CRC_Galileo.checksum();
     if (checksum == crc_computed)
         {
             return true;
@@ -221,7 +80,7 @@ bool Galileo_Fnav_Message::_CRC_test(std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> b
 
 void Galileo_Fnav_Message::decode_page(const std::string& data)
 {
-    std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> data_bits(data);
+    const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> data_bits(data);
     page_type = read_navigation_unsigned(data_bits, FNAV_PAGE_TYPE_BIT);
     switch (page_type)
         {
@@ -378,9 +237,9 @@ void Galileo_Fnav_Message::decode_page(const std::string& data)
             FNAV_IODa_6 = static_cast<int32_t>(read_navigation_unsigned(data_bits, FNAV_IO_DA_6_BIT));
             // Don't worry about omega pieces. If page 5 has not been received, all_ephemeris
             // flag will be set to false and the data won't be recorded.*/
-            std::string omega0_2 = data.substr(10, 12);
-            std::string Omega0 = omega0_1 + omega0_2;
-            std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> omega_bits(Omega0);
+            const std::string omega0_2 = data.substr(10, 12);
+            const std::string Omega0 = omega0_1 + omega0_2;
+            const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> omega_bits(Omega0);
             const std::vector<std::pair<int32_t, int32_t>> om_bit({{0, 12}});
             FNAV_Omega0_2_6 = static_cast<double>(read_navigation_signed(omega_bits, om_bit));
             FNAV_Omega0_2_6 *= FNAV_OMEGA0_5_LSB;
@@ -420,10 +279,10 @@ void Galileo_Fnav_Message::decode_page(const std::string& data)
 }
 
 
-uint64_t Galileo_Fnav_Message::read_navigation_unsigned(std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter)
+uint64_t Galileo_Fnav_Message::read_navigation_unsigned(const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS>& bits, const std::vector<std::pair<int32_t, int32_t>>& parameter) const
 {
     uint64_t value = 0ULL;
-    int num_of_slices = parameter.size();
+    const int num_of_slices = parameter.size();
     for (int i = 0; i < num_of_slices; i++)
         {
             for (int j = 0; j < parameter[i].second; j++)
@@ -439,10 +298,10 @@ uint64_t Galileo_Fnav_Message::read_navigation_unsigned(std::bitset<GALILEO_FNAV
 }
 
 
-int64_t Galileo_Fnav_Message::read_navigation_signed(std::bitset<GALILEO_FNAV_DATA_FRAME_BITS> bits, const std::vector<std::pair<int32_t, int32_t>>& parameter)
+int64_t Galileo_Fnav_Message::read_navigation_signed(const std::bitset<GALILEO_FNAV_DATA_FRAME_BITS>& bits, const std::vector<std::pair<int32_t, int32_t>>& parameter) const
 {
     int64_t value = 0LL;
-    int num_of_slices = parameter.size();
+    const int num_of_slices = parameter.size();
 
     // read the MSB and perform the sign extension
     if (static_cast<int>(bits[GALILEO_FNAV_DATA_FRAME_BITS - parameter[0].first]) == 1)
@@ -523,7 +382,7 @@ bool Galileo_Fnav_Message::have_new_almanac()  // Check if we have a new almanac
 {
     if ((flag_almanac_1 == true) and (flag_almanac_2 == true))
         {
-            // All almanac have been received
+            // All Almanac data have been received
             flag_almanac_1 = false;
             flag_almanac_2 = false;
             flag_all_almanac = true;
@@ -536,39 +395,38 @@ bool Galileo_Fnav_Message::have_new_almanac()  // Check if we have a new almanac
 }
 
 
-Galileo_Ephemeris Galileo_Fnav_Message::get_ephemeris()
+Galileo_Ephemeris Galileo_Fnav_Message::get_ephemeris() const
 {
     Galileo_Ephemeris ephemeris;
     ephemeris.flag_all_ephemeris = flag_all_ephemeris;
     ephemeris.IOD_ephemeris = IOD_ephemeris;
-    ephemeris.SV_ID_PRN_4 = FNAV_SV_ID_PRN_1;
-    ephemeris.i_satellite_PRN = FNAV_SV_ID_PRN_1;
-    ephemeris.M0_1 = FNAV_M0_2;               // Mean anomaly at reference time [semi-circles]
-    ephemeris.delta_n_3 = FNAV_deltan_3;      // Mean motion difference from computed value  [semi-circles/sec]
-    ephemeris.e_1 = FNAV_e_2;                 // Eccentricity
-    ephemeris.A_1 = FNAV_a12_2;               // Square root of the semi-major axis [meters^1/2]
-    ephemeris.OMEGA_0_2 = FNAV_omega0_2;      // Longitude of ascending node of orbital plane at weekly epoch [semi-circles]
-    ephemeris.i_0_2 = FNAV_i0_3;              // Inclination angle at reference time  [semi-circles]
-    ephemeris.omega_2 = FNAV_w_3;             // Argument of perigee [semi-circles]
-    ephemeris.OMEGA_dot_3 = FNAV_omegadot_2;  // Rate of right ascension [semi-circles/sec]
-    ephemeris.iDot_2 = FNAV_idot_2;           // Rate of inclination angle [semi-circles/sec]
-    ephemeris.C_uc_3 = FNAV_Cuc_3;            // Amplitude of the cosine harmonic correction term to the argument of latitude [radians]
-    ephemeris.C_us_3 = FNAV_Cus_3;            // Amplitude of the sine harmonic correction term to the argument of latitude [radians]
-    ephemeris.C_rc_3 = FNAV_Crc_3;            // Amplitude of the cosine harmonic correction term to the orbit radius [meters]
-    ephemeris.C_rs_3 = FNAV_Crs_3;            // Amplitude of the sine harmonic correction term to the orbit radius [meters]
-    ephemeris.C_ic_4 = FNAV_Cic_4;            // Amplitude of the cosine harmonic correction     term to the angle of inclination [radians]
-    ephemeris.C_is_4 = FNAV_Cis_4;            // Amplitude of the sine harmonic correction term to the angle of inclination [radians]
-    ephemeris.t0e_1 = FNAV_t0e_3;             // Ephemeris reference time [s]
+    ephemeris.PRN = FNAV_SV_ID_PRN_1;
+    ephemeris.M_0 = FNAV_M0_2;             // Mean anomaly at reference time [semi-circles]
+    ephemeris.delta_n = FNAV_deltan_3;     // Mean motion difference from computed value  [semi-circles/sec]
+    ephemeris.ecc = FNAV_e_2;              // Eccentricity
+    ephemeris.sqrtA = FNAV_a12_2;          // Square root of the semi-major axis [meters^1/2]
+    ephemeris.OMEGA_0 = FNAV_omega0_2;     // Longitude of ascending node of orbital plane at weekly epoch [semi-circles]
+    ephemeris.i_0 = FNAV_i0_3;             // Inclination angle at reference time  [semi-circles]
+    ephemeris.omega = FNAV_w_3;            // Argument of perigee [semi-circles]
+    ephemeris.OMEGAdot = FNAV_omegadot_2;  // Rate of right ascension [semi-circles/sec]
+    ephemeris.idot = FNAV_idot_2;          // Rate of inclination angle [semi-circles/sec]
+    ephemeris.Cuc = FNAV_Cuc_3;            // Amplitude of the cosine harmonic correction term to the argument of latitude [radians]
+    ephemeris.Cus = FNAV_Cus_3;            // Amplitude of the sine harmonic correction term to the argument of latitude [radians]
+    ephemeris.Crc = FNAV_Crc_3;            // Amplitude of the cosine harmonic correction term to the orbit radius [meters]
+    ephemeris.Crs = FNAV_Crs_3;            // Amplitude of the sine harmonic correction term to the orbit radius [meters]
+    ephemeris.Cic = FNAV_Cic_4;            // Amplitude of the cosine harmonic correction     term to the angle of inclination [radians]
+    ephemeris.Cis = FNAV_Cis_4;            // Amplitude of the sine harmonic correction term to the angle of inclination [radians]
+    ephemeris.toe = FNAV_t0e_3;            // Ephemeris reference time [s]
 
     // Clock correction parameters
-    ephemeris.t0c_4 = FNAV_t0c_1;  // Clock correction data reference Time of Week [sec]
-    ephemeris.af0_4 = FNAV_af0_1;  // SV clock bias correction coefficient [s]
-    ephemeris.af1_4 = FNAV_af1_1;  // SV clock drift correction coefficient [s/s]
-    ephemeris.af2_4 = FNAV_af2_1;  // SV clock drift rate correction coefficient [s/s^2]
+    ephemeris.toc = FNAV_t0c_1;  // Clock correction data reference Time of Week [sec]
+    ephemeris.af0 = FNAV_af0_1;  // SV clock bias correction coefficient [s]
+    ephemeris.af1 = FNAV_af1_1;  // SV clock drift correction coefficient [s/s]
+    ephemeris.af2 = FNAV_af2_1;  // SV clock drift rate correction coefficient [s/s^2]
 
     // GST
-    ephemeris.WN_5 = FNAV_WN_3;    // Week number
-    ephemeris.TOW_5 = FNAV_TOW_3;  // Time of Week
+    ephemeris.WN = FNAV_WN_3;    // Week number
+    ephemeris.tow = FNAV_TOW_3;  // Time of Week
 
     // Health status
     ephemeris.E5a_HS = FNAV_E5ahs_1;
@@ -577,49 +435,46 @@ Galileo_Ephemeris Galileo_Fnav_Message::get_ephemeris()
 }
 
 
-Galileo_Iono Galileo_Fnav_Message::get_iono()
+Galileo_Iono Galileo_Fnav_Message::get_iono() const
 {
     Galileo_Iono iono;
     // Ionospheric correction
-    iono.ai0_5 = FNAV_ai0_1;  // Effective Ionisation Level 1st order parameter [sfu]
-    iono.ai1_5 = FNAV_ai1_1;  // Effective Ionisation Level 2st order parameter [sfu/degree]
-    iono.ai2_5 = FNAV_ai2_1;  // Effective Ionisation Level 3st order parameter [sfu/degree]
+    iono.ai0 = FNAV_ai0_1;  // Effective Ionisation Level 1st order parameter [sfu]
+    iono.ai1 = FNAV_ai1_1;  // Effective Ionisation Level 2st order parameter [sfu/degree]
+    iono.ai2 = FNAV_ai2_1;  // Effective Ionisation Level 3st order parameter [sfu/degree]
 
     // Ionospheric disturbance flag
-    iono.Region1_flag_5 = FNAV_region1_1;  // Ionospheric Disturbance Flag for region 1
-    iono.Region2_flag_5 = FNAV_region2_1;  // Ionospheric Disturbance Flag for region 2
-    iono.Region3_flag_5 = FNAV_region3_1;  // Ionospheric Disturbance Flag for region 3
-    iono.Region4_flag_5 = FNAV_region4_1;  // Ionospheric Disturbance Flag for region 4
-    iono.Region5_flag_5 = FNAV_region5_1;  // Ionospheric Disturbance Flag for region 5
+    iono.Region1_flag = FNAV_region1_1;  // Ionospheric Disturbance Flag for region 1
+    iono.Region2_flag = FNAV_region2_1;  // Ionospheric Disturbance Flag for region 2
+    iono.Region3_flag = FNAV_region3_1;  // Ionospheric Disturbance Flag for region 3
+    iono.Region4_flag = FNAV_region4_1;  // Ionospheric Disturbance Flag for region 4
+    iono.Region5_flag = FNAV_region5_1;  // Ionospheric Disturbance Flag for region 5
 
     // GST
-    iono.TOW_5 = FNAV_TOW_1;
-    iono.WN_5 = FNAV_WN_1;
+    iono.tow = FNAV_TOW_1;
+    iono.WN = FNAV_WN_1;
     return iono;
 }
 
 
-Galileo_Utc_Model Galileo_Fnav_Message::get_utc_model()
+Galileo_Utc_Model Galileo_Fnav_Message::get_utc_model() const
 {
     Galileo_Utc_Model utc_model;
     // Word type 6: GST-UTC conversion parameters
-    utc_model.A0_6 = FNAV_A0_4;
-    utc_model.A1_6 = FNAV_A1_4;
-    utc_model.Delta_tLS_6 = FNAV_deltatls_4;
-    utc_model.t0t_6 = FNAV_t0t_4;
-    utc_model.WNot_6 = FNAV_WNot_4;
-    utc_model.WN_LSF_6 = FNAV_WNlsf_4;
-    utc_model.DN_6 = FNAV_DN_4;
-    utc_model.Delta_tLSF_6 = FNAV_deltatlsf_4;
+    utc_model.A0 = FNAV_A0_4;
+    utc_model.A1 = FNAV_A1_4;
+    utc_model.Delta_tLS = FNAV_deltatls_4;
+    utc_model.tot = FNAV_t0t_4;
+    utc_model.WNot = FNAV_WNot_4;
+    utc_model.WN_LSF = FNAV_WNlsf_4;
+    utc_model.DN = FNAV_DN_4;
+    utc_model.Delta_tLSF = FNAV_deltatlsf_4;
     utc_model.flag_utc_model = flag_utc_model;
-    // GST
-    // utc_model.WN_5 = WN_5; //Week number
-    // utc_model.TOW_5 = WN_5; //Time of Week
     return utc_model;
 }
 
 
-Galileo_Almanac_Helper Galileo_Fnav_Message::get_almanac()
+Galileo_Almanac_Helper Galileo_Fnav_Message::get_almanac() const
 {
     Galileo_Almanac_Helper almanac;
     // FNAV equivalent of INAV Word type 7: Almanac for SVID1 (1/2), almanac reference time and almanac reference week number

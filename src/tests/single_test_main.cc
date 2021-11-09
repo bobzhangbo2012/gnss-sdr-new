@@ -4,18 +4,15 @@
  * \author Carles Fernandez-Prades, 2012. cfernandez(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -27,6 +24,12 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#if GFLAGS_OLD_NAMESPACE
+namespace gflags
+{
+using namespace google;
+}
+#endif
 
 Concurrent_Queue<Gps_Acq_Assist> global_gps_acq_assist_queue;
 
@@ -36,7 +39,7 @@ DECLARE_string(log_dir);
 
 int main(int argc, char **argv)
 {
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
     try
         {
             testing::InitGoogleTest(&argc, argv);
@@ -54,6 +57,6 @@ int main(int argc, char **argv)
         {
             LOG(WARNING) << "Unexpected catch";
         }
-    google::ShutDownCommandLineFlags();
+    gflags::ShutDownCommandLineFlags();
     return res;
 }

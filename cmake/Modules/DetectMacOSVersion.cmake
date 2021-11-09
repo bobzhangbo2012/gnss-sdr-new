@@ -1,13 +1,23 @@
-# Copyright (C) 2020 (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2011-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 execute_process(COMMAND uname -v OUTPUT_VARIABLE DARWIN_VERSION)
 string(REGEX MATCH "[0-9]+" DARWIN_VERSION ${DARWIN_VERSION})
+
+if(${DARWIN_VERSION} VERSION_GREATER "19")
+    execute_process(COMMAND awk "/SOFTWARE LICENSE AGREEMENT FOR macOS/" "/System/Library/CoreServices/Setup Assistant.app/Contents/Resources/en.lproj/OSXSoftwareLicense.rtf" OUTPUT_VARIABLE macOS_NAME)
+    if(macOS_NAME)
+        string(REGEX MATCH "macOS*([^\n\r]*)" macOS_NAME ${macOS_NAME})
+        string(REGEX REPLACE "macOS " "" macOS_NAME ${macOS_NAME})
+        string(REGEX REPLACE ".$" "" macOS_NAME ${macOS_NAME})
+        execute_process(COMMAND sw_vers -productVersion OUTPUT_VARIABLE macOS_VERSION)
+        string(REGEX REPLACE "\n$" "" macOS_VERSION ${macOS_VERSION})
+        set(MACOS_DISTRIBUTION "macOS ${macOS_NAME} ${macOS_VERSION} (${CMAKE_SYSTEM_PROCESSOR})")
+    endif()
+endif()
 
 if(${DARWIN_VERSION} MATCHES "19")
     set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++17")

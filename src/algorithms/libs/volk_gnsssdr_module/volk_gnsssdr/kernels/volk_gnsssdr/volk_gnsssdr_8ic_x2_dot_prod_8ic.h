@@ -8,18 +8,15 @@
  * VOLK_GNSSSDR kernel that multiplies two 16 bits vectors (8 bits the real part
  * and 8 bits the imaginary part) and accumulates them.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -425,7 +422,7 @@ static inline void volk_gnsssdr_8ic_x2_dot_prod_8ic_u_orc(lv_8sc_t* result, cons
 #endif /* LV_HAVE_ORC */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_8ic_x2_dot_prod_8ic_neon(lv_8sc_t* result, const lv_8sc_t* in_a, const lv_8sc_t* in_b, unsigned int num_points)
@@ -484,6 +481,6 @@ static inline void volk_gnsssdr_8ic_x2_dot_prod_8ic_neon(lv_8sc_t* result, const
 
     *result += dotProduct;
 }
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 #endif /*INCLUDED_volk_gnsssdr_8ic_x2_dot_prod_8ic_H*/

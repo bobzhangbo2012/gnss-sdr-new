@@ -8,18 +8,15 @@
  * VOLK_GNSSSDR kernel that multiplies N 16 bits vectors by a common vector and accumulates the results in N 16 bits short complex outputs.
  * It is optimized to perform the N tap correlation process in GNSS receivers.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -367,7 +364,6 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_a_avx2(lv_16sc_t* resul
             volk_gnsssdr_free(realcacc);
             volk_gnsssdr_free(imagcacc);
         }
-    _mm256_zeroupper();
 
     for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
         {
@@ -462,7 +458,6 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_u_avx2(lv_16sc_t* resul
             volk_gnsssdr_free(realcacc);
             volk_gnsssdr_free(imagcacc);
         }
-    _mm256_zeroupper();
 
     for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
         {
@@ -478,7 +473,7 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_u_avx2(lv_16sc_t* resul
 #endif /* LV_HAVE_AVX2 */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon(lv_16sc_t* result, const lv_16sc_t* in_common, const lv_16sc_t** in_a, int num_a_vectors, unsigned int num_points)
@@ -564,10 +559,10 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon(lv_16sc_t* result,
                 }
         }
 }
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon_vma(lv_16sc_t* result, const lv_16sc_t* in_common, const lv_16sc_t** in_a, int num_a_vectors, unsigned int num_points)
@@ -642,10 +637,10 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon_vma(lv_16sc_t* res
                 }
         }
 }
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon_optvma(lv_16sc_t* result, const lv_16sc_t* in_common, const lv_16sc_t** in_a, int num_a_vectors, unsigned int num_points)
@@ -725,6 +720,6 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_xn_neon_optvma(lv_16sc_t* 
                 }
         }
 }
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 #endif /* INCLUDED_volk_gnsssdr_16ic_xn_dot_prod_16ic_xn_H */

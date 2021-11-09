@@ -9,25 +9,23 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkha user, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GLONASS_L2_CA_DLL_PLL_C_AID_TRACKING_SC_H
 #define GNSS_SDR_GLONASS_L2_CA_DLL_PLL_C_AID_TRACKING_SC_H
 
 #include "cpu_multicorrelator_16sc.h"
-#include "glonass_l2_signal_processing.h"
+#include "glonass_l2_signal_replica.h"
+#include "gnss_block_interface.h"
 #include "gnss_synchro.h"
 #include "tracking_2nd_DLL_filter.h"
 #include "tracking_FLL_PLL_filter.h"
@@ -37,20 +35,16 @@
 #include <fstream>
 #include <map>
 #include <string>
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_gnuradio_blocks
+ * \{ */
+
 
 class glonass_l2_ca_dll_pll_c_aid_tracking_sc;
 
-#if GNURADIO_USES_STD_POINTERS
-using glonass_l2_ca_dll_pll_c_aid_tracking_sc_sptr = std::shared_ptr<glonass_l2_ca_dll_pll_c_aid_tracking_sc>;
-#else
-using glonass_l2_ca_dll_pll_c_aid_tracking_sc_sptr = boost::shared_ptr<glonass_l2_ca_dll_pll_c_aid_tracking_sc>;
-#endif
-
+using glonass_l2_ca_dll_pll_c_aid_tracking_sc_sptr = gnss_shared_ptr<glonass_l2_ca_dll_pll_c_aid_tracking_sc>;
 
 glonass_l2_ca_dll_pll_c_aid_tracking_sc_sptr
 glonass_l2_ca_dll_pll_c_aid_make_tracking_sc(
@@ -106,34 +100,50 @@ private:
         int32_t extend_correlation_ms,
         float early_late_space_chips);
 
-    // tracking configuration vars
-    uint32_t d_vector_length;
-    bool d_dump;
+    void msg_handler_preamble_index(const pmt::pmt_t& msg);
 
-    Gnss_Synchro* d_acquisition_gnss_synchro;
-    uint32_t d_channel;
+    void check_carrier_phase_coherent_initialization();
 
-    int64_t d_fs_in;
-    int64_t d_glonass_freq_ch;
-
-    double d_early_late_spc_chips;
-    int32_t d_n_correlator_taps;
+    int32_t save_matfile() const;
 
     volk_gnsssdr::vector<gr_complex> d_ca_code;
-    volk_gnsssdr::vector<lv_16sc_t> d_ca_code_16sc;
+    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     volk_gnsssdr::vector<float> d_local_code_shift_chips;
+    volk_gnsssdr::vector<lv_16sc_t> d_ca_code_16sc;
     volk_gnsssdr::vector<lv_16sc_t> d_correlator_outs_16sc;
+
     Cpu_Multicorrelator_16sc multicorrelator_cpu_16sc;
+
+    // PLL and DLL filter library
+    Tracking_2nd_DLL_filter d_code_loop_filter;
+    Tracking_FLL_PLL_filter d_carrier_loop_filter;
+
+    // symbol history to detect bit transition
+    std::deque<lv_16sc_t> d_E_history;
+    std::deque<lv_16sc_t> d_P_history;
+    std::deque<lv_16sc_t> d_L_history;
+
+    // file dump
+    std::string d_dump_filename;
+    std::ofstream d_dump_file;
+
+    std::map<std::string, std::string> systemName;
+    std::string sys;
+
+    // tracking configuration vars
+    Gnss_Synchro* d_acquisition_gnss_synchro;
+    int64_t d_fs_in;
+    int64_t d_glonass_freq_ch;
+    double d_early_late_spc_chips;
+    uint32_t d_vector_length;
+    uint32_t d_channel;
+    int32_t d_n_correlator_taps;
 
     // remaining code phase and carrier phase between tracking loops
     double d_rem_code_phase_samples;
     double d_rem_code_phase_chips;
     double d_rem_carrier_phase_rad;
     int32_t d_rem_code_phase_integer_samples;
-
-    // PLL and DLL filter library
-    Tracking_2nd_DLL_filter d_code_loop_filter;
-    Tracking_FLL_PLL_filter d_carrier_loop_filter;
 
     // acquisition
     double d_acq_code_phase_samples;
@@ -157,16 +167,8 @@ private:
     double d_code_error_chips_Ti;
     double d_preamble_timestamp_s;
     int32_t d_extend_correlation_ms;
-    bool d_enable_extended_integration;
-    bool d_preamble_synchronized;
     double d_code_error_filt_chips_s;
     double d_code_error_filt_chips_Ti;
-    void msg_handler_preamble_index(const pmt::pmt_t& msg);
-
-    // symbol history to detect bit transition
-    std::deque<lv_16sc_t> d_E_history;
-    std::deque<lv_16sc_t> d_P_history;
-    std::deque<lv_16sc_t> d_L_history;
 
     // Integration period in samples
     int32_t d_correlation_length_samples;
@@ -176,25 +178,24 @@ private:
     uint64_t d_acq_sample_stamp;
 
     // CN0 estimation and lock detector
-    int32_t d_cn0_estimation_counter;
-    volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
     double d_carrier_lock_test;
     double d_CN0_SNV_dB_Hz;
     double d_carrier_lock_threshold;
     int32_t d_carrier_lock_fail_counter;
+    int32_t d_cn0_estimation_counter;
+
+    bool d_enable_extended_integration;
+    bool d_preamble_synchronized;
 
     // control vars
     bool d_enable_tracking;
     bool d_pull_in;
+    bool d_acc_carrier_phase_initialized;
 
-    // file dump
-    std::string d_dump_filename;
-    std::ofstream d_dump_file;
-
-    std::map<std::string, std::string> systemName;
-    std::string sys;
-
-    int32_t save_matfile();
+    bool d_dump;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GLONASS_L2_CA_DLL_PLL_C_AID_TRACKING_SC_H

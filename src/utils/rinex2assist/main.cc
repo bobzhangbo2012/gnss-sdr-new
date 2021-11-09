@@ -4,18 +4,15 @@
  * \author Carles Fernandez-Prades, 2018. cfernandez(at)cttc.cat
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -38,6 +35,12 @@
 #include <cstdlib>
 #include <iostream>
 
+#if GFLAGS_OLD_NAMESPACE
+namespace gflags
+{
+using namespace google;
+}
+#endif
 
 int main(int argc, char** argv)
 {
@@ -49,17 +52,17 @@ int main(int argc, char** argv)
         "Usage: \n" +
         "   rinex2assist <RINEX Nav file input>");
 
-    google::SetUsageMessage(intro_help);
+    gflags::SetUsageMessage(intro_help);
     google::SetVersionString("1.0");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     if ((argc != 2))
         {
-            std::cerr << "Usage:" << std::endl;
+            std::cerr << "Usage:\n";
             std::cerr << "   " << argv[0]
                       << " <RINEX Nav file input>"
-                      << std::endl;
-            google::ShutDownCommandLineFlags();
+                      << '\n';
+            gflags::ShutDownCommandLineFlags();
             return 1;
         }
     std::string xml_filename;
@@ -77,7 +80,7 @@ int main(int argc, char** argv)
                             std::ifstream file(rinex_filename, std::ios_base::in | std::ios_base::binary);
                             if (file.fail())
                                 {
-                                    std::cerr << "Could not open file " << rinex_filename << std::endl;
+                                    std::cerr << "Could not open file " << rinex_filename << '\n';
                                     return 1;
                                 }
                             boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
@@ -87,7 +90,7 @@ int main(int argc, char** argv)
                                 }
                             catch (const boost::exception& e)
                                 {
-                                    std::cerr << "Could not decompress file " << rinex_filename << std::endl;
+                                    std::cerr << "Could not decompress file " << rinex_filename << '\n';
                                     return 1;
                                 }
                             in.push(file);
@@ -95,7 +98,7 @@ int main(int argc, char** argv)
                             std::ofstream output_file(rinex_filename_unzipped.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
                             if (file.fail())
                                 {
-                                    std::cerr << "Could not create file " << rinex_filename_unzipped << std::endl;
+                                    std::cerr << "Could not create file " << rinex_filename_unzipped << '\n';
                                     return 1;
                                 }
                             boost::iostreams::copy(in, output_file);
@@ -109,7 +112,7 @@ int main(int argc, char** argv)
                             std::ifstream file(rinex_filename, std::ios_base::in | std::ios_base::binary);
                             if (file.fail())
                                 {
-                                    std::cerr << "Could not open file" << rinex_filename << std::endl;
+                                    std::cerr << "Could not open file" << rinex_filename << '\n';
                                     return 1;
                                 }
                             file.close();
@@ -126,13 +129,13 @@ int main(int argc, char** argv)
                                     input_filename = rinex_filename.substr(0, found);
                                     if ((s1 != 0) or (s2 != 0) or (s3 != 0))
                                         {
-                                            std::cerr << "Failure uncompressing file." << std::endl;
+                                            std::cerr << "Failure uncompressing file.\n";
                                             return 1;
                                         }
                                 }
                             else
                                 {
-                                    std::cerr << "uncompress program not found." << std::endl;
+                                    std::cerr << "uncompress program not found.\n";
                                     return 1;
                                 }
                         }
@@ -162,8 +165,8 @@ int main(int argc, char** argv)
             // Check that it really is a RINEX navigation file
             if (hdr.fileType.substr(0, 1) != "N")
                 {
-                    std::cerr << "This is not a valid RINEX navigation file, or file not found." << std::endl;
-                    std::cerr << "No XML file will be created." << std::endl;
+                    std::cerr << "This is not a valid RINEX navigation file, or file not found.\n";
+                    std::cerr << "No XML file will be created.\n";
                     return 1;
                 }
 
@@ -171,47 +174,47 @@ int main(int argc, char** argv)
             if (hdr.fileSys == "G: (GPS)" || hdr.fileSys == "MIXED")
                 {
                     gps_utc_model.valid = (hdr.valid > 2147483648) ? true : false;
-                    gps_utc_model.d_A1 = hdr.mapTimeCorr["GPUT"].A0;
-                    gps_utc_model.d_A0 = hdr.mapTimeCorr["GPUT"].A1;
-                    gps_utc_model.d_t_OT = hdr.mapTimeCorr["GPUT"].refSOW;
-                    gps_utc_model.i_WN_T = hdr.mapTimeCorr["GPUT"].refWeek;
-                    gps_utc_model.d_DeltaT_LS = hdr.leapSeconds;
-                    gps_utc_model.i_WN_LSF = hdr.leapWeek;
-                    gps_utc_model.i_DN = hdr.leapDay;
-                    gps_utc_model.d_DeltaT_LSF = hdr.leapDelta;
+                    gps_utc_model.A1 = hdr.mapTimeCorr["GPUT"].A0;
+                    gps_utc_model.A0 = hdr.mapTimeCorr["GPUT"].A1;
+                    gps_utc_model.tot = hdr.mapTimeCorr["GPUT"].refSOW;
+                    gps_utc_model.WN_T = hdr.mapTimeCorr["GPUT"].refWeek;
+                    gps_utc_model.DeltaT_LS = hdr.leapSeconds;
+                    gps_utc_model.WN_LSF = hdr.leapWeek;
+                    gps_utc_model.DN = hdr.leapDay;
+                    gps_utc_model.DeltaT_LSF = hdr.leapDelta;
 
                     // Collect iono parameters from RINEX header
                     gps_iono.valid = (hdr.mapIonoCorr["GPSA"].param[0] == 0) ? false : true;
-                    gps_iono.d_alpha0 = hdr.mapIonoCorr["GPSA"].param[0];
-                    gps_iono.d_alpha1 = hdr.mapIonoCorr["GPSA"].param[1];
-                    gps_iono.d_alpha2 = hdr.mapIonoCorr["GPSA"].param[2];
-                    gps_iono.d_alpha3 = hdr.mapIonoCorr["GPSA"].param[3];
-                    gps_iono.d_beta0 = hdr.mapIonoCorr["GPSB"].param[0];
-                    gps_iono.d_beta1 = hdr.mapIonoCorr["GPSB"].param[1];
-                    gps_iono.d_beta2 = hdr.mapIonoCorr["GPSB"].param[2];
-                    gps_iono.d_beta3 = hdr.mapIonoCorr["GPSB"].param[3];
+                    gps_iono.alpha0 = hdr.mapIonoCorr["GPSA"].param[0];
+                    gps_iono.alpha1 = hdr.mapIonoCorr["GPSA"].param[1];
+                    gps_iono.alpha2 = hdr.mapIonoCorr["GPSA"].param[2];
+                    gps_iono.alpha3 = hdr.mapIonoCorr["GPSA"].param[3];
+                    gps_iono.beta0 = hdr.mapIonoCorr["GPSB"].param[0];
+                    gps_iono.beta1 = hdr.mapIonoCorr["GPSB"].param[1];
+                    gps_iono.beta2 = hdr.mapIonoCorr["GPSB"].param[2];
+                    gps_iono.beta3 = hdr.mapIonoCorr["GPSB"].param[3];
                 }
             if (hdr.fileSys == "E: (GAL)" || hdr.fileSys == "MIXED")
                 {
-                    gal_utc_model.A0_6 = hdr.mapTimeCorr["GAUT"].A0;
-                    gal_utc_model.A1_6 = hdr.mapTimeCorr["GAUT"].A1;
-                    gal_utc_model.Delta_tLS_6 = hdr.leapSeconds;
-                    gal_utc_model.t0t_6 = hdr.mapTimeCorr["GAUT"].refSOW;
-                    gal_utc_model.WNot_6 = hdr.mapTimeCorr["GAUT"].refWeek;
-                    gal_utc_model.WN_LSF_6 = hdr.leapWeek;
-                    gal_utc_model.DN_6 = hdr.leapDay;
-                    gal_utc_model.Delta_tLSF_6 = hdr.leapDelta;
+                    gal_utc_model.A0 = hdr.mapTimeCorr["GAUT"].A0;
+                    gal_utc_model.A1 = hdr.mapTimeCorr["GAUT"].A1;
+                    gal_utc_model.Delta_tLS = hdr.leapSeconds;
+                    gal_utc_model.tot = hdr.mapTimeCorr["GAUT"].refSOW;
+                    gal_utc_model.WNot = hdr.mapTimeCorr["GAUT"].refWeek;
+                    gal_utc_model.WN_LSF = hdr.leapWeek;
+                    gal_utc_model.DN = hdr.leapDay;
+                    gal_utc_model.Delta_tLSF = hdr.leapDelta;
                     gal_utc_model.flag_utc_model = (hdr.mapTimeCorr["GAUT"].A0 == 0.0);
-                    gal_iono.ai0_5 = hdr.mapIonoCorr["GAL"].param[0];
-                    gal_iono.ai1_5 = hdr.mapIonoCorr["GAL"].param[1];
-                    gal_iono.ai2_5 = hdr.mapIonoCorr["GAL"].param[2];
-                    gal_iono.Region1_flag_5 = false;
-                    gal_iono.Region2_flag_5 = false;
-                    gal_iono.Region3_flag_5 = false;
-                    gal_iono.Region4_flag_5 = false;
-                    gal_iono.Region5_flag_5 = false;
-                    gal_iono.TOW_5 = 0.0;
-                    gal_iono.WN_5 = 0.0;
+                    gal_iono.ai0 = hdr.mapIonoCorr["GAL"].param[0];
+                    gal_iono.ai1 = hdr.mapIonoCorr["GAL"].param[1];
+                    gal_iono.ai2 = hdr.mapIonoCorr["GAL"].param[2];
+                    gal_iono.Region1_flag = false;
+                    gal_iono.Region2_flag = false;
+                    gal_iono.Region3_flag = false;
+                    gal_iono.Region4_flag = false;
+                    gal_iono.Region5_flag = false;
+                    gal_iono.tow = 0.0;
+                    gal_iono.WN = 0.0;
                 }
 
             // Read navigation data
@@ -221,44 +224,44 @@ int main(int argc, char** argv)
                         {
                             // Fill GPS ephemeris object
                             Gps_Ephemeris eph;
-                            eph.i_satellite_PRN = rne.PRNID;
-                            eph.d_TOW = rne.xmitTime;
-                            eph.d_IODE_SF2 = rne.IODE;
-                            eph.d_IODE_SF3 = rne.IODE;
-                            eph.d_Crs = rne.Crs;
-                            eph.d_Delta_n = rne.dn;
-                            eph.d_M_0 = rne.M0;
-                            eph.d_Cuc = rne.Cuc;
-                            eph.d_e_eccentricity = rne.ecc;
-                            eph.d_Cus = rne.Cus;
-                            eph.d_sqrt_A = rne.Ahalf;
-                            eph.d_Toe = rne.Toe;
-                            eph.d_Toc = rne.Toc;
-                            eph.d_Cic = rne.Cic;
-                            eph.d_OMEGA0 = rne.OMEGA0;
-                            eph.d_Cis = rne.Cis;
-                            eph.d_i_0 = rne.i0;
-                            eph.d_Crc = rne.Crc;
-                            eph.d_OMEGA = rne.w;
-                            eph.d_OMEGA_DOT = rne.OMEGAdot;
-                            eph.d_IDOT = rne.idot;
-                            eph.i_code_on_L2 = rne.codeflgs;  //
-                            eph.i_GPS_week = rne.weeknum;
-                            eph.b_L2_P_data_flag = rne.L2Pdata;
-                            eph.i_SV_accuracy = rne.accuracy;
-                            eph.i_SV_health = rne.health;
-                            eph.d_TGD = rne.Tgd;
-                            eph.d_IODC = rne.IODC;
-                            eph.i_AODO = 0;  //
-                            eph.b_fit_interval_flag = (rne.fitint > 4) ? true : false;
-                            eph.d_spare1 = 0.0;
-                            eph.d_spare2 = 0.0;
-                            eph.d_A_f0 = rne.af0;
-                            eph.d_A_f1 = rne.af1;
-                            eph.d_A_f2 = rne.af2;
-                            eph.b_integrity_status_flag = false;  //
-                            eph.b_alert_flag = false;             //
-                            eph.b_antispoofing_flag = false;      //
+                            eph.PRN = rne.PRNID;
+                            eph.tow = rne.xmitTime;
+                            eph.IODE_SF2 = rne.IODE;
+                            eph.IODE_SF3 = rne.IODE;
+                            eph.Crs = rne.Crs;
+                            eph.delta_n = rne.dn;
+                            eph.M_0 = rne.M0;
+                            eph.Cuc = rne.Cuc;
+                            eph.ecc = rne.ecc;
+                            eph.Cus = rne.Cus;
+                            eph.sqrtA = rne.Ahalf;
+                            eph.toe = rne.Toe;
+                            eph.toc = rne.Toc;
+                            eph.Cic = rne.Cic;
+                            eph.OMEGA_0 = rne.OMEGA0;
+                            eph.Cis = rne.Cis;
+                            eph.i_0 = rne.i0;
+                            eph.Crc = rne.Crc;
+                            eph.omega = rne.w;
+                            eph.OMEGAdot = rne.OMEGAdot;
+                            eph.idot = rne.idot;
+                            eph.code_on_L2 = rne.codeflgs;  //
+                            eph.WN = rne.weeknum;
+                            eph.L2_P_data_flag = rne.L2Pdata;
+                            eph.SV_accuracy = rne.accuracy;
+                            eph.SV_health = rne.health;
+                            eph.TGD = rne.Tgd;
+                            eph.IODC = rne.IODC;
+                            eph.AODO = 0;  //
+                            eph.fit_interval_flag = (rne.fitint > 4) ? true : false;
+                            eph.spare1 = 0.0;
+                            eph.spare2 = 0.0;
+                            eph.af0 = rne.af0;
+                            eph.af1 = rne.af1;
+                            eph.af2 = rne.af2;
+                            eph.integrity_status_flag = false;  //
+                            eph.alert_flag = false;             //
+                            eph.antispoofing_flag = false;      //
                             eph_map[i] = eph;
                             i++;
                         }
@@ -266,28 +269,28 @@ int main(int argc, char** argv)
                         {
                             // Fill Galileo ephemeris object
                             Galileo_Ephemeris eph;
-                            eph.i_satellite_PRN = rne.PRNID;
-                            eph.M0_1 = rne.M0;
-                            eph.e_1 = rne.ecc;
-                            eph.A_1 = rne.Ahalf;
-                            eph.OMEGA_0_2 = rne.OMEGA0;
-                            eph.i_0_2 = rne.i0;
-                            eph.omega_2 = rne.w;
-                            eph.OMEGA_dot_3 = rne.OMEGAdot;
-                            eph.delta_n_3 = rne.dn;
-                            eph.iDot_2 = rne.idot;
-                            eph.C_uc_3 = rne.Cuc;
-                            eph.C_us_3 = rne.Cus;
-                            eph.C_rc_3 = rne.Crc;
-                            eph.C_rs_3 = rne.Crs;
-                            eph.C_ic_4 = rne.Cic;
-                            eph.C_is_4 = rne.Cis;
-                            eph.t0e_1 = rne.Toe;
-                            eph.t0c_4 = rne.Toc;
-                            eph.af0_4 = rne.af0;
-                            eph.af1_4 = rne.af1;
-                            eph.af2_4 = rne.af2;
-                            eph.WN_5 = rne.weeknum;
+                            eph.PRN = rne.PRNID;
+                            eph.M_0 = rne.M0;
+                            eph.ecc = rne.ecc;
+                            eph.sqrtA = rne.Ahalf;
+                            eph.OMEGA_0 = rne.OMEGA0;
+                            eph.i_0 = rne.i0;
+                            eph.omega = rne.w;
+                            eph.OMEGAdot = rne.OMEGAdot;
+                            eph.delta_n = rne.dn;
+                            eph.idot = rne.idot;
+                            eph.Cuc = rne.Cuc;
+                            eph.Cus = rne.Cus;
+                            eph.Crc = rne.Crc;
+                            eph.Crs = rne.Crs;
+                            eph.Cic = rne.Cic;
+                            eph.Cis = rne.Cis;
+                            eph.toe = rne.Toe;
+                            eph.toc = rne.Toc;
+                            eph.af0 = rne.af0;
+                            eph.af1 = rne.af1;
+                            eph.af2 = rne.af2;
+                            eph.WN = rne.weeknum;
                             eph_gal_map[j] = eph;
                             j++;
                         }
@@ -295,16 +298,16 @@ int main(int argc, char** argv)
         }
     catch (std::exception& e)
         {
-            std::cerr << "Error reading the RINEX file: " << e.what() << std::endl;
-            std::cerr << "No XML file will be created." << std::endl;
-            google::ShutDownCommandLineFlags();
+            std::cerr << "Error reading the RINEX file: " << e.what() << '\n';
+            std::cerr << "No XML file will be created.\n";
+            gflags::ShutDownCommandLineFlags();
             return 1;
         }
 
     if (i == 0 and j == 0)
         {
-            std::cerr << "No navigation data found in the RINEX file. No XML file will be created." << std::endl;
-            google::ShutDownCommandLineFlags();
+            std::cerr << "No navigation data found in the RINEX file. No XML file will be created.\n";
+            gflags::ShutDownCommandLineFlags();
             return 1;
         }
 
@@ -324,11 +327,11 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
     if (j != 0)
         {
@@ -342,11 +345,11 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
 
     // Write XML UTC
@@ -362,11 +365,11 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
 
     // Write XML iono
@@ -382,14 +385,14 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
 
-    if (gal_utc_model.A0_6 != 0)
+    if (gal_utc_model.A0 != 0)
         {
             std::ofstream ofs5;
             xml_filename = "gal_utc_model.xml";
@@ -401,13 +404,13 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
-    if (gal_iono.ai0_5 != 0)
+    if (gal_iono.ai0 != 0)
         {
             std::ofstream ofs7;
             xml_filename = "gal_iono.xml";
@@ -419,12 +422,12 @@ int main(int argc, char** argv)
                 }
             catch (std::exception& e)
                 {
-                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << std::endl;
-                    google::ShutDownCommandLineFlags();
+                    std::cerr << "Problem creating the XML file " << xml_filename << ": " << e.what() << '\n';
+                    gflags::ShutDownCommandLineFlags();
                     return 1;
                 }
-            std::cout << "Generated file: " << xml_filename << std::endl;
+            std::cout << "Generated file: " << xml_filename << '\n';
         }
-    google::ShutDownCommandLineFlags();
+    gflags::ShutDownCommandLineFlags();
     return 0;
 }

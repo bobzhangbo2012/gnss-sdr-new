@@ -21,18 +21,15 @@
  *          <li> Javier Arribas, 2013. jarribas(at)cttc.es
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_PCPS_ACQUISITION_FINE_DOPPLER_CC_H
@@ -44,10 +41,10 @@
 
 #include "acq_conf.h"
 #include "channel_fsm.h"
+#include "gnss_sdr_fft.h"
 #include "gnss_synchro.h"
 #include <armadillo>
 #include <gnuradio/block.h>
-#include <gnuradio/fft/fft.h>
 #include <gnuradio/gr_complex.h>
 #include <volk_gnsssdr/volk_gnsssdr_alloc.h>  // for volk_gnsssdr::vector
 #include <cstdint>
@@ -55,18 +52,17 @@
 #include <memory>
 #include <string>
 #include <utility>
-#if GNURADIO_USES_STD_POINTERS
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_gnuradio_blocks
+ * \{ */
+
 
 class pcps_acquisition_fine_doppler_cc;
 
-#if GNURADIO_USES_STD_POINTERS
-using pcps_acquisition_fine_doppler_cc_sptr = std::shared_ptr<pcps_acquisition_fine_doppler_cc>;
-#else
-using pcps_acquisition_fine_doppler_cc_sptr = boost::shared_ptr<pcps_acquisition_fine_doppler_cc>;
-#endif
+using pcps_acquisition_fine_doppler_cc_sptr = gnss_shared_ptr<pcps_acquisition_fine_doppler_cc>;
 
 pcps_acquisition_fine_doppler_cc_sptr pcps_make_acquisition_fine_doppler_cc(const Acq_Conf& conf_);
 
@@ -195,45 +191,58 @@ private:
     int compute_and_accumulate_grid(gr_vector_const_void_star& input_items);
     int estimate_Doppler();
     float estimate_input_power(gr_vector_const_void_star& input_items);
-    double compute_CAF();
+    float compute_CAF();
     void reset_grid();
     void update_carrier_wipeoff();
     bool start();
-    Acq_Conf acq_parameters;
-    int64_t d_fs_in;
-    int d_samples_per_ms;
-    int d_max_dwells;
-    int d_gnuradio_forecast_samples;
-    float d_threshold;
-    std::string d_satellite_str;
-    int d_config_doppler_max;
-    int d_num_doppler_points;
-    int d_doppler_step;
-    unsigned int d_fft_size;
-    uint64_t d_sample_counter;
+
+    std::weak_ptr<ChannelFsm> d_channel_fsm;
+    std::unique_ptr<gnss_fft_complex_fwd> d_fft_if;
+    std::unique_ptr<gnss_fft_complex_rev> d_ifft;
+
+    volk_gnsssdr::vector<volk_gnsssdr::vector<std::complex<float>>> d_grid_doppler_wipeoffs;
+    volk_gnsssdr::vector<volk_gnsssdr::vector<float>> d_grid_data;
     volk_gnsssdr::vector<gr_complex> d_fft_codes;
     volk_gnsssdr::vector<gr_complex> d_10_ms_buffer;
     volk_gnsssdr::vector<float> d_magnitude;
-    volk_gnsssdr::vector<volk_gnsssdr::vector<float>> d_grid_data;
-    volk_gnsssdr::vector<volk_gnsssdr::vector<std::complex<float>>> d_grid_doppler_wipeoffs;
-    std::shared_ptr<gr::fft::fft_complex> d_fft_if;
-    std::shared_ptr<gr::fft::fft_complex> d_ifft;
+
+    arma::fmat grid_;
+
+    std::string d_satellite_str;
+    std::string d_dump_filename;
+
     Gnss_Synchro* d_gnss_synchro;
-    unsigned int d_code_phase;
+
+    Acq_Conf acq_parameters;
+
+    int64_t d_fs_in;
+    int64_t d_dump_number;
+    uint64_t d_sample_counter;
+
     float d_doppler_freq;
+    float d_threshold;
     float d_test_statistics;
+
     int d_positive_acq;
     int d_state;
-    bool d_active;
+    int d_samples_per_ms;
+    int d_max_dwells;
+    int d_gnuradio_forecast_samples;
+    int d_config_doppler_max;
+    int d_num_doppler_points;
     int d_well_count;
     int d_n_samples_in_buffer;
-    bool d_dump;
+    int d_fft_size;
+    unsigned int d_doppler_step;
     unsigned int d_channel;
-    std::weak_ptr<ChannelFsm> d_channel_fsm;
-    std::string d_dump_filename;
-    arma::fmat grid_;
-    int64_t d_dump_number;
+    unsigned int d_code_phase;
     unsigned int d_dump_channel;
+
+    bool d_active;
+    bool d_dump;
 };
 
-#endif /* pcps_acquisition_fine_doppler_cc*/
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_PCPS_ACQUISITION_FINE_DOPPLER_CC_H

@@ -3,7 +3,10 @@
  * \brief Utilities for CNAV message manipulation of the libswiftnav library
  * \author Valeri Atamaniouk <valeri@swift-nav.com>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
+ * This file is part of GNSS-SDR.
+ *
  * This file was originally borrowed from libswiftnav
  * <https://github.com/swift-nav/libswiftnav>,
  * a portable C library implementing GNSS related functions and algorithms,
@@ -12,13 +15,8 @@
  * Copyright (C) 2016 Swift Navigation Inc.
  * Contact: Valeri Atamaniouk <valeri@swift-nav.com>
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
- * This file is part of GNSS-SDR.
- *
  * SPDX-License-Identifier: LGPL-3.0-only
- *.
+ *
  */
 
 
@@ -32,10 +30,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/** \addtogroup GPS_L2
+/** \addtogroup Telemetry_Decoder
  * \{ */
-/** \addtogroup gps_cnav_decoder
+/** \addtogroup Telemetry_Decoder_libswiftcnav
  * \{ */
+
 
 /** Size of the Viterbi decoder history. */
 #define GPS_L2_V27_HISTORY_LENGTH_BITS 64
@@ -77,14 +76,14 @@ typedef struct
     /**< Decode buffer */
     size_t n_decoded;   /**< Number of bits in the decode buffer */
     bool preamble_seen; /**< When true, the decode buffer is aligned on
-     *   preamble. */
+                         *   preamble. */
     bool invert;        /**< When true, indicates the bits are inverted */
     bool message_lock;  /**< When true, indicates the message boundary
-     *   is found. */
+                         *   is found. */
     bool crc_ok;        /**< Flag that the last message had good CRC */
     size_t n_crc_fail;  /**< Counter for CRC failures */
     bool init;          /**< Initial state flag. When true, initial bits
-     *   do not produce output. */
+                         *   do not produce output. */
 } cnav_v27_part_t;
 
 /**
@@ -108,5 +107,4 @@ bool cnav_msg_decoder_add_symbol(cnav_msg_decoder_t *dec,
 
 /** \} */
 /** \} */
-
 #endif /* GNSS_SDR_CNAV_MSG_H_ */

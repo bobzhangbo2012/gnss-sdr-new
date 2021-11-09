@@ -5,18 +5,15 @@
  * \author Carlos Aviles, 2010. carlos.avilesr(at)googlemail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_PASS_THROUGH_H
@@ -31,6 +28,11 @@
 #include <cstddef>
 #include <string>
 
+/** \addtogroup Algorithms_Library
+ * \{ */
+/** \addtogroup Algorithm_libs algorithms_libs
+ * \{ */
+
 
 class ConfigurationInterface;
 
@@ -40,7 +42,7 @@ class ConfigurationInterface;
 class Pass_Through : public GNSSBlockInterface
 {
 public:
-    Pass_Through(ConfigurationInterface* configuration,
+    Pass_Through(const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_stream,
         unsigned int out_stream);
@@ -52,7 +54,7 @@ public:
         return role_;
     }
 
-    //! returns "Pass_Through"
+    //! Returns "Pass_Through"
     inline std::string implementation() override
     {
         return "Pass_Through";
@@ -74,16 +76,19 @@ public:
     gr::basic_block_sptr get_right_block() override;
 
 private:
-    std::string item_type_;
-    std::string role_;
-    unsigned int in_streams_;
-    unsigned int out_streams_;
     gr::blocks::copy::sptr kludge_copy_;
-    size_t item_size_;
     conjugate_cc_sptr conjugate_cc_;
     conjugate_sc_sptr conjugate_sc_;
     conjugate_ic_sptr conjugate_ic_;
+    std::string item_type_;
+    std::string role_;
+    size_t item_size_;
+    unsigned int in_streams_;
+    unsigned int out_streams_;
     bool inverted_spectrum;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_PASS_THROUGH_H

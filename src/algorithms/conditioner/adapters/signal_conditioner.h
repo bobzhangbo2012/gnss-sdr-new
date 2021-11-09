@@ -4,18 +4,15 @@
  * \author Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_SIGNAL_CONDITIONER_H
@@ -27,7 +24,13 @@
 #include <memory>
 #include <string>
 
-class ConfigurationInterface;
+/** \addtogroup Signal_Conditioner Signal Conditioner
+ * Signal Conditioner wrapper block
+ * \{ */
+/** \addtogroup Signal_Conditioner_adapters conditioner_adapters
+ * Wrap a Signal Conditioner with a GNSSBlockInterface
+ * \{ */
+
 
 /*!
  * \brief This class wraps blocks to change data_type_adapter, input_filter and resampler
@@ -37,9 +40,10 @@ class SignalConditioner : public GNSSBlockInterface
 {
 public:
     //! Constructor
-    SignalConditioner(ConfigurationInterface *configuration,
-        std::shared_ptr<GNSSBlockInterface> data_type_adapt, std::shared_ptr<GNSSBlockInterface> in_filt,
-        std::shared_ptr<GNSSBlockInterface> res, std::string role, std::string implementation);
+    SignalConditioner(std::shared_ptr<GNSSBlockInterface> data_type_adapt,
+        std::shared_ptr<GNSSBlockInterface> in_filt,
+        std::shared_ptr<GNSSBlockInterface> res,
+        std::string role);
 
     //! Destructor
     ~SignalConditioner() = default;
@@ -53,7 +57,7 @@ public:
 
     inline std::string implementation() override { return "Signal_Conditioner"; }  //!< Returns "Signal_Conditioner"
 
-    inline size_t item_size() override { return 0; }
+    inline size_t item_size() override { return data_type_adapt_->item_size(); }
 
     inline std::shared_ptr<GNSSBlockInterface> data_type_adapter() { return data_type_adapt_; }
     inline std::shared_ptr<GNSSBlockInterface> input_filter() { return in_filt_; }
@@ -64,8 +68,10 @@ private:
     std::shared_ptr<GNSSBlockInterface> in_filt_;
     std::shared_ptr<GNSSBlockInterface> res_;
     std::string role_;
-    std::string implementation_;
     bool connected_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_SIGNAL_CONDITIONER_H

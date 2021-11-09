@@ -20,7 +20,7 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017-2019, Javier Arribas
  * Copyright (C) 2017-2019, Carles Fernandez
@@ -28,7 +28,8 @@
  *
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * -------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #ifndef GNSS_SDR_RTKLIB_SOLVER_H
 #define GNSS_SDR_RTKLIB_SOLVER_H
@@ -61,6 +62,12 @@
 #include <map>
 #include <string>
 
+/** \addtogroup PVT
+ * \{ */
+/** \addtogroup PVT_libs pvt_libs
+ * Library for the computation of PVT solutions.
+ * \{ */
+
 
 /*!
  * \brief This class implements a PVT solution based on RTKLIB
@@ -68,18 +75,19 @@
 class Rtklib_Solver : public Pvt_Solution
 {
 public:
-    Rtklib_Solver(int nchannels, const std::string& dump_filename, bool flag_dump_to_file, bool flag_dump_to_mat, const rtk_t& rtk);
+    Rtklib_Solver(const rtk_t& rtk, const std::string& dump_filename, bool flag_dump_to_file, bool flag_dump_to_mat);
     ~Rtklib_Solver();
 
     bool get_PVT(const std::map<int, Gnss_Synchro>& gnss_observables_map, bool flag_averaging);
 
+    double get_hdop() const override;
+    double get_vdop() const override;
+    double get_pdop() const override;
+    double get_gdop() const override;
+    Monitor_Pvt get_monitor_pvt() const;
+
     sol_t pvt_sol{};
     std::array<ssat_t, MAXSAT> pvt_ssat{};
-    double get_hdop() const;
-    double get_vdop() const;
-    double get_pdop() const;
-    double get_gdop() const;
-    Monitor_Pvt get_monitor_pvt() const;
 
     std::map<int, Galileo_Ephemeris> galileo_ephemeris_map;            //!< Map storing new Galileo_Ephemeris
     std::map<int, Gps_Ephemeris> gps_ephemeris_map;                    //!< Map storing new GPS_Ephemeris
@@ -106,16 +114,19 @@ public:
     std::map<int, Beidou_Dnav_Almanac> beidou_dnav_almanac_map;
 
 private:
-    rtk_t rtk_{};
-    Monitor_Pvt monitor_pvt{};
-    std::array<obsd_t, MAXOBS> obs_data{};
-    std::array<double, 4> dop_{};
+    bool save_matfile() const;
+
+    std::array<obsd_t, MAXOBS> d_obs_data{};
+    std::array<double, 4> d_dop{};
+    rtk_t d_rtk{};
+    Monitor_Pvt d_monitor_pvt{};
     std::string d_dump_filename;
     std::ofstream d_dump_file;
-    int d_nchannels;  // Number of available channels for positioning
     bool d_flag_dump_enabled;
     bool d_flag_dump_mat_enabled;
-    bool save_matfile();
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_RTKLIB_SOLVER_H

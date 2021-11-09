@@ -5,18 +5,15 @@
  *
  * This file contains information taken from librtlsdr:
  *  https://git.osmocom.org/rtl-sdr
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "rtl_tcp_commands.h"
@@ -35,6 +32,9 @@ boost::system::error_code rtl_tcp_command(RTL_TCP_COMMAND id, unsigned param, bo
     std::memcpy(&data[1], &nparam, sizeof(nparam));
 
     boost::system::error_code ec;
-    socket.send(boost::asio::buffer(data), 0, ec);
+    if (socket.send(boost::asio::buffer(data), 0, ec) == 0)
+        {
+            // 0 bytes sent
+        }
     return ec;
 }

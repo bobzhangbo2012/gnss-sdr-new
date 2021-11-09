@@ -1,11 +1,9 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
+
 
 set(OPT_DRIVER_SOURCES "")
 set(OPT_DRIVER_HEADERS "")
@@ -16,6 +14,7 @@ endif()
 
 
 set(SIGNAL_SOURCE_GR_BLOCKS_SOURCES
+    fifo_reader.cc
     unpack_byte_2bit_samples.cc
     unpack_byte_2bit_cpx_samples.cc
     unpack_byte_4bit_samples.cc
@@ -29,6 +28,7 @@ set(SIGNAL_SOURCE_GR_BLOCKS_SOURCES
 
 
 set(SIGNAL_SOURCE_GR_BLOCKS_HEADERS
+    fifo_reader.h
     unpack_byte_2bit_samples.h
     unpack_byte_2bit_cpx_samples.h
     unpack_byte_4bit_samples.h
@@ -43,19 +43,28 @@ set(SIGNAL_SOURCE_GR_BLOCKS_HEADERS
 list(SORT SIGNAL_SOURCE_GR_BLOCKS_HEADERS)
 list(SORT SIGNAL_SOURCE_GR_BLOCKS_SOURCES)
 
-source_group(Headers FILES ${SIGNAL_SOURCE_GR_BLOCKS_HEADERS})
-
-add_library(signal_source_gr_blocks
-    ${SIGNAL_SOURCE_GR_BLOCKS_SOURCES}
-    ${SIGNAL_SOURCE_GR_BLOCKS_HEADERS}
-)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(signal_source_gr_blocks STATIC)
+    target_sources(signal_source_gr_blocks
+        PRIVATE
+            ${SIGNAL_SOURCE_GR_BLOCKS_SOURCES}
+        PUBLIC
+            ${SIGNAL_SOURCE_GR_BLOCKS_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${SIGNAL_SOURCE_GR_BLOCKS_HEADERS})
+    add_library(signal_source_gr_blocks
+        ${SIGNAL_SOURCE_GR_BLOCKS_SOURCES}
+        ${SIGNAL_SOURCE_GR_BLOCKS_HEADERS}
+    )
+endif()
 
 target_link_libraries(signal_source_gr_blocks
     PUBLIC
         signal_source_libs
         Boost::thread
-        Gnuradio::runtime
     PRIVATE
+        algorithms_libs
         core_libs
         Gflags::gflags
         Glog::glog
@@ -96,10 +105,32 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     endif()
 endif()
 
-if(Boost_VERSION_STRING VERSION_GREATER 1.65.99)
+if(USE_BOOST_ASIO_IO_CONTEXT)
     target_compile_definitions(signal_source_gr_blocks
         PUBLIC
-            -DBOOST_GREATER_1_65
+            -DUSE_BOOST_ASIO_IO_CONTEXT=1
+    )
+endif()
+
+if(USE_BOOST_BIND_PLACEHOLDERS)
+    target_compile_definitions(signal_source_gr_blocks
+        PRIVATE
+            -DUSE_BOOST_BIND_PLACEHOLDERS=1
+    )
+endif()
+
+if(USE_GENERIC_LAMBDAS)
+    set(has_generic_lambdas HAS_GENERIC_LAMBDA=1)
+    set(no_has_generic_lambdas HAS_GENERIC_LAMBDA=0)
+    target_compile_definitions(signal_source_gr_blocks
+        PRIVATE
+            "$<$<COMPILE_FEATURES:cxx_generic_lambdas>:${has_generic_lambdas}>"
+            "$<$<NOT:$<COMPILE_FEATURES:cxx_generic_lambdas>>:${no_has_generic_lambdas}>"
+    )
+else()
+    target_compile_definitions(signal_source_gr_blocks
+        PRIVATE
+            -DHAS_GENERIC_LAMBDA=0
     )
 endif()
 

@@ -5,41 +5,39 @@
  * installed (not included with GNSS-SDR)
  * \author Javier Arribas, jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "flexiband_signal_source.h"
 #include "configuration_interface.h"
+#include "gnss_sdr_string_literals.h"
 #include <glog/logging.h>
 #include <gnuradio/blocks/file_sink.h>
 #include <teleorbit/frontend.h>
 #include <utility>
 
+using namespace std::string_literals;
 
-FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configuration,
+
+FlexibandSignalSource::FlexibandSignalSource(const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_stream,
     unsigned int out_stream,
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role),
-                                                           in_stream_(in_stream),
-                                                           out_stream_(out_stream),
-                                                           queue_(std::move(queue))
+    Concurrent_Queue<pmt::pmt_t>* queue __attribute__((unused)))
+    : SignalSourceBase(configuration, role, "Flexiband_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream)
 {
-    std::string default_item_type = "byte";
+    const std::string default_item_type("byte");
     item_type_ = configuration->property(role + ".item_type", default_item_type);
 
-    std::string default_firmware_file = "flexiband_I-1b.bit";
+    const std::string default_firmware_file("flexiband_I-1b.bit");
     firmware_filename_ = configuration->property(role + ".firmware_file", default_firmware_file);
 
     gain1_ = configuration->property(role + ".gain1", 0);  // check gain DAC values for Flexiband frontend!
@@ -48,7 +46,7 @@ FlexibandSignalSource::FlexibandSignalSource(ConfigurationInterface* configurati
 
     AGC_ = configuration->property(role + ".AGC", true);                        // enabled AGC by default
     flag_read_file = configuration->property(role + ".flag_read_file", false);  // disable read samples from file by default
-    std::string default_signal_file = "flexiband_frame_samples.bin";
+    const std::string default_signal_file("flexiband_frame_samples.bin");
     signal_file = configuration->property(role + ".signal_file", default_signal_file);
 
     usb_packet_buffer_size_ = configuration->property(role + ".usb_packet_buffer", 128);

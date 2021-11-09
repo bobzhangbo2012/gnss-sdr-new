@@ -12,18 +12,15 @@
  * and produces the delayed replicas by copying and rotating the resulting resampled signal.
  * (i.e. it creates the Early, Prompt, and Late code replicas)
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -494,8 +491,6 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_a_avx(floa
             indexn = _mm256_add_ps(indexn, eights);
         }
 
-    _mm256_zeroupper();
-
     for (n = avx_iters * 8; n < num_points; n++)
         {
             // resample code for first tap
@@ -582,8 +577,6 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_u_avx(floa
             indexn = _mm256_add_ps(indexn, eights);
         }
 
-    _mm256_zeroupper();
-
     for (n = avx_iters * 8; n < num_points; n++)
         {
             // resample code for first tap
@@ -607,7 +600,7 @@ static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_u_avx(floa
 #endif
 //
 //
-// #ifdef LV_HAVE_NEONV7
+// #ifdef LV_HAVE_NEON
 // #include <arm_neon.h>
 //
 // static inline void volk_gnsssdr_32f_xn_high_dynamics_resampler_32f_xn_neon(float** result, const float* local_code, float rem_code_phase_chips, float code_phase_step_chips, float* shifts_chips, unsigned int code_length_chips, int num_out_vectors, unsigned int num_points)

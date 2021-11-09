@@ -4,32 +4,36 @@
  *  AcquisitionInterface for GPS L1 C/A signals
  * \author Marc Molina, 2013. marc.molina.pena(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l1_ca_pcps_opencl_acquisition.h"
 #include "GPS_L1_CA.h"
 #include "configuration_interface.h"
 #include "gnss_sdr_flags.h"
-#include "gps_sdr_signal_processing.h"
+#include "gps_sdr_signal_replica.h"
 #include <boost/math/distributions/exponential.hpp>
 #include <glog/logging.h>
 #include <algorithm>
 
+#if HAS_STD_SPAN
+#include <span>
+namespace own = std;
+#else
+#include <gsl/gsl-lite.hpp>
+namespace own = gsl;
+#endif
 
 GpsL1CaPcpsOpenClAcquisition::GpsL1CaPcpsOpenClAcquisition(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
@@ -37,40 +41,40 @@ GpsL1CaPcpsOpenClAcquisition::GpsL1CaPcpsOpenClAcquisition(
                                 out_streams_(out_streams)
 {
     configuration_ = configuration;
-    std::string default_item_type = "gr_complex";
+    const std::string default_item_type("gr_complex");
     std::string default_dump_filename = "./data/acquisition.dat";
 
     DLOG(INFO) << "role " << role;
 
-    item_type_ = configuration_->property(role + ".item_type",
+    item_type_ = configuration->property(role + ".item_type",
         default_item_type);
 
-    int64_t fs_in_deprecated = configuration_->property("GNSS-SDR.internal_fs_hz", 2048000);
-    fs_in_ = configuration_->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
-    dump_ = configuration_->property(role + ".dump", false);
+    int64_t fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", 2048000);
+    fs_in_ = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
+    dump_ = configuration->property(role + ".dump", false);
     doppler_max_ = configuration->property(role + ".doppler_max", 5000);
     if (FLAGS_doppler_max != 0)
         {
             doppler_max_ = FLAGS_doppler_max;
         }
-    sampled_ms_ = configuration_->property(role + ".coherent_integration_time_ms", 1);
+    sampled_ms_ = configuration->property(role + ".coherent_integration_time_ms", 1);
 
-    bit_transition_flag_ = configuration_->property("Acquisition.bit_transition_flag", false);
+    bit_transition_flag_ = configuration->property("Acquisition.bit_transition_flag", false);
 
     if (!bit_transition_flag_)
         {
-            max_dwells_ = configuration_->property(role + ".max_dwells", 1);
+            max_dwells_ = configuration->property(role + ".max_dwells", 1);
         }
     else
         {
             max_dwells_ = 2;
         }
 
-    dump_filename_ = configuration_->property(role + ".dump_filename",
+    dump_filename_ = configuration->property(role + ".dump_filename",
         default_dump_filename);
 
     // -- Find number of samples per spreading code -------------------------
-    code_length_ = round(fs_in_ / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS));
+    code_length_ = static_cast<unsigned int>(round(fs_in_ / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));
 
     vector_length_ = code_length_ * sampled_ms_;
 
@@ -81,7 +85,7 @@ GpsL1CaPcpsOpenClAcquisition::GpsL1CaPcpsOpenClAcquisition(
             item_size_ = sizeof(gr_complex);
             acquisition_cc_ = pcps_make_opencl_acquisition_cc(sampled_ms_, max_dwells_,
                 doppler_max_, fs_in_, code_length_, code_length_,
-                bit_transition_flag_, dump_, dump_filename_);
+                bit_transition_flag_, dump_, dump_filename_, false);
 
             stream_to_vector_ = gr::blocks::stream_to_vector::make(item_size_, vector_length_);
 
@@ -112,16 +116,18 @@ GpsL1CaPcpsOpenClAcquisition::GpsL1CaPcpsOpenClAcquisition(
 
 void GpsL1CaPcpsOpenClAcquisition::stop_acquisition()
 {
+    acquisition_cc_->set_active(false);
+    acquisition_cc_->set_state(0);
 }
 
 
 void GpsL1CaPcpsOpenClAcquisition::set_threshold(float threshold)
 {
-    float pfa = configuration_->property(role_ + std::to_string(channel_) + ".pfa", 0.0);
+    float pfa = configuration_->property(role_ + std::to_string(channel_) + ".pfa", static_cast<float>(0.0));
 
     if (pfa == 0.0)
         {
-            pfa = configuration_->property(role_ + ".pfa", 0.0);
+            pfa = configuration_->property(role_ + ".pfa", static_cast<float>(0.0));
         }
     if (pfa == 0.0)
         {
@@ -198,7 +204,7 @@ void GpsL1CaPcpsOpenClAcquisition::set_local_code()
 
             gps_l1_ca_code_gen_complex_sampled(code, gnss_synchro_->PRN, fs_in_, 0);
 
-            gsl::span<gr_complex> code_span(code_.data(), vector_length_);
+            own::span<gr_complex> code_span(code_.data(), vector_length_);
             for (unsigned int i = 0; i < sampled_ms_; i++)
                 {
                     std::copy_n(code.data(), code_length_, code_span.subspan(i * code_length_, code_length_).data());
@@ -222,7 +228,7 @@ float GpsL1CaPcpsOpenClAcquisition::calculate_threshold(float pfa)
 {
     // Calculate the threshold
     unsigned int frequency_bins = 0;
-    for (int doppler = static_cast<int>(-doppler_max_); doppler <= static_cast<int>(doppler_max_); doppler += doppler_step_)
+    for (int doppler = static_cast<int>(-doppler_max_); doppler <= static_cast<int>(doppler_max_); doppler += static_cast<int>(doppler_step_))
         {
             frequency_bins++;
         }

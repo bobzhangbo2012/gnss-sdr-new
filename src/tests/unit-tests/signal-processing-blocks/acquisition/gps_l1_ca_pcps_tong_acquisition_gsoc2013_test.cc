@@ -5,18 +5,15 @@
  * \author Marc Molina, 2013. marc.molina.pena(at)gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -36,24 +33,30 @@
 #include <gnuradio/blocks/null_sink.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <memory>
 #include <thread>
 #include <utility>
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
 #endif
+#if PMT_USES_BOOST_ANY
+namespace wht = boost;
+#else
+namespace wht = std;
+#endif
 
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx;
 
-#if GNURADIO_USES_STD_POINTERS
-using GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr = std::shared_ptr<GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx>;
-#else
-using GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr = boost::shared_ptr<GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx>;
-#endif
+using GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr = gnss_shared_ptr<GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx>;
 
 GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_make(Concurrent_Queue<int>& queue);
 
@@ -62,7 +65,7 @@ class GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx : public gr::block
 {
 private:
     friend GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_make(Concurrent_Queue<int>& queue);
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     explicit GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue);
     Concurrent_Queue<int>& channel_internal_queue;
 
@@ -78,7 +81,7 @@ GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx_sptr GpsL1CaPcpsTongAcquisitionGSo
 }
 
 
-void GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
@@ -86,9 +89,9 @@ void GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_events(pmt::pmt_
             rx_message = message;
             channel_internal_queue.push(rx_message);
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
@@ -97,7 +100,16 @@ void GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_events(pmt::pmt_
 GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx(Concurrent_Queue<int>& queue) : gr::block("GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0)), channel_internal_queue(queue)
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&GpsL1CaPcpsTongAcquisitionGSoC2013Test_msg_rx::msg_handler_channel_events, this, _1));
+#endif
+#endif
     rx_message = 0;
 }
 
@@ -400,7 +412,7 @@ void GpsL1CaPcpsTongAcquisitionGSoC2013Test::process_message()
             stop_queue();
             top_block->stop();
 
-            std::cout << std::endl;
+            std::cout << '\n';
         }
 }
 
@@ -433,7 +445,7 @@ TEST_F(GpsL1CaPcpsTongAcquisitionGSoC2013Test, ConnectAndRun)
     ASSERT_NO_THROW({
         acquisition->connect(top_block);
         auto source = gr::analog::sig_source_c::make(fs_in, gr::analog::GR_SIN_WAVE, 1000, 1, gr_complex(0));
-        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue);
+        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue.get());
         top_block->connect(source, 0, valve, 0);
         top_block->connect(valve, 0, acquisition->get_left_block(), 0);
         top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
@@ -446,7 +458,7 @@ TEST_F(GpsL1CaPcpsTongAcquisitionGSoC2013Test, ConnectAndRun)
         elapsed_seconds = end - start;
     }) << "Failure running the top_block.";
 
-    std::cout << "Processed " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Processed " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }
 
 
@@ -486,10 +498,9 @@ TEST_F(GpsL1CaPcpsTongAcquisitionGSoC2013Test, ValidationOfResults)
     acquisition->init();
 
     ASSERT_NO_THROW({
-        std::shared_ptr<GenSignalSource> signal_source;
-        SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
-        FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
-        signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
+        std::shared_ptr<GNSSBlockInterface> signal_generator = std::make_shared<SignalGenerator>(config.get(), "SignalSource", 0, 1, queue.get());
+        std::shared_ptr<GNSSBlockInterface> filter = std::make_shared<FirFilter>(config.get(), "InputFilter", 1, 1);
+        std::shared_ptr<GNSSBlockInterface> signal_source = std::make_shared<GenSignalSource>(signal_generator, filter, "SignalSource", queue.get());
         signal_source->connect(top_block);
         top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
         top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
@@ -574,16 +585,15 @@ TEST_F(GpsL1CaPcpsTongAcquisitionGSoC2013Test, ValidationOfResultsProbabilities)
     acquisition->init();
 
     ASSERT_NO_THROW({
-        std::shared_ptr<GenSignalSource> signal_source;
-        SignalGenerator* signal_generator = new SignalGenerator(config.get(), "SignalSource", 0, 1, queue);
-        FirFilter* filter = new FirFilter(config.get(), "InputFilter", 1, 1);
-        signal_source.reset(new GenSignalSource(signal_generator, filter, "SignalSource", queue));
+        std::shared_ptr<GNSSBlockInterface> signal_generator = std::make_shared<SignalGenerator>(config.get(), "SignalSource", 0, 1, queue.get());
+        std::shared_ptr<GNSSBlockInterface> filter = std::make_shared<FirFilter>(config.get(), "InputFilter", 1, 1);
+        std::shared_ptr<GNSSBlockInterface> signal_source = std::make_shared<GenSignalSource>(signal_generator, filter, "SignalSource", queue.get());
         signal_source->connect(top_block);
         top_block->connect(signal_source->get_right_block(), 0, acquisition->get_left_block(), 0);
         top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
     }) << "Failure connecting the blocks of acquisition test.";
 
-    std::cout << "Probability of false alarm (target) = " << 0.1 << std::endl;
+    std::cout << "Probability of false alarm (target) = " << 0.1 << '\n';
 
     // i = 0 --> satellite in acquisition is visible (prob of detection and prob of detection with wrong estimation)
     // i = 1 --> satellite in acquisition is not visible (prob of false detection)
@@ -612,14 +622,14 @@ TEST_F(GpsL1CaPcpsTongAcquisitionGSoC2013Test, ValidationOfResultsProbabilities)
 
             if (i == 0)
                 {
-                    std::cout << "Estimated probability of detection = " << Pd << std::endl;
-                    std::cout << "Estimated probability of false alarm (satellite present) = " << Pfa_p << std::endl;
-                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
+                    std::cout << "Estimated probability of detection = " << Pd << '\n';
+                    std::cout << "Estimated probability of false alarm (satellite present) = " << Pfa_p << '\n';
+                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds.\n";
                 }
             else if (i == 1)
                 {
-                    std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << std::endl;
-                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds." << std::endl;
+                    std::cout << "Estimated probability of false alarm (satellite absent) = " << Pfa_a << '\n';
+                    std::cout << "Mean acq time = " << mean_acq_time_us << " microseconds.\n";
                 }
             ch_thread.join();
         }

@@ -3,18 +3,15 @@
  * \brief Helper file for unit testing
  * \author Javier Arribas, 2017. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "true_observables_reader.h"
@@ -82,12 +79,12 @@ bool True_Observables_Reader::open_obs_file(std::string out_file)
                     d_dump_filename = std::move(out_file);
                     d_dump_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
                     d_dump_file.open(d_dump_filename.c_str(), std::ios::in | std::ios::binary);
-                    std::cout << "True observables Log file opened: " << d_dump_filename.c_str() << std::endl;
+                    std::cout << "True observables Log file opened: " << d_dump_filename.c_str() << '\n';
                     return true;
                 }
             catch (const std::ifstream::failure &e)
                 {
-                    std::cout << "Problem opening true Observables Log file: " << d_dump_filename << std::endl;
+                    std::cout << "Problem opening true Observables Log file: " << d_dump_filename << '\n';
                     return false;
                 }
         }

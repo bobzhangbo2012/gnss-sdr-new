@@ -1,9 +1,8 @@
-/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
- *
+/*
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -12,7 +11,7 @@
 #include <cstdlib>    // IWYU pragma: keep
 #include <cstring>    // IWYU pragma: keep
 #include <exception>  // for exception
-#include <iostream>   // for operator<<, endl, basic_ostream, cout, ostream
+#include <iostream>   // for operator<<, basic_ostream, cout, ostream
 #include <utility>    // for pair
 
 
@@ -93,7 +92,7 @@ void option_list::parse(int argc, char **argv)
                                         }
                                     catch (std::exception &exc)
                                         {
-                                            std::cout << "An int option can only receive a number" << std::endl;
+                                            std::cout << "An int option can only receive a number\n";
                                             throw std::exception();
                                         };
                                     break;
@@ -105,7 +104,7 @@ void option_list::parse(int argc, char **argv)
                                         }
                                     catch (std::exception &exc)
                                         {
-                                            std::cout << "A float option can only receive a number" << std::endl;
+                                            std::cout << "A float option can only receive a number\n";
                                             throw std::exception();
                                         };
                                     break;
@@ -117,7 +116,7 @@ void option_list::parse(int argc, char **argv)
                                         }
                                     catch (std::exception &exc)
                                         {
-                                            std::cout << "A bool option can only receive 0 or 1" << std::endl;
+                                            std::cout << "A bool option can only receive 0 or 1\n";
                                             throw std::exception();
                                         };
                                     break;
@@ -132,7 +131,7 @@ void option_list::parse(int argc, char **argv)
                                         };
                                     break;
                                 case STRING:
-                                    std::cout << this_option->printval << std::endl;
+                                    std::cout << this_option->printval << '\n';
                                     break;
                                 default:
                                     this_option->callback();
@@ -150,8 +149,8 @@ void option_list::parse(int argc, char **argv)
 
 void option_list::help()
 {
-    std::cout << program_name << std::endl;
-    std::cout << "  -h [ --help ] \t\tDisplay this help message" << std::endl;
+    std::cout << program_name << '\n';
+    std::cout << "  -h [ --help ] \t\tDisplay this help message\n";
     for (std::vector<option_t>::iterator this_option = internal_list.begin();
          this_option != internal_list.end();
          this_option++)
@@ -184,6 +183,6 @@ void option_list::help()
                     break;
                 }
             help_line += this_option->msg;
-            std::cout << help_line << std::endl;
+            std::cout << help_line << '\n';
         }
 }

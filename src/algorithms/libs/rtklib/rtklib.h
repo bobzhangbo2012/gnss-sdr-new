@@ -19,7 +19,7 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
@@ -27,7 +27,8 @@
  *
  * SPDX-License-Identifier: BSD-2-Clause
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #ifndef GNSS_SDR_RTKLIB_H
 #define GNSS_SDR_RTKLIB_H
@@ -42,6 +43,13 @@
 #include <cstdlib>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <string>
+
+/** \addtogroup PVT
+ * \{ */
+/** \addtogroup RTKLIB_Library algorithms_libs_rtklib
+ * Our version of the RTKLIB core library (see http://www.rtklib.com/)
+ * \{ */
 
 
 /* macros --------------------------------------------------------------------*/
@@ -178,18 +186,15 @@ const int MAXPRNGAL = 36;                         //!<   max satellite PRN numbe
 const int NSATGAL = (MAXPRNGAL - MINPRNGAL + 1);  //!<   number of Galileo satellites
 const int NSYSGAL = 1;
 
+const int MAXPRNQZS = 199;  //!<   max satellite PRN number of QZSS
+const int MINPRNQZS = 193;  //!<   min satellite PRN number of QZSS
 #ifdef ENAQZS
-const int MINPRNQZS = 193;                        //!<  min satellite PRN number of QZSS
-const int MAXPRNQZS = 199;                        //!<   max satellite PRN number of QZSS
 const int MINPRNQZS_S = 183;                      //!<   min satellite PRN number of QZSS SAIF
 const int MAXPRNQZS_S = 189;                      //!<   max satellite PRN number of QZSS SAIF
 const int NSATQZS = (MAXPRNQZS - MINPRNQZS + 1);  //!<   number of QZSS satellites
 const int NSYSQZS = 1;
 #else
-const int MINPRNQZS = 0;
-const int MAXPRNQZS = 0;
 const int MINPRNQZS_S = 0;
-const int MAXPRNQZS_S = 0;
 const int NSATQZS = 0;
 const int NSYSQZS = 0;
 #endif
@@ -207,26 +212,22 @@ const int NSATBDS = 0;
 const int NSYSBDS = 0;
 #endif
 
+const int MINPRNIRN = 1;  //!<   min satellite sat number of IRNSS
+const int MAXPRNIRN = 7;  //!<   max satellite sat number of IRNSS
 #ifdef ENAIRN
-const int MINPRNIRN = 1;                          //!<   min satellite sat number of IRNSS
-const int MAXPRNIRN = 7;                          //!<  max satellite sat number of IRNSS
 const int NSATIRN = (MAXPRNIRN - MINPRNIRN + 1);  //!<   number of IRNSS satellites
 const int NSYSIRN = 1;
 #else
-const int MINPRNIRN = 0;
-const int MAXPRNIRN = 0;
 const int NSATIRN = 0;
 const int NSYSIRN = 0;
 #endif
 
+const int MINPRNLEO = 1;   //!<   min satellite sat number of LEO
+const int MAXPRNLEO = 10;  //!<   max satellite sat number of LEO */
 #ifdef ENALEO
-const int MINPRNLEO = 1;                          //!<   min satellite sat number of LEO
-const int NSATLEO = 10;                           //!<   max satellite sat number of LEO
 const int NSATLEO = (MAXPRNLEO - MINPRNLEO + 1);  //!<   number of LEO satellites
 const int NSYSLEO = 1;
 #else
-const int MINPRNLEO = 0;
-const int MAXPRNLEO = 0;
 const int NSATLEO = 0;
 const int NSYSLEO = 0;
 #endif
@@ -318,6 +319,7 @@ const int MAXSTRMSG = 1024;   //!<  max length of stream message
 
 using fatalfunc_t = void(const char *);  //!<  fatal callback function type
 
+// clang-format off
 #define STR_MODE_R 0x1  /* stream mode: read */
 #define STR_MODE_W 0x2  /* stream mode: write */
 #define STR_MODE_RW 0x3 /* stream mode: read/write */
@@ -339,6 +341,7 @@ using fatalfunc_t = void(const char *);  //!<  fatal callback function type
 #define NR_PPP(opt) (IT_PPP(opt) + ((opt)->tropopt < TROPOPT_EST ? 0 : ((opt)->tropopt == TROPOPT_EST ? 1 : 3))) /* number of solutions */
 #define IB_PPP(s, opt) (NR_PPP(opt) + (s)-1)                                                                     /* state index of phase bias */
 #define NX_PPP(opt) (IB_PPP(MAXSAT, opt) + 1)                                                                    /* number of estimated states */
+// clang-format on
 
 #define NF_RTK(opt) ((opt)->ionoopt == IONOOPT_IFLC ? 1 : (opt)->nf)
 #define NP_RTK(opt) ((opt)->dynamics == 0 ? 3 : 9)
@@ -1293,8 +1296,8 @@ const double CHISQR[100] = {/* chi-sqr(n) (alpha=0.001) */
 
 
 const double LAM_CARR[MAXFREQ] = {/* carrier wave length (m) */
-    SPEED_OF_LIGHT / FREQ1, SPEED_OF_LIGHT / FREQ2, SPEED_OF_LIGHT / FREQ5, SPEED_OF_LIGHT / FREQ6, SPEED_OF_LIGHT / FREQ7,
-    SPEED_OF_LIGHT / FREQ8, SPEED_OF_LIGHT / FREQ9};
+    SPEED_OF_LIGHT_M_S / FREQ1, SPEED_OF_LIGHT_M_S / FREQ2, SPEED_OF_LIGHT_M_S / FREQ5, SPEED_OF_LIGHT_M_S / FREQ6, SPEED_OF_LIGHT_M_S / FREQ7,
+    SPEED_OF_LIGHT_M_S / FREQ8, SPEED_OF_LIGHT_M_S / FREQ9};
 
 const int STRFMT_RTCM2 = 0;   /* stream format: RTCM 2 */
 const int STRFMT_RTCM3 = 1;   /* stream format: RTCM 3 */
@@ -1306,5 +1309,6 @@ const int STRFMT_NMEA = 19;   /* stream format: NMEA 0183 */
 
 const int MAXSTRRTK = 8; /* max number of stream in RTK server */
 
-
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_RTKLIB_H

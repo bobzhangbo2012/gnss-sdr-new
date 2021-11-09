@@ -10,24 +10,22 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkhauser, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l1_ca_tcp_connector_tracking_cc.h"
 #include "GPS_L1_CA.h"
+#include "gnss_satellite.h"
 #include "gnss_sdr_flags.h"
-#include "gps_sdr_signal_processing.h"
+#include "gps_sdr_signal_replica.h"
 #include "lock_detectors.h"
 #include "tcp_communication.h"
 #include "tcp_packet_data.h"
@@ -105,7 +103,7 @@ Gps_L1_Ca_Tcp_Connector_Tracking_cc::Gps_L1_Ca_Tcp_Connector_Tracking_cc(
     d_Prompt = &d_correlator_outs[1];
     d_Late = &d_correlator_outs[2];
 
-    d_local_code_shift_chips.reserve(d_n_correlator_taps);
+    d_local_code_shift_chips = volk_gnsssdr::vector<float>(d_n_correlator_taps);
     // Set TAPs delay values [chips]
     d_local_code_shift_chips[0] = -d_early_late_spc_chips;
     d_local_code_shift_chips[1] = 0.0;
@@ -135,11 +133,11 @@ Gps_L1_Ca_Tcp_Connector_Tracking_cc::Gps_L1_Ca_Tcp_Connector_Tracking_cc(
 
     // CN0 estimation and lock detector buffers
     d_cn0_estimation_counter = 0;
-    d_Prompt_buffer.reserve(FLAGS_cn0_samples);
+    d_Prompt_buffer = volk_gnsssdr::vector<gr_complex>(FLAGS_cn0_samples);
     d_carrier_lock_test = 1;
     d_CN0_SNV_dB_Hz = 0;
     d_carrier_lock_fail_counter = 0;
-    d_carrier_lock_threshold = FLAGS_carrier_lock_th;
+    d_carrier_lock_threshold = static_cast<float>(FLAGS_carrier_lock_th);
 
     systemName["G"] = std::string("GPS");
     systemName["R"] = std::string("GLONASS");
@@ -166,27 +164,26 @@ void Gps_L1_Ca_Tcp_Connector_Tracking_cc::start_tracking()
      *  correct the code phase according to the delay between acq and trk
      */
 
-    d_acq_code_phase_samples = d_acquisition_gnss_synchro->Acq_delay_samples;
-    d_acq_carrier_doppler_hz = d_acquisition_gnss_synchro->Acq_doppler_hz;
+    d_acq_code_phase_samples = static_cast<float>(d_acquisition_gnss_synchro->Acq_delay_samples);
+    d_acq_carrier_doppler_hz = static_cast<float>(d_acquisition_gnss_synchro->Acq_doppler_hz);
     d_acq_sample_stamp = d_acquisition_gnss_synchro->Acq_samplestamp_samples;
 
     int64_t acq_trk_diff_samples;
     float acq_trk_diff_seconds;
     acq_trk_diff_samples = static_cast<int64_t>(d_sample_counter) - static_cast<int64_t>(d_acq_sample_stamp);
-    std::cout << "acq_trk_diff_samples=" << acq_trk_diff_samples << std::endl;
+    std::cout << "acq_trk_diff_samples=" << acq_trk_diff_samples << '\n';
     acq_trk_diff_seconds = static_cast<float>(acq_trk_diff_samples) / static_cast<float>(d_fs_in);
     // doppler effect
     // Fd=(C/(C+Vr))*F
-    float radial_velocity;
-    radial_velocity = (GPS_L1_FREQ_HZ + d_acq_carrier_doppler_hz) / GPS_L1_FREQ_HZ;
+    auto radial_velocity = static_cast<float>((GPS_L1_FREQ_HZ + d_acq_carrier_doppler_hz) / GPS_L1_FREQ_HZ);
     // new chip and prn sequence periods based on acq Doppler
     float T_chip_mod_seconds;
     float T_prn_mod_seconds;
     float T_prn_mod_samples;
     d_code_freq_hz = radial_velocity * GPS_L1_CA_CODE_RATE_CPS;
     d_code_phase_step_chips = static_cast<double>(d_code_freq_hz) / static_cast<double>(d_fs_in);
-    T_chip_mod_seconds = 1 / d_code_freq_hz;
-    T_prn_mod_seconds = T_chip_mod_seconds * GPS_L1_CA_CODE_LENGTH_CHIPS;
+    T_chip_mod_seconds = static_cast<float>(1.0 / d_code_freq_hz);
+    T_prn_mod_seconds = static_cast<float>(T_chip_mod_seconds * GPS_L1_CA_CODE_LENGTH_CHIPS);
     T_prn_mod_samples = T_prn_mod_seconds * static_cast<float>(d_fs_in);
 
     d_next_prn_length_samples = std::round(T_prn_mod_samples);
@@ -228,7 +225,7 @@ void Gps_L1_Ca_Tcp_Connector_Tracking_cc::start_tracking()
     sys = sys_.substr(0, 1);
 
     // DEBUG OUTPUT
-    std::cout << "Tracking of GPS L1 C/A signal started on channel " << d_channel << " for satellite " << Gnss_Satellite(systemName[sys], d_acquisition_gnss_synchro->PRN) << std::endl;
+    std::cout << "Tracking of GPS L1 C/A signal started on channel " << d_channel << " for satellite " << Gnss_Satellite(systemName[sys], d_acquisition_gnss_synchro->PRN) << '\n';
     LOG(INFO) << "Tracking of GPS L1 C/A signal for satellite " << Gnss_Satellite(systemName[sys], d_acquisition_gnss_synchro->PRN) << " on channel " << d_channel;
 
     // enable tracking
@@ -312,6 +309,7 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
     float carr_error = 0.0;
     float code_error = 0.0;
     float code_nco = 0.0;
+    bool loss_of_lock = false;
 
     Tcp_Packet_Data tcp_data;
     // GNSS_SYNCHRO OBJECT to interchange data between tracking->telemetry_decoder
@@ -357,13 +355,13 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
             // perform carrier wipe-off and compute Early, Prompt and Late correlation
             multicorrelator_cpu.set_input_output_vectors(d_correlator_outs.data(), in);
 
-            double carr_phase_step_rad = GPS_TWO_PI * d_carrier_doppler_hz / static_cast<double>(d_fs_in);
+            double carr_phase_step_rad = TWO_PI * d_carrier_doppler_hz / static_cast<double>(d_fs_in);
             double rem_code_phase_chips = d_rem_code_phase_samples * (d_code_freq_hz / d_fs_in);
 
             multicorrelator_cpu.Carrier_wipeoff_multicorrelator_resampler(d_rem_carr_phase_rad,
-                carr_phase_step_rad,
-                rem_code_phase_chips,
-                d_code_phase_step_chips,
+                static_cast<float>(carr_phase_step_rad),
+                static_cast<float>(rem_code_phase_chips),
+                static_cast<float>(d_code_phase_step_chips),
                 d_current_prn_length_samples);
 
             // Variable used for control
@@ -387,7 +385,7 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
             // Modify carrier freq based on NCO command
             d_carrier_doppler_hz = tcp_data.proc_pack_carrier_doppler_hz;
             // Modify code freq based on NCO command
-            code_nco = 1 / (1 / GPS_L1_CA_CODE_RATE_CPS - code_error / GPS_L1_CA_CODE_LENGTH_CHIPS);
+            code_nco = static_cast<float>(1.0 / (1.0 / GPS_L1_CA_CODE_RATE_CPS - code_error / GPS_L1_CA_CODE_LENGTH_CHIPS));
             d_code_freq_hz = code_nco;
 
             // Update the phasestep based on code freq (variable) and
@@ -447,11 +445,12 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
                         }
                     if (d_carrier_lock_fail_counter > FLAGS_max_lock_fail)
                         {
-                            std::cout << "Loss of lock in channel " << d_channel << "!" << std::endl;
+                            std::cout << "Loss of lock in channel " << d_channel << "!\n";
                             LOG(INFO) << "Loss of lock in channel " << d_channel << "!";
                             this->message_port_pub(pmt::mp("events"), pmt::from_long(3));  // 3 -> loss of lock
                             d_carrier_lock_fail_counter = 0;
                             d_enable_tracking = false;  // TODO: check if disabling tracking is consistent with the channel state machine
+                            loss_of_lock = true;
                         }
                 }
 
@@ -466,7 +465,7 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
             current_synchro_data.Carrier_phase_rads = static_cast<double>(d_acc_carrier_phase_rad);
             current_synchro_data.Carrier_Doppler_hz = static_cast<double>(d_carrier_doppler_hz);
             current_synchro_data.CN0_dB_hz = static_cast<double>(d_CN0_SNV_dB_Hz);
-            current_synchro_data.Flag_valid_symbol_output = true;
+            current_synchro_data.Flag_valid_symbol_output = !loss_of_lock;
             current_synchro_data.correlation_length_ms = 1;
         }
     else
@@ -520,12 +519,12 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
                     // PRN start sample stamp
                     d_dump_file.write(reinterpret_cast<char *>(&d_sample_counter), sizeof(uint64_t));
                     // accumulated carrier phase
-                    tmp_float = d_acc_carrier_phase_rad;
+                    tmp_float = static_cast<float>(d_acc_carrier_phase_rad);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     // carrier and code frequency
-                    tmp_float = d_carrier_doppler_hz;
+                    tmp_float = static_cast<float>(d_carrier_doppler_hz);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
-                    tmp_float = d_code_freq_hz;
+                    tmp_float = static_cast<float>(d_code_freq_hz);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     // PLL commands
                     tmp_float = 0.0;
@@ -538,9 +537,9 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
                     tmp_float = code_error;
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     // CN0 and carrier lock test
-                    tmp_float = d_CN0_SNV_dB_Hz;
+                    tmp_float = static_cast<float>(d_CN0_SNV_dB_Hz);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
-                    tmp_float = d_carrier_lock_test;
+                    tmp_float = static_cast<float>(d_carrier_lock_test);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     // AUX vars (for debug purposes)
                     tmp_float = 0.0;
@@ -561,7 +560,7 @@ int Gps_L1_Ca_Tcp_Connector_Tracking_cc::general_work(int noutput_items __attrib
     d_sample_counter_seconds = d_sample_counter_seconds + (static_cast<double>(d_current_prn_length_samples) / static_cast<double>(d_fs_in));
     d_sample_counter += d_current_prn_length_samples;  // count for the processed samples
 
-    if (d_enable_tracking)
+    if (d_enable_tracking || loss_of_lock)
         {
             return 1;
         }

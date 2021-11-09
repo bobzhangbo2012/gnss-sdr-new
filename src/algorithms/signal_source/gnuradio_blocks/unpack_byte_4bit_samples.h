@@ -5,24 +5,29 @@
  *     Packing Order
  *     Packing order in Nibble I0 I1 I2 I3 I0 I1 I2 I3
  * \author Javier Arribas jarribas (at) cttc.es
- * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
+ * -----------------------------------------------------------------------------
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_UNPACK_BYTE_4BIT_SAMPLES_H
 #define GNSS_SDR_UNPACK_BYTE_4BIT_SAMPLES_H
 
 #include <gnuradio/sync_interpolator.h>
+#include <memory>
+
+/** \addtogroup Signal_Source
+ * \{ */
+/** \addtogroup Signal_Source_gnuradio_blocks
+ * \{ */
+
 
 class unpack_byte_4bit_samples;
 
@@ -47,4 +52,7 @@ private:
     friend unpack_byte_4bit_samples_sptr make_unpack_byte_4bit_samples_sptr();
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_UNPACK_BYTE_4BIT_SAMPLES_H

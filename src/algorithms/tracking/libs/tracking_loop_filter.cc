@@ -6,18 +6,15 @@
  * Class implementing a generic 1st, 2nd or 3rd order loop filter. Based
  * on the bilinear transform of the standard Wiener filter.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -33,11 +30,11 @@ Tracking_loop_filter::Tracking_loop_filter(float update_interval,
     float noise_bandwidth,
     int loop_order,
     bool include_last_integrator)
-    : d_loop_order(loop_order),
+    : d_noise_bandwidth(noise_bandwidth),
+      d_update_interval(update_interval),
+      d_loop_order(loop_order),
       d_current_index(0),
-      d_include_last_integrator(include_last_integrator),
-      d_noise_bandwidth(noise_bandwidth),
-      d_update_interval(update_interval)
+      d_include_last_integrator(include_last_integrator)
 {
     d_inputs.resize(MAX_LOOP_HISTORY_LENGTH, 0.0);
     d_outputs.resize(MAX_LOOP_HISTORY_LENGTH, 0.0);
@@ -46,11 +43,11 @@ Tracking_loop_filter::Tracking_loop_filter(float update_interval,
 
 
 Tracking_loop_filter::Tracking_loop_filter()
-    : d_loop_order(2),
+    : d_noise_bandwidth(15.0),
+      d_update_interval(0.001),
+      d_loop_order(2),
       d_current_index(0),
-      d_include_last_integrator(false),
-      d_noise_bandwidth(15.0),
-      d_update_interval(0.001)
+      d_include_last_integrator(false)
 {
     d_inputs.resize(MAX_LOOP_HISTORY_LENGTH, 0.0);
     d_outputs.resize(MAX_LOOP_HISTORY_LENGTH, 0.0);
@@ -104,9 +101,9 @@ void Tracking_loop_filter::update_coefficients()
 
     // Natural frequency
     float wn;
-    float T = d_update_interval;
+    const float T = d_update_interval;
 
-    float zeta = 1.0 / std::sqrt(2.0);
+    const float zeta = 1.0F / std::sqrt(2.0F);
 
     // The following is based on the bilinear transform approximation of
     // the analog integrator. The loop format is from Kaplan & Hegarty
@@ -121,7 +118,7 @@ void Tracking_loop_filter::update_coefficients()
     switch (d_loop_order)
         {
         case 1:
-            wn = d_noise_bandwidth * 4.0;
+            wn = d_noise_bandwidth * 4.0F;
             g1 = wn;
             if (d_include_last_integrator)
                 {
@@ -141,9 +138,9 @@ void Tracking_loop_filter::update_coefficients()
                 }
             break;
         case 2:
-            wn = d_noise_bandwidth * (8.0 * zeta) / (4.0 * zeta * zeta + 1.0);
+            wn = d_noise_bandwidth * (8.0F * zeta) / (4.0F * zeta * zeta + 1.0F);
             g1 = wn * wn;
-            g2 = wn * 2.0 * zeta;
+            g2 = wn * 2.0F * zeta;
             if (d_include_last_integrator)
                 {
                     d_input_coefficients.resize(3);
@@ -166,9 +163,9 @@ void Tracking_loop_filter::update_coefficients()
                 }
             break;
         case 3:
-            wn = d_noise_bandwidth / 0.7845;  // From Kaplan
-            float a3 = 1.1;
-            float b3 = 2.4;
+            wn = d_noise_bandwidth / 0.7845F;  // From Kaplan
+            const float a3 = 1.1;
+            const float b3 = 2.4;
             g1 = wn * wn * wn;
             g2 = a3 * wn * wn;
             g3 = b3 * wn;

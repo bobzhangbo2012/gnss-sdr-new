@@ -2,9 +2,9 @@
  * SPDX-FileCopyrightText: (c) 2003, 2004 Lev Walkin <vlm@lionet.info>. All rights reserved.
  * SPDX-License-Identifier: BSD-1-Clause
  */
-#define _POSIX_PTHREAD_SEMANTICS /* for Sun */
+#define POSIX_PTHREAD_SEMANTICS /* for Sun */
 #ifndef _REENTRANT
-#define _REENTRANT /* for Sun */
+#define REENTRANT /* for Sun */
 #endif
 #include <GeneralizedTime.h>
 #include <asn_internal.h>
@@ -549,8 +549,8 @@ time_t asn_GT2time_frac(const GeneralizedTime_t *st, int *frac_value,
         case 0x2C:
         case 0x2E: /* (.|,) */
             /*
-                 * Process fractions of seconds.
-                 */
+             * Process fractions of seconds.
+             */
             for (buf++; buf < end; buf++)
                 {
                     int v = *buf;
@@ -759,6 +759,7 @@ GeneralizedTime_t *asn_time2GT_frac(GeneralizedTime_t *opt_gt,
 
     gmtoff = GMTOFF(*tm);
 
+    // clang-format off
     if (force_gmt && gmtoff)
         {
             tm_s = *tm;
@@ -771,7 +772,7 @@ GeneralizedTime_t *asn_time2GT_frac(GeneralizedTime_t *opt_gt,
             gmtoff = 0;
 #endif
         }
-
+    // clang-format on
     size = snprintf(buf, buf_size, "%04d%02d%02d%02d%02d%02d",
         tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
         tm->tm_hour, tm->tm_min, tm->tm_sec);

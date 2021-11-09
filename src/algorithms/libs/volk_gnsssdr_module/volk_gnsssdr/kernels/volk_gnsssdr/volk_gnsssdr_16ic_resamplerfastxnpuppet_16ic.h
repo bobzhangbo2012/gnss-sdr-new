@@ -7,18 +7,15 @@
  *
  * VOLK_GNSSSDR puppet for integrating the multiple resampler into the test system
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef INCLUDED_volk_gnsssdr_16ic_resamplerfastxnpuppet_16ic_H
@@ -117,7 +114,7 @@ static inline void volk_gnsssdr_16ic_resamplerfastxnpuppet_16ic_u_sse2(lv_16sc_t
 #endif
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 static inline void volk_gnsssdr_16ic_resamplerfastxnpuppet_16ic_neon(lv_16sc_t* result, const lv_16sc_t* local_code, unsigned int num_points)
 {
     float code_phase_step_chips = 0.1;

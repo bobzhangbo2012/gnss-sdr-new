@@ -5,18 +5,15 @@
  *
  * Class that implements a first-order exponential smoother.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -24,6 +21,12 @@
 #define GNSS_SDR_EXPONENTIAL_SMOOTHER_H
 
 #include <vector>
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
+
 
 /*! \brief
  * Class that implements a first-order exponential smoother.
@@ -36,8 +39,12 @@
 class Exponential_Smoother
 {
 public:
-    Exponential_Smoother();                                //!< Constructor
-    ~Exponential_Smoother() = default;                     //!< Destructor
+    Exponential_Smoother();             //!< Constructor
+    ~Exponential_Smoother() = default;  //!< Destructor
+
+    Exponential_Smoother(Exponential_Smoother&&) = default;                       //!< Move operator
+    Exponential_Smoother& operator=(Exponential_Smoother&& /*other*/) = default;  //!< Move assignment operator
+
     void set_alpha(float alpha);                           //!< 0 < alpha < 1. The higher, the most responsive, but more variance. Default value: 0.001
     void set_samples_for_initialization(int num_samples);  //!< Number of samples averaged for initialization. Default value: 200
     void reset();
@@ -45,18 +52,20 @@ public:
     void set_offset(float offset);
     float smooth(float raw);
     double smooth(double raw);
-    Exponential_Smoother(Exponential_Smoother&&) = default;                       //!< Move operator
-    Exponential_Smoother& operator=(Exponential_Smoother&& /*other*/) = default;  //!< Move assignment operator
+
 private:
-    float alpha_;  // takes value 0.0001 if not set
-    int samples_for_initialization_;
-    float one_minus_alpha_;
-    float old_value_;
-    float min_value_;
-    float offset_;
-    bool initializing_;
-    int init_counter_;
     std::vector<float> init_buffer_;
+    float alpha_{0.001};
+    float one_minus_alpha_{0.999};
+    float old_value_{0.0};
+    float min_value_{25.0};
+    float offset_{12.0};
+    int samples_for_initialization_{200};
+    int init_counter_{0};
+    bool initializing_{true};
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_EXPONENTIAL_SMOOTHER_H

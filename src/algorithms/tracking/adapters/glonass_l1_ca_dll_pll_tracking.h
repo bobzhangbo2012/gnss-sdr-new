@@ -11,18 +11,15 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkha user, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GLONASS_L1_CA_DLL_PLL_TRACKING_H
@@ -32,6 +29,12 @@
 #include "tracking_interface.h"
 #include <string>
 
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_adapters
+ * \{ */
+
+
 class ConfigurationInterface;
 
 /*!
@@ -40,7 +43,8 @@ class ConfigurationInterface;
 class GlonassL1CaDllPllTracking : public TrackingInterface
 {
 public:
-    GlonassL1CaDllPllTracking(ConfigurationInterface* configuration,
+    GlonassL1CaDllPllTracking(
+        const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -95,4 +99,7 @@ private:
     unsigned int out_streams_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GLONASS_L1_CA_DLL_PLL_TRACKING_H

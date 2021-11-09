@@ -8,18 +8,15 @@
  *
  * Class that implements a highly optimized vector multiTAP correlator class for CPUs
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_CPU_MULTICORRELATOR_REAL_CODES_H
@@ -28,13 +25,19 @@
 
 #include <complex>
 
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
+
+
 /*!
  * \brief Class that implements carrier wipe-off and correlators.
  */
 class Cpu_Multicorrelator_Real_Codes
 {
 public:
-    Cpu_Multicorrelator_Real_Codes();
+    Cpu_Multicorrelator_Real_Codes() = default;
     void set_high_dynamics_resampler(bool use_high_dynamics_resampler);
     ~Cpu_Multicorrelator_Real_Codes();
     bool init(int max_signal_length_samples, int n_correlators);
@@ -47,15 +50,17 @@ public:
 
 private:
     // Allocate the device input vectors
-    const std::complex<float> *d_sig_in;
-    float **d_local_codes_resampled;
-    const float *d_local_code_in;
-    std::complex<float> *d_corr_out;
-    float *d_shifts_chips;
-    bool d_use_high_dynamics_resampler;
-    int d_code_length_chips;
-    int d_n_correlators;
+    const std::complex<float> *d_sig_in{nullptr};
+    const float *d_local_code_in{nullptr};
+    std::complex<float> *d_corr_out{nullptr};
+    float **d_local_codes_resampled{nullptr};
+    float *d_shifts_chips{nullptr};
+    int d_code_length_chips{0};
+    int d_n_correlators{0};
+    bool d_use_high_dynamics_resampler{true};
 };
 
 
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_CPU_MULTICORRELATOR_REAL_CODES_H

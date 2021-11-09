@@ -3,18 +3,16 @@
  *
  * \brief Unpacks 2 bit samples that have been packed into bytes or shorts
  * \author Cillian O'Driscoll cillian.odriscoll (at) gmail.com
- * -------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
+ * -----------------------------------------------------------------------------
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -72,8 +70,8 @@ void swapEndianness(int8_t const *in, std::vector<int8_t> &out, size_t item_size
 
     for (i = 0; i < ninput_items; ++i)
         {
-            k = j + skip;
-            l = j;
+            k = static_cast<int>(j + skip);
+            l = static_cast<int>(j);
             while (k >= l)
                 {
                     out[j++] = in[k--];
@@ -103,8 +101,8 @@ unpack_2bit_samples::unpack_2bit_samples(bool big_endian_bytes,
           gr::io_signature::make(1, 1, item_size),
           gr::io_signature::make(1, 1, sizeof(char)),
           4 * item_size),  // we make 4 bytes out for every byte in
-      big_endian_bytes_(big_endian_bytes),
       item_size_(item_size),
+      big_endian_bytes_(big_endian_bytes),
       big_endian_items_(big_endian_items),
       swap_endian_items_(false),
       reverse_interleaving_(reverse_interleaving)

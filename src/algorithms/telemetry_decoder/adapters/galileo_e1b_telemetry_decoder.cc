@@ -5,18 +5,15 @@
  * \author Javier Arribas 2013. jarribas(at)cttc.es,
  * Mara Branzanti 2013. mara.branzanti(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -25,21 +22,21 @@
 #include <glog/logging.h>
 
 
-GalileoE1BTelemetryDecoder::GalileoE1BTelemetryDecoder(ConfigurationInterface* configuration,
+GalileoE1BTelemetryDecoder::GalileoE1BTelemetryDecoder(
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
-    std::string default_dump_filename = "./navigation.dat";
     DLOG(INFO) << "role " << role;
-    dump_ = configuration->property(role + ".dump", false);
-    dump_filename_ = configuration->property(role + ".dump_filename", default_dump_filename);
+    tlm_parameters_.SetFromConfiguration(configuration, role);
+    tlm_parameters_.enable_reed_solomon = configuration->property(role + ".enable_reed_solomon", false);
     // make telemetry decoder object
-    telemetry_decoder_ = galileo_make_telemetry_decoder_gs(satellite_, 1, dump_);  // unified galileo decoder set to INAV (frame_type=1)
+    telemetry_decoder_ = galileo_make_telemetry_decoder_gs(satellite_, tlm_parameters_, 1);  // unified galileo decoder set to INAV (frame_type=1)
     DLOG(INFO) << "telemetry_decoder(" << telemetry_decoder_->unique_id() << ")";
-    channel_ = 0;
+
     if (in_streams_ > 1)
         {
             LOG(ERROR) << "This implementation only supports one input stream";

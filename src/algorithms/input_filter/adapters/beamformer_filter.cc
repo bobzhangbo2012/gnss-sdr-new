@@ -3,18 +3,15 @@
  * \brief Interface of an adapter of a digital beamformer
  * \author Javier Arribas jarribas (at) cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "beamformer_filter.h"
@@ -25,16 +22,18 @@
 
 
 BeamformerFilter::BeamformerFilter(
-    ConfigurationInterface* configuration, const std::string& role,
-    unsigned int in_stream, unsigned int out_stream) : role_(role), in_stream_(in_stream), out_stream_(out_stream)
+    const ConfigurationInterface* configuration, const std::string& role,
+    unsigned int in_stream, unsigned int out_stream)
+    : role_(role),
+      in_stream_(in_stream),
+      out_stream_(out_stream)
 {
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_file = "./data/input_filter.dat";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_file("./data/input_filter.dat");
     item_type_ = configuration->property(role + ".item_type", default_item_type);
     dump_ = configuration->property(role + ".dump", false);
-    DLOG(INFO) << "dump_ is " << dump_;
     dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
-
+    DLOG(INFO) << "role " << role_;
     if (item_type_ == "gr_complex")
         {
             item_size_ = sizeof(gr_complex);
@@ -46,7 +45,7 @@ BeamformerFilter::BeamformerFilter(
         {
             LOG(WARNING) << item_type_
                          << " unrecognized item type for beamformer";
-            item_size_ = sizeof(gr_complex);
+            item_size_ = 0;
         }
     if (dump_)
         {
@@ -54,7 +53,6 @@ BeamformerFilter::BeamformerFilter(
             file_sink_ = gr::blocks::file_sink::make(item_size_, dump_filename_.c_str());
             DLOG(INFO) << "file_sink(" << file_sink_->unique_id() << ")";
         }
-    samples_ = 0ULL;
     if (in_stream_ > 8)
         {
             LOG(ERROR) << "This implementation only supports eight input streams";

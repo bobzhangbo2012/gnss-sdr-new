@@ -1,10 +1,8 @@
-# Copyright (C) 2015-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2015-2020  (see AUTHORS file for a list of contributors)
+# SPDX-License-Identifier: BSD-3-Clause
 
 if(DEFINED __INCLUDED_VOLK_PYTHON_CMAKE)
     return()
@@ -55,7 +53,7 @@ endmacro()
 set(VOLK_PYTHON_MIN_VERSION "2.7")
 set(VOLK_PYTHON3_MIN_VERSION "3.4")
 
-if(CMAKE_VERSION VERSION_LESS 3.12)
+if(CMAKE_VERSION VERSION_LESS 3.12 OR CMAKE_CROSSCOMPILING)
     if(PYTHON_EXECUTABLE)
         message(STATUS "User set python executable ${PYTHON_EXECUTABLE}")
         find_package(PythonInterp ${VOLK_PYTHON_MIN_VERSION} REQUIRED)
@@ -74,18 +72,26 @@ else()
         message(STATUS "User set python executable ${PYTHON_EXECUTABLE}")
         find_package(PythonInterp ${VOLK_PYTHON_MIN_VERSION} REQUIRED)
     else()
+        if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+            set(_previous ${CMAKE_FIND_FRAMEWORK})
+            set(CMAKE_FIND_FRAMEWORK LAST)
+        endif()
         find_package(Python3 COMPONENTS Interpreter)
+        if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+            set(CMAKE_FIND_FRAMEWORK ${_previous})
+        endif()
         if(Python3_FOUND)
             set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
             set(PYTHON_VERSION_MAJOR ${Python3_VERSION_MAJOR})
+            set(PYTHON_VERSION_STRING ${Python3_VERSION})
             volk_python_check_module("mako >= 0.4.2" mako "mako.__version__ >= '0.4.2'" MAKO_FOUND)
-            volk_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
         endif()
-        if(NOT Python3_FOUND OR NOT MAKO_FOUND OR NOT SIX_FOUND)
+        if(NOT Python3_FOUND OR NOT MAKO_FOUND)
             find_package(Python2 COMPONENTS Interpreter)
             if(Python2_FOUND)
                 set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
                 set(PYTHON_VERSION_MAJOR ${Python2_VERSION_MAJOR})
+                set(PYTHON_VERSION_STRING ${Python2_VERSION})
                 volk_python_check_module("mako >= 0.4.2" mako "mako.__version__ >= '0.4.2'" MAKO_FOUND)
                 volk_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
             endif()

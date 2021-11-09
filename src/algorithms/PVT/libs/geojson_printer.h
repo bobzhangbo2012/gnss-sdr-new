@@ -4,18 +4,15 @@
  * \author Carles Fernandez-Prades, 2015. cfernandez(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -24,8 +21,13 @@
 
 
 #include <fstream>
-#include <memory>
 #include <string>
+
+/** \addtogroup PVT
+ * \{ */
+/** \addtogroup PVT_libs
+ * \{ */
+
 
 class Pvt_Solution;
 
@@ -40,14 +42,17 @@ public:
     explicit GeoJSON_Printer(const std::string& base_path = ".");
     ~GeoJSON_Printer();
     bool set_headers(const std::string& filename, bool time_tag_name = true);
-    bool print_position(const std::shared_ptr<Pvt_Solution>& position, bool print_average_values);
+    bool print_position(const Pvt_Solution* const position, bool print_average_values);
     bool close_file();
 
 private:
     std::ofstream geojson_file;
-    bool first_pos;
     std::string filename_;
     std::string geojson_base_path;
+    bool first_pos;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_GEOJSON_PRINTER_H

@@ -15,18 +15,15 @@
  *          <li> Gerald LaMountain, 2019. gerald(at)ece.neu.edu
  *          <li> Jordi Vila-Valls 2019. jvila(at)cttc.es
  *          </ul>
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_NONLINEAR_TRACKING_H
@@ -38,6 +35,12 @@
 
 #include <armadillo>
 #include <gnuradio/gr_complex.h>
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
+
 
 // Abstract model function
 class ModelFunction
@@ -106,4 +109,7 @@ private:
     arma::mat P_x_est;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_NONLINEAR_TRACKING_H

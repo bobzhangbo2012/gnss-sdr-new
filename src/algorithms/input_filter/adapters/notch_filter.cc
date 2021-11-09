@@ -4,18 +4,15 @@
  * \author Antonio Ramos, 2017. antonio.ramosdet(at)gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "notch_filter.h"
@@ -25,31 +22,33 @@
 #include <glog/logging.h>
 
 
-NotchFilter::NotchFilter(ConfigurationInterface* configuration, const std::string& role,
-    unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
+NotchFilter::NotchFilter(const ConfigurationInterface* configuration,
+    const std::string& role,
+    unsigned int in_streams,
+    unsigned int out_streams)
+    : role_(role),
+      in_streams_(in_streams),
+      out_streams_(out_streams)
 {
-    size_t item_size_;
-    float pfa;
-    float default_pfa = 0.001;
-    float p_c_factor;
-    float default_p_c_factor = 0.9;
-    int length_;
-    int default_length_ = 32;
-    int n_segments_est;
-    int default_n_segments_est = 12500;
-    int n_segments_reset;
-    int default_n_segments_reset = 5000000;
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_file = "./data/input_filter.dat";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_file("./data/input_filter.dat");
+    const float default_pfa = 0.001;
+    const float default_p_c_factor = 0.9;
+    const int default_length_ = 32;
+    const int default_n_segments_est = 12500;
+    const int default_n_segments_reset = 5000000;
+
+    const float pfa = configuration->property(role + ".pfa", default_pfa);
+    const float p_c_factor = configuration->property(role + ".p_c_factor", default_p_c_factor);
+    const int length_ = configuration->property(role + ".length", default_length_);
+    const int n_segments_est = configuration->property(role + ".segments_est", default_n_segments_est);
+    const int n_segments_reset = configuration->property(role + ".segments_reset", default_n_segments_reset);
+
+    dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
     item_type_ = configuration->property(role + ".item_type", default_item_type);
     dump_ = configuration->property(role + ".dump", false);
-    DLOG(INFO) << "dump_ is " << dump_;
-    dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
-    pfa = configuration->property(role + ".pfa", default_pfa);
-    p_c_factor = configuration->property(role + ".p_c_factor", default_p_c_factor);
-    length_ = configuration->property(role + ".length", default_length_);
-    n_segments_est = configuration->property(role + ".segments_est", default_n_segments_est);
-    n_segments_reset = configuration->property(role + ".segments_reset", default_n_segments_reset);
+
+    DLOG(INFO) << "role " << role_;
     if (item_type_ == "gr_complex")
         {
             item_size_ = sizeof(gr_complex);
@@ -60,7 +59,7 @@ NotchFilter::NotchFilter(ConfigurationInterface* configuration, const std::strin
     else
         {
             LOG(WARNING) << item_type_ << " unrecognized item type for notch filter";
-            item_size_ = sizeof(gr_complex);
+            item_size_ = 0;  // notify wrong configuration
         }
     if (dump_)
         {

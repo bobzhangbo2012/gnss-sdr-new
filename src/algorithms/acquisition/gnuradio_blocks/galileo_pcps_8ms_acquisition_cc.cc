@@ -4,21 +4,19 @@
  * Galileo E1 signals with coherent integration time = 8 ms (two codes)
  * \author Marc Molina, 2013. marc.molina.pena(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "galileo_pcps_8ms_acquisition_cc.h"
+#include "MATH_CONSTANTS.h"
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
 #include <volk/volk.h>
@@ -35,11 +33,13 @@ galileo_pcps_8ms_acquisition_cc_sptr galileo_pcps_8ms_make_acquisition_cc(
     int64_t fs_in,
     int32_t samples_per_ms,
     int32_t samples_per_code,
-    bool dump, const std::string &dump_filename)
+    bool dump,
+    const std::string &dump_filename,
+    bool enable_monitor_output)
 {
     return galileo_pcps_8ms_acquisition_cc_sptr(
         new galileo_pcps_8ms_acquisition_cc(sampled_ms, max_dwells, doppler_max, fs_in, samples_per_ms,
-            samples_per_code, dump, dump_filename));
+            samples_per_code, dump, dump_filename, enable_monitor_output));
 }
 
 
@@ -51,9 +51,10 @@ galileo_pcps_8ms_acquisition_cc::galileo_pcps_8ms_acquisition_cc(
     int32_t samples_per_ms,
     int32_t samples_per_code,
     bool dump,
-    const std::string &dump_filename) : gr::block("galileo_pcps_8ms_acquisition_cc",
-                                            gr::io_signature::make(1, 1, sizeof(gr_complex) * sampled_ms * samples_per_ms),
-                                            gr::io_signature::make(0, 0, sizeof(gr_complex) * sampled_ms * samples_per_ms))
+    const std::string &dump_filename,
+    bool enable_monitor_output) : gr::block("galileo_pcps_8ms_acquisition_cc",
+                                      gr::io_signature::make(1, 1, static_cast<int>(sizeof(gr_complex) * sampled_ms * samples_per_ms)),
+                                      gr::io_signature::make(0, 1, sizeof(Gnss_Synchro)))
 {
     this->message_port_register_out(pmt::mp("events"));
     d_sample_counter = 0ULL;  // SAMPLE COUNTER
@@ -74,16 +75,14 @@ galileo_pcps_8ms_acquisition_cc::galileo_pcps_8ms_acquisition_cc(
     d_fft_code_A = std::vector<gr_complex>(d_fft_size, lv_cmake(0.0F, 0.0F));
     d_fft_code_B = std::vector<gr_complex>(d_fft_size, lv_cmake(0.0F, 0.0F));
     d_magnitude = std::vector<float>(d_fft_size, 0.0F);
-
-    // Direct FFT
-    d_fft_if = std::make_shared<gr::fft::fft_complex>(d_fft_size, true);
-
-    // Inverse FFT
-    d_ifft = std::make_shared<gr::fft::fft_complex>(d_fft_size, false);
+    d_fft_if = gnss_fft_fwd_make_unique(d_fft_size);
+    d_ifft = gnss_fft_rev_make_unique(d_fft_size);
 
     // For dumping samples into a file
     d_dump = dump;
     d_dump_filename = dump_filename;
+
+    d_enable_monitor_output = enable_monitor_output;
 
     d_doppler_resolution = 0;
     d_threshold = 0;
@@ -150,7 +149,7 @@ void galileo_pcps_8ms_acquisition_cc::init()
     d_gnss_synchro->Acq_samplestamp_samples = 0ULL;
     d_mag = 0.0;
     d_input_power = 0.0;
-    const double GALILEO_TWO_PI = 6.283185307179600;
+
     // Count the number of bins
     d_num_doppler_bins = 0;
     for (auto doppler = static_cast<int32_t>(-d_doppler_max);
@@ -164,7 +163,7 @@ void galileo_pcps_8ms_acquisition_cc::init()
     for (uint32_t doppler_index = 0; doppler_index < d_num_doppler_bins; doppler_index++)
         {
             int32_t doppler = -static_cast<int32_t>(d_doppler_max) + d_doppler_step * doppler_index;
-            float phase_step_rad = static_cast<float>(GALILEO_TWO_PI) * doppler / static_cast<float>(d_fs_in);
+            float phase_step_rad = static_cast<float>(TWO_PI) * doppler / static_cast<float>(d_fs_in);
             std::array<float, 1> _phase{};
             volk_gnsssdr_s32f_sincos_32fc(d_grid_doppler_wipeoffs[doppler_index].data(), -phase_step_rad, _phase.data(), d_fft_size);
         }
@@ -197,7 +196,7 @@ void galileo_pcps_8ms_acquisition_cc::set_state(int32_t state)
 
 int galileo_pcps_8ms_acquisition_cc::general_work(int noutput_items,
     gr_vector_int &ninput_items, gr_vector_const_void_star &input_items,
-    gr_vector_void_star &output_items __attribute__((unused)))
+    gr_vector_void_star &output_items)
 {
     int32_t acquisition_message = -1;  // 0=STOP_CHANNEL 1=ACQ_SUCCEES 2=ACQ_FAIL
 
@@ -377,6 +376,16 @@ int galileo_pcps_8ms_acquisition_cc::general_work(int noutput_items,
 
                 acquisition_message = 1;
                 this->message_port_pub(pmt::mp("events"), pmt::from_long(acquisition_message));
+
+                // Copy and push current Gnss_Synchro to monitor queue
+                if (d_enable_monitor_output)
+                    {
+                        auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
+                        Gnss_Synchro current_synchro_data = Gnss_Synchro();
+                        current_synchro_data = *d_gnss_synchro;
+                        *out[0] = current_synchro_data;
+                        noutput_items = 1;  // Number of Gnss_Synchro objects produced
+                    }
 
                 break;
             }

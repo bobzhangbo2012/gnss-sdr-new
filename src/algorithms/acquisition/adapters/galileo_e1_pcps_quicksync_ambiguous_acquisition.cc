@@ -4,32 +4,36 @@
  *  Galileo E1 Signals using the QuickSync Algorithm
  * \author Damian Miralles, 2014. dmiralles2009@gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "galileo_e1_pcps_quicksync_ambiguous_acquisition.h"
 #include "Galileo_E1.h"
 #include "configuration_interface.h"
-#include "galileo_e1_signal_processing.h"
+#include "galileo_e1_signal_replica.h"
 #include "gnss_sdr_flags.h"
 #include <boost/math/distributions/exponential.hpp>
 #include <glog/logging.h>
 #include <algorithm>
 
+#if HAS_STD_SPAN
+#include <span>
+namespace own = std;
+#else
+#include <gsl/gsl-lite.hpp>
+namespace own = gsl;
+#endif
 
 GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcquisition(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
@@ -37,8 +41,8 @@ GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcqui
                                 out_streams_(out_streams)
 {
     configuration_ = configuration;
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_filename = "../data/acquisition.dat";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_filename("../data/acquisition.dat");
 
     DLOG(INFO) << "role " << role;
 
@@ -56,10 +60,10 @@ GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcqui
     sampled_ms_ = configuration_->property(role + ".coherent_integration_time_ms", 8);
 
     /* --- Find number of samples per spreading code (4 ms)  -----------------*/
-    code_length_ = round(
-        fs_in_ / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS));
+    code_length_ = static_cast<unsigned int>(round(
+        fs_in_ / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS)));
 
-    int samples_per_ms = round(code_length_ / 4.0);
+    auto samples_per_ms = static_cast<int>(round(code_length_ / 4.0));
 
     /*Calculate the folding factor value based on the formula described in the paper.
     This may be a bug, but acquisition also work by variying the folding factor at va-
@@ -104,6 +108,8 @@ GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcqui
     dump_filename_ = configuration_->property(role + ".dump_filename",
         default_dump_filename);
 
+    bool enable_monitor_output = configuration_->property("AcquisitionMonitor.enable_monitor", false);
+
     code_ = std::vector<std::complex<float>>(code_length_);
     LOG(INFO) << "Vector Length: " << vector_length_
               << ", Samples per ms: " << samples_per_ms
@@ -116,7 +122,7 @@ GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcqui
             acquisition_cc_ = pcps_quicksync_make_acquisition_cc(folding_factor_,
                 sampled_ms_, max_dwells_, doppler_max_, fs_in_,
                 samples_per_ms, code_length_, bit_transition_flag_,
-                dump_, dump_filename_);
+                dump_, dump_filename_, enable_monitor_output);
             stream_to_vector_ = gr::blocks::stream_to_vector::make(item_size_,
                 vector_length_);
             DLOG(INFO) << "stream_to_vector_quicksync("
@@ -148,16 +154,18 @@ GalileoE1PcpsQuickSyncAmbiguousAcquisition::GalileoE1PcpsQuickSyncAmbiguousAcqui
 
 void GalileoE1PcpsQuickSyncAmbiguousAcquisition::stop_acquisition()
 {
+    acquisition_cc_->set_state(0);
+    acquisition_cc_->set_active(false);
 }
 
 
 void GalileoE1PcpsQuickSyncAmbiguousAcquisition::set_threshold(float threshold)
 {
-    float pfa = configuration_->property(role_ + std::to_string(channel_) + ".pfa", 0.0);
+    float pfa = configuration_->property(role_ + std::to_string(channel_) + ".pfa", static_cast<float>(0.0));
 
     if (pfa == 0.0)
         {
-            pfa = configuration_->property(role_ + ".pfa", 0.0);
+            pfa = configuration_->property(role_ + ".pfa", static_cast<float>(0.0));
         }
 
     if (pfa == 0.0)
@@ -242,7 +250,7 @@ void GalileoE1PcpsQuickSyncAmbiguousAcquisition::set_local_code()
             galileo_e1_code_gen_complex_sampled(code, Signal_,
                 cboc, gnss_synchro_->PRN, fs_in_, 0, false);
 
-            gsl::span<gr_complex> code_span(code_.data(), vector_length_);
+            own::span<gr_complex> code_span(code_.data(), vector_length_);
             for (unsigned int i = 0; i < (sampled_ms_ / (folding_factor_ * 4)); i++)
                 {
                     std::copy_n(code.data(), code_length_, code_span.subspan(i * code_length_, code_length_).data());
@@ -271,10 +279,10 @@ void GalileoE1PcpsQuickSyncAmbiguousAcquisition::set_state(int state)
 }
 
 
-float GalileoE1PcpsQuickSyncAmbiguousAcquisition::calculate_threshold(float pfa)
+float GalileoE1PcpsQuickSyncAmbiguousAcquisition::calculate_threshold(float pfa) const
 {
     unsigned int frequency_bins = 0;
-    for (int doppler = static_cast<int>(-doppler_max_); doppler <= static_cast<int>(doppler_max_); doppler += doppler_step_)
+    for (int doppler = static_cast<int>(-doppler_max_); doppler <= static_cast<int>(doppler_max_); doppler += static_cast<int>(doppler_step_))
         {
             frequency_bins++;
         }

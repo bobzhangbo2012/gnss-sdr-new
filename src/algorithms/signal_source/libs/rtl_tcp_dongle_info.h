@@ -5,24 +5,28 @@
  *
  * This file contains information taken from librtlsdr:
  *  https://git.osmocom.org/rtl-sdr
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_RTL_TCP_DONGLE_INFO_H
 #define GNSS_SDR_RTL_TCP_DONGLE_INFO_H
 
 #include <boost/asio/ip/tcp.hpp>
+
+
+/** \addtogroup Signal_Source
+ * \{ */
+/** \addtogroup Signal_Source_libs
+ * \{ */
+
 
 /*!
  * \brief This class represents the dongle information
@@ -69,4 +73,6 @@ private:
 };
 
 
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_RTL_TCP_DONGLE_INFO_H

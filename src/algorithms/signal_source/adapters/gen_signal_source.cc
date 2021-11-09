@@ -5,18 +5,15 @@
  * \author Marc Molina, 2013. marc.molina.pena@gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gen_signal_source.h"
@@ -29,21 +26,14 @@
 
 
 // Constructor
-GenSignalSource::GenSignalSource(GNSSBlockInterface *signal_generator, GNSSBlockInterface *filter,
-    std::string role, std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : signal_generator_(signal_generator),
-                                                                             filter_(filter),
-                                                                             role_(std::move(role)),
-                                                                             queue_(std::move(queue))
+GenSignalSource::GenSignalSource(std::shared_ptr<GNSSBlockInterface> signal_generator,
+    std::shared_ptr<GNSSBlockInterface> filter,
+    std::string role,
+    Concurrent_Queue<pmt::pmt_t> *queue __attribute__((unused))) : signal_generator_(std::move(signal_generator)),
+                                                                   filter_(std::move(filter)),
+                                                                   role_(std::move(role))
 {
     connected_ = false;
-}
-
-
-// Destructor
-GenSignalSource::~GenSignalSource()
-{
-    delete signal_generator_;
-    delete filter_;
 }
 
 

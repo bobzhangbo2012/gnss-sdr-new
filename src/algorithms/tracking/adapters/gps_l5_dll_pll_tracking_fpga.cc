@@ -10,18 +10,15 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkhauser, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -31,48 +28,54 @@
 #include "display.h"
 #include "dll_pll_conf_fpga.h"
 #include "gnss_sdr_flags.h"
-#include "gps_l5_signal.h"
+#include "gps_l5_signal_replica.h"
+#include "uio_fpga.h"
 #include <glog/logging.h>
 #include <volk_gnsssdr/volk_gnsssdr_alloc.h>
 #include <array>
 
 GpsL5DllPllTrackingFpga::GpsL5DllPllTrackingFpga(
-    ConfigurationInterface *configuration, const std::string &role,
+    const ConfigurationInterface *configuration, const std::string &role,
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     Dll_Pll_Conf_Fpga trk_params_fpga = Dll_Pll_Conf_Fpga();
     DLOG(INFO) << "role " << role;
     trk_params_fpga.SetFromConfiguration(configuration, role);
 
-    int32_t vector_length = std::round(static_cast<double>(trk_params_fpga.fs_in) / (static_cast<double>(GPS_L5I_CODE_RATE_CPS) / static_cast<double>(GPS_L5I_CODE_LENGTH_CHIPS)));
+    const auto vector_length = static_cast<int32_t>(std::round(static_cast<double>(trk_params_fpga.fs_in) / (static_cast<double>(GPS_L5I_CODE_RATE_CPS) / static_cast<double>(GPS_L5I_CODE_LENGTH_CHIPS))));
     trk_params_fpga.vector_length = vector_length;
     if (trk_params_fpga.extend_correlation_symbols < 1)
         {
             trk_params_fpga.extend_correlation_symbols = 1;
-            std::cout << TEXT_RED << "WARNING: GPS L5. extend_correlation_symbols must be bigger than 0. Coherent integration has been set to 1 symbol (1 ms)" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: GPS L5. extend_correlation_symbols must be bigger than 0. Coherent integration has been set to 1 symbol (1 ms)" << TEXT_RESET << '\n';
         }
     else if (!trk_params_fpga.track_pilot and trk_params_fpga.extend_correlation_symbols > GPS_L5I_NH_CODE_LENGTH)
         {
             trk_params_fpga.extend_correlation_symbols = GPS_L5I_NH_CODE_LENGTH;
-            std::cout << TEXT_RED << "WARNING: GPS L5. extend_correlation_symbols must be lower than 11 when tracking the data component. Coherent integration has been set to 10 symbols (10 ms)" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: GPS L5. extend_correlation_symbols must be lower than 11 when tracking the data component. Coherent integration has been set to 10 symbols (10 ms)" << TEXT_RESET << '\n';
         }
     if ((trk_params_fpga.extend_correlation_symbols > 1) and (trk_params_fpga.pll_bw_narrow_hz > trk_params_fpga.pll_bw_hz or trk_params_fpga.dll_bw_narrow_hz > trk_params_fpga.dll_bw_hz))
         {
-            std::cout << TEXT_RED << "WARNING: GPS L5. PLL or DLL narrow tracking bandwidth is higher than wide tracking one" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: GPS L5. PLL or DLL narrow tracking bandwidth is higher than wide tracking one" << TEXT_RESET << '\n';
         }
     d_track_pilot = trk_params_fpga.track_pilot;
     trk_params_fpga.system = 'G';
-    std::array<char, 3> sig_{'L', '5', '\0'};
+    const std::array<char, 3> sig_{'L', '5', '\0'};
     std::memcpy(trk_params_fpga.signal, sig_.data(), 3);
 
-    // FPGA configuration parameters
-    // obtain the number of the first uio device corresponding to a HW accelerator in the FPGA
-    // that can be assigned to the tracking of the L5 signal
-    trk_params_fpga.dev_file_num = configuration->property(role + ".dev_file_num", 27);
+    // UIO device file
+    device_name = configuration->property(role + ".devicename", default_device_name_GPS_L5);
+
     // compute the number of tracking channels that have already been instantiated. The order in which
     // GNSS-SDR instantiates the tracking channels i L1, L2, L5, E1, E5a
-    trk_params_fpga.num_prev_assigned_ch = configuration->property("Channels_1C.count", 0) +
-                                           configuration->property("Channels_2S.count", 0);
+
+    uint32_t num_prev_assigned_ch_1C = configuration->property("Channels_1C.count", 0);
+    uint32_t num_prev_assigned_ch_2S = 0;
+    if (configuration->property("Tracking_2S.devicename", std::string("")) != device_name)
+        {
+            num_prev_assigned_ch_2S = configuration->property("Channels_2S.count", 0);
+        }
+    num_prev_assigned_ch = num_prev_assigned_ch_1C + num_prev_assigned_ch_2S;
 
     // ################# PRE-COMPUTE ALL THE CODES #################
     uint32_t code_samples_per_chip = 1;
@@ -215,7 +218,17 @@ void GpsL5DllPllTrackingFpga::stop_tracking()
 void GpsL5DllPllTrackingFpga::set_channel(unsigned int channel)
 {
     channel_ = channel;
-    tracking_fpga_sc->set_channel(channel);
+
+    // UIO device file
+    std::string device_io_name;
+    // find the uio device file corresponding to the tracking multicorrelator
+    if (find_uio_dev_file_name(device_io_name, device_name, channel - num_prev_assigned_ch) < 0)
+        {
+            std::cout << "Cannot find the FPGA uio device file corresponding to device name " << device_name << std::endl;
+            throw std::exception();
+        }
+
+    tracking_fpga_sc->set_channel(channel, device_io_name);
 }
 
 

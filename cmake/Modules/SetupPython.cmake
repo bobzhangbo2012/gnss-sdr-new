@@ -1,10 +1,8 @@
-# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2011-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 ########################################################################
@@ -49,7 +47,7 @@ endmacro()
 # or finds the interpreter via the built-in cmake module.
 ########################################################################
 
-if(CMAKE_VERSION VERSION_LESS 3.12)
+if(CMAKE_VERSION VERSION_LESS 3.12 OR CMAKE_CROSSCOMPILING)
     if(PYTHON_EXECUTABLE)
         message(STATUS "User set python executable ${PYTHON_EXECUTABLE}")
         string(FIND "${PYTHON_EXECUTABLE}" "python3" IS_PYTHON3)
@@ -60,10 +58,11 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
         endif()
         gnsssdr_python_check_module("python >= ${GNSSSDR_PYTHON_MIN_VERSION}" sys "sys.version.split()[0] >= '${GNSSSDR_PYTHON_MIN_VERSION}'" PYTHON_MIN_VER_FOUND)
         gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)
-        gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+        if(IS_PYTHON3 EQUAL -1)
+            gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+        endif()
     else()
         message(STATUS "PYTHON_EXECUTABLE not set - trying by default python3")
-        message(STATUS "Use -DPYTHON_EXECUTABLE=/path/to/python to build for python 2.7")
         set(Python_ADDITIONAL_VERSIONS 3.4 3.5 3.6 3.7 3.8 3.9)
         find_package(PythonInterp ${GNSSSDR_PYTHON_MIN3_VERSION})
         if(NOT PYTHONINTERP_FOUND)
@@ -72,18 +71,26 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
         endif()
         gnsssdr_python_check_module("python >= ${GNSSSDR_PYTHON_MIN_VERSION}" sys "sys.version.split()[0] >= '${GNSSSDR_PYTHON_MIN_VERSION}'" PYTHON_MIN_VER_FOUND)
         gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)
-        gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+        if(PYTHON_VERSION_STRING VERSION_LESS "3.0")
+            gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+        endif()
     endif()
 else()
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(_previous ${CMAKE_FIND_FRAMEWORK})
+        set(CMAKE_FIND_FRAMEWORK LAST)
+    endif()
     find_package(Python3 COMPONENTS Interpreter)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(CMAKE_FIND_FRAMEWORK ${_previous})
+    endif()
     if(Python3_FOUND)
         set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
         set(PYTHON_VERSION_MAJOR ${Python3_VERSION_MAJOR})
         gnsssdr_python_check_module("python >= ${GNSSSDR_PYTHON_MIN_VERSION}" sys "sys.version.split()[0] >= '${GNSSSDR_PYTHON_MIN_VERSION}'" PYTHON_MIN_VER_FOUND)
         gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)
-        gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
     endif()
-    if(NOT Python3_FOUND OR NOT MAKO_FOUND OR NOT SIX_FOUND)
+    if(NOT Python3_FOUND OR NOT MAKO_FOUND)
         find_package(Python2 COMPONENTS Interpreter)
         if(Python2_FOUND)
             set(PYTHON_EXECUTABLE ${Python2_EXECUTABLE})
@@ -97,7 +104,9 @@ else()
             find_package(PythonInterp ${GNSSSDR_PYTHON_MIN_VERSION})
             gnsssdr_python_check_module("python >= ${GNSSSDR_PYTHON_MIN_VERSION}" sys "sys.version.split()[0] >= '${GNSSSDR_PYTHON_MIN_VERSION}'" PYTHON_MIN_VER_FOUND)
             gnsssdr_python_check_module("mako >= ${GNSSSDR_MAKO_MIN_VERSION}" mako "mako.__version__ >= '${GNSSSDR_MAKO_MIN_VERSION}'" MAKO_FOUND)
-            gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+            if(PYTHON_VERSION_STRING VERSION_LESS "3.0")
+                gnsssdr_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+            endif()
         endif()
     endif()
 endif()

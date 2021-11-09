@@ -3,21 +3,19 @@
  * \brief Implements Unit Test for the Rtcm_Printer class.
  * \author Carles Fernandez-Prades, 2013. cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
+#include "gnss_sdr_make_unique.h"
 #include "rtcm_printer.h"
 #include <string>
 
@@ -31,7 +29,7 @@ TEST(RtcmPrinterTest, Instantiate)
     bool rtcm_file_output_enabled = false;
     unsigned short rtcm_tcp_port = 2101;
     unsigned short rtcm_station_id = 1234;
-    std::unique_ptr<Rtcm_Printer> RTCM_printer(new Rtcm_Printer(filename, rtcm_file_output_enabled, flag_rtcm_server, flag_rtcm_tty_port, rtcm_tcp_port, rtcm_station_id, rtcm_dump_devname));
+    auto RTCM_printer = std::make_unique<Rtcm_Printer>(filename, rtcm_file_output_enabled, flag_rtcm_server, flag_rtcm_tty_port, rtcm_tcp_port, rtcm_station_id, rtcm_dump_devname);
 }
 
 
@@ -45,7 +43,7 @@ TEST(RtcmPrinterTest, Run)
     unsigned short rtcm_tcp_port = 2101;
     unsigned short rtcm_station_id = 1234;
 
-    std::unique_ptr<Rtcm_Printer> RTCM_printer(new Rtcm_Printer(filename, rtcm_file_output_enabled, flag_rtcm_server, flag_rtcm_tty_port, rtcm_tcp_port, rtcm_station_id, rtcm_dump_devname));
+    auto RTCM_printer = std::make_unique<Rtcm_Printer>(filename, rtcm_file_output_enabled, flag_rtcm_server, flag_rtcm_tty_port, rtcm_tcp_port, rtcm_station_id, rtcm_dump_devname);
 
     std::string reference_msg = "D300133ED7D30202980EDEEF34B4BD62AC0941986F33360B98";
 

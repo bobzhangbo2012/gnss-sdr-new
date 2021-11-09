@@ -1,10 +1,8 @@
-# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2011-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 # - Try to find GFlags
 #
@@ -115,10 +113,7 @@ else()
     set(GFlags_FOUND false)
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GFLAGS DEFAULT_MSG GFlags_LIBS GFlags_INCLUDE_DIRS)
-
-if(GFLAGS_FOUND)
+if(GFlags_LIBS AND GFlags_INCLUDE_DIRS)
     if(NOT PACKAGE_VERSION)
         set(PACKAGE_VERSION "")
     endif()
@@ -128,6 +123,11 @@ if(GFLAGS_FOUND)
     get_filename_component(GFlags_LIBS_DIR ${FIRST_DIR} DIRECTORY)
     if(EXISTS ${GFlags_LIBS_DIR}/cmake/gflags/gflags-config-version.cmake)
         include(${GFlags_LIBS_DIR}/cmake/gflags/gflags-config-version.cmake)
+    endif()
+    if(NOT PACKAGE_VERSION)
+        if(EXISTS ${GFlags_INCLUDE_DIRS}/google/gflags.h)
+            set(PACKAGE_VERSION "2.0")
+        endif()
     endif()
     if(PACKAGE_VERSION)
         set(GFLAGS_VERSION ${PACKAGE_VERSION})
@@ -149,6 +149,17 @@ endif()
 set_package_properties(GFLAGS PROPERTIES
     URL "https://github.com/gflags/gflags"
 )
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(GFLAGS DEFAULT_MSG GFlags_LIBS GFlags_INCLUDE_DIRS)
+
+if(GFLAGS_VERSION)
+    if(${GFLAGS_VERSION} VERSION_LESS "${GNSSSDR_GFLAGS_MIN_VERSION}")
+        set(GFLAGS_FOUND FALSE)
+        unset(GFlags_LIBS CACHE)
+        unset(GFlags_INCLUDE_DIRS CACHE)
+    endif()
+endif()
 
 if(GFLAGS_FOUND AND NOT TARGET Gflags::gflags)
     add_library(Gflags::gflags SHARED IMPORTED)

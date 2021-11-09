@@ -1,10 +1,8 @@
-# Copyright (C) 2011-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2011-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 if(DEFINED __INCLUDED_GNSSSDR_BUILD_TYPES_CMAKE)
     return()
@@ -38,8 +36,8 @@ list(APPEND AVAIL_BUILDTYPES
 # checks the value set in the cmake interface against the list of
 # known build types in AVAIL_BUILDTYPES. If the build type is found,
 # the function exits immediately. If nothing is found by the end of
-# checking all available build types, we exit with an error and list
-# the available build types.
+# checking all available build types, we exit with a soft warning, listing
+# the available build types, and setting the build type to None.
 ########################################################################
 function(GNSSSDR_CHECK_BUILD_TYPE settype)
   string(TOUPPER ${settype} _settype)
@@ -49,8 +47,10 @@ function(GNSSSDR_CHECK_BUILD_TYPE settype)
       return() # found it; exit cleanly
     endif()
   endforeach()
-  # Build type not found; error out
-  message(FATAL_ERROR "Build type '${settype}' not valid, must be one of: ${AVAIL_BUILDTYPES}")
+  # Build type not found; warn out at set it to None
+  message(STATUS "Warning: Build type '${settype}' not valid, must be one of: ${AVAIL_BUILDTYPES}.")
+  message(STATUS "Setting the build type to 'None'")
+  set(CMAKE_BUILD_TYPE "None" PARENT_SCOPE)
 endfunction()
 
 

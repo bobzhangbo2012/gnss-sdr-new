@@ -4,18 +4,15 @@
  *  Galileo E1 Signals for the FPGA
  * \author Marc Majoral, 2019. mmajoral(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GALILEO_E1_PCPS_AMBIGUOUS_ACQUISITION_FPGA_H
@@ -25,9 +22,15 @@
 #include "channel_fsm.h"
 #include "gnss_synchro.h"
 #include "pcps_acquisition_fpga.h"
+#include <volk_gnsssdr/volk_gnsssdr_alloc.h>
 #include <memory>
 #include <string>
 #include <vector>
+
+/** \addtogroup Acquisition
+ * \{ */
+/** \addtogroup Acq_adapters
+ * \{ */
 
 
 class ConfigurationInterface;
@@ -42,7 +45,8 @@ public:
     /*!
      * \brief Constructor
      */
-    GalileoE1PcpsAmbiguousAcquisitionFpga(ConfigurationInterface* configuration,
+    GalileoE1PcpsAmbiguousAcquisitionFpga(
+        const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -177,6 +181,8 @@ public:
     void set_resampler_latency(uint32_t latency_samples __attribute__((unused))) override{};
 
 private:
+    const std::string acquisition_device_name = "acquisition_S00_AXI";  // UIO device name
+
     // the following flags are FPGA-specific and they are using arrange the values of the fft of the local code in the way the FPGA
     // expects. This arrangement is done in the initialisation to avoid consuming unnecessary clock cycles during tracking.
     static const uint32_t quant_bits_local_code = 16;
@@ -185,20 +191,22 @@ private:
     static const uint32_t select_all_code_bits = 0xFFFFFFFF;  // Select a 20 bit word
     static const uint32_t shl_code_bits = 65536;              // shift left by 10 bits
 
-    ConfigurationInterface* configuration_;
     pcps_acquisition_fpga_sptr acquisition_fpga_;
-    bool acquire_pilot_;
-    uint32_t channel_;
+    volk_gnsssdr::vector<uint32_t> d_all_fft_codes_;  // memory that contains all the code ffts
     std::weak_ptr<ChannelFsm> channel_fsm_;
+    Gnss_Synchro* gnss_synchro_;
+    std::string dump_filename_;
+    std::string role_;
+    int32_t doppler_center_;
+    uint32_t channel_;
     uint32_t doppler_max_;
     uint32_t doppler_step_;
-    int32_t doppler_center_;
-    std::string dump_filename_;
-    Gnss_Synchro* gnss_synchro_;
-    std::string role_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-    std::vector<uint32_t> d_all_fft_codes_;  // memory that contains all the code ffts
+    bool acquire_pilot_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GALILEO_E1_PCPS_AMBIGUOUS_ACQUISITION_FPGA_H

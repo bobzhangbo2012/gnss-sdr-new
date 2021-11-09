@@ -4,18 +4,15 @@
  *  tracking block to a TrackingInterface for Galileo E5a signals for the FPGA
  * \author Marc Majoral, 2019. mmajoral(at)cttc.cat
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "galileo_e5a_dll_pll_tracking_fpga.h"
@@ -23,56 +20,62 @@
 #include "configuration_interface.h"
 #include "display.h"
 #include "dll_pll_conf_fpga.h"
-#include "galileo_e5_signal_processing.h"
+#include "galileo_e5_signal_replica.h"
 #include "gnss_sdr_flags.h"
+#include "uio_fpga.h"
 #include <glog/logging.h>
 #include <volk_gnsssdr/volk_gnsssdr_alloc.h>
 #include <array>
 
 GalileoE5aDllPllTrackingFpga::GalileoE5aDllPllTrackingFpga(
-    ConfigurationInterface *configuration, const std::string &role,
+    const ConfigurationInterface *configuration, const std::string &role,
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     Dll_Pll_Conf_Fpga trk_params_fpga = Dll_Pll_Conf_Fpga();
     DLOG(INFO) << "role " << role;
     trk_params_fpga.SetFromConfiguration(configuration, role);
 
-    int32_t vector_length = std::round(trk_params_fpga.fs_in / (GALILEO_E5A_CODE_CHIP_RATE_CPS / GALILEO_E5A_CODE_LENGTH_CHIPS));
+    const auto vector_length = static_cast<int32_t>(std::round(trk_params_fpga.fs_in / (GALILEO_E5A_CODE_CHIP_RATE_CPS / GALILEO_E5A_CODE_LENGTH_CHIPS)));
     trk_params_fpga.vector_length = vector_length;
     d_track_pilot = trk_params_fpga.track_pilot;
     if (trk_params_fpga.extend_correlation_symbols < 1)
         {
             trk_params_fpga.extend_correlation_symbols = 1;
-            std::cout << TEXT_RED << "WARNING: Galileo E5a. extend_correlation_symbols must be bigger than 0. Coherent integration has been set to 1 symbol (1 ms)" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: Galileo E5a. extend_correlation_symbols must be bigger than 0. Coherent integration has been set to 1 symbol (1 ms)" << TEXT_RESET << '\n';
         }
     else if (!trk_params_fpga.track_pilot and trk_params_fpga.extend_correlation_symbols > GALILEO_E5A_I_SECONDARY_CODE_LENGTH)
         {
             trk_params_fpga.extend_correlation_symbols = GALILEO_E5A_I_SECONDARY_CODE_LENGTH;
-            std::cout << TEXT_RED << "WARNING: Galileo E5a. extend_correlation_symbols must be lower than 21 when tracking the data component. Coherent integration has been set to 20 symbols (20 ms)" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: Galileo E5a. extend_correlation_symbols must be lower than 21 when tracking the data component. Coherent integration has been set to 20 symbols (20 ms)" << TEXT_RESET << '\n';
         }
     if ((trk_params_fpga.extend_correlation_symbols > 1) and (trk_params_fpga.pll_bw_narrow_hz > trk_params_fpga.pll_bw_hz or trk_params_fpga.dll_bw_narrow_hz > trk_params_fpga.dll_bw_hz))
         {
-            std::cout << TEXT_RED << "WARNING: Galileo E5a. PLL or DLL narrow tracking bandwidth is higher than wide tracking one" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: Galileo E5a. PLL or DLL narrow tracking bandwidth is higher than wide tracking one" << TEXT_RESET << '\n';
         }
     trk_params_fpga.system = 'E';
-    std::array<char, 3> sig_{'5', 'X', '\0'};
+    const std::array<char, 3> sig_{'5', 'X', '\0'};
     std::memcpy(trk_params_fpga.signal, sig_.data(), 3);
 
     d_data_codes = nullptr;
 
-    // FPGA configuration parameters
-    // obtain the number of the first uio device corresponding to a HW accelerator in the FPGA
-    // that can be assigned to the tracking of the E5a signal
-    trk_params_fpga.dev_file_num = configuration->property(role + ".dev_file_num", 27);
+    // UIO device file
+    device_name = configuration->property(role + ".devicename", default_device_name_Galileo_E5a);
+
     // compute the number of tracking channels that have already been instantiated. The order in which
     // GNSS-SDR instantiates the tracking channels i L1, L2, L5, E1, E5a
     // However E5a can use the same tracking HW accelerators as L5 (but not simultaneously).
     // Therefore for the proper assignment of the FPGA tracking device file numbers to the E5a tracking channels,
     // the number of channels that have already been assigned to L5 must not be substracted to this channel number,
     // so they are not counted here.
-    trk_params_fpga.num_prev_assigned_ch = configuration->property("Channels_1C.count", 0) +
-                                           configuration->property("Channels_2S.count", 0) +
-                                           configuration->property("Channels_1B.count", 0);
+
+    uint32_t num_prev_assigned_ch_1C = configuration->property("Channels_1C.count", 0);
+    uint32_t num_prev_assigned_ch_2S = 0;
+    if (configuration->property("Tracking_2S.devicename", std::string("")) != device_name)
+        {
+            num_prev_assigned_ch_2S = configuration->property("Channels_2S.count", 0);
+        }
+    uint32_t num_prev_assigned_ch_1B = configuration->property("Channels_1B.count", 0);
+    num_prev_assigned_ch = num_prev_assigned_ch_1C + num_prev_assigned_ch_2S + num_prev_assigned_ch_1B;
 
     // ################# PRE-COMPUTE ALL THE CODES #################
     uint32_t code_samples_per_chip = 1;
@@ -89,7 +92,7 @@ GalileoE5aDllPllTrackingFpga::GalileoE5aDllPllTrackingFpga(
 
     for (uint32_t PRN = 1; PRN <= GALILEO_E5A_NUMBER_OF_CODES; PRN++)
         {
-            std::array<char, 3> sig_a = {'5', 'X', '\0'};
+            const std::array<char, 3> sig_a = {'5', 'X', '\0'};
             galileo_e5_a_code_gen_complex_primary(aux_code, PRN, sig_a);
 
             if (trk_params_fpga.track_pilot)
@@ -207,7 +210,16 @@ void GalileoE5aDllPllTrackingFpga::stop_tracking()
 void GalileoE5aDllPllTrackingFpga::set_channel(unsigned int channel)
 {
     channel_ = channel;
-    tracking_fpga_sc->set_channel(channel);
+
+    // UIO device file
+    std::string device_io_name;
+    // find the uio device file corresponding to the tracking multicorrelator
+    if (find_uio_dev_file_name(device_io_name, device_name, channel - num_prev_assigned_ch) < 0)
+        {
+            std::cout << "Cannot find the FPGA uio device file corresponding to device name " << device_name << std::endl;
+            throw std::exception();
+        }
+    tracking_fpga_sc->set_channel(channel, device_io_name);
 }
 
 

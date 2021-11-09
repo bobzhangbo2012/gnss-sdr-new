@@ -4,18 +4,15 @@
  * \author Marc Molina, 2013. marc.molina.pena@gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -36,15 +33,15 @@
 class ConfigurationInterface;
 
 /*!
-* \brief This class generates synthesized GNSS signal.
-*
-*/
+ * \brief This class generates synthesized GNSS signal.
+ *
+ */
 class SignalGenerator : public GNSSBlockInterface
 {
 public:
-    SignalGenerator(ConfigurationInterface* configuration,
+    SignalGenerator(const ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
-        unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t> > queue);
+        unsigned int out_stream, Concurrent_Queue<pmt::pmt_t>* queue);
 
     ~SignalGenerator() = default;
 
@@ -72,21 +69,16 @@ public:
     gr::basic_block_sptr get_right_block() override;
 
 private:
-    std::string role_;
-    unsigned int in_stream_;
-    unsigned int out_stream_;
-    std::string item_type_;
-    size_t item_size_;
-    bool dump_;
-    std::string dump_filename_;
-#if GNURADIO_USES_STD_POINTERS
-    std::shared_ptr<gr::block> gen_source_;
-#else
-    boost::shared_ptr<gr::block> gen_source_;
-#endif
+    gnss_shared_ptr<gr::block> gen_source_;
     gr::blocks::vector_to_stream::sptr vector_to_stream_;
     gr::blocks::file_sink::sptr file_sink_;
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t> > queue_;
+    std::string role_;
+    std::string item_type_;
+    std::string dump_filename_;
+    size_t item_size_;
+    unsigned int in_stream_;
+    unsigned int out_stream_;
+    bool dump_;
 };
 
 #endif  // GNSS_SDR_SIGNAL_GENERATOR_H

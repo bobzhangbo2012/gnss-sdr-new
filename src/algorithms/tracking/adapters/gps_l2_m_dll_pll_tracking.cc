@@ -9,18 +9,15 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkhauser, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l2_m_dll_pll_tracking.h"
@@ -33,28 +30,28 @@
 #include <array>
 
 GpsL2MDllPllTracking::GpsL2MDllPllTracking(
-    ConfigurationInterface* configuration, const std::string& role,
+    const ConfigurationInterface* configuration, const std::string& role,
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     Dll_Pll_Conf trk_params = Dll_Pll_Conf();
     DLOG(INFO) << "role " << role;
     trk_params.SetFromConfiguration(configuration, role);
 
-    int vector_length = std::round(static_cast<double>(trk_params.fs_in) / (static_cast<double>(GPS_L2_M_CODE_RATE_CPS) / static_cast<double>(GPS_L2_M_CODE_LENGTH_CHIPS)));
+    const auto vector_length = static_cast<int>(std::round(static_cast<double>(trk_params.fs_in) / (static_cast<double>(GPS_L2_M_CODE_RATE_CPS) / static_cast<double>(GPS_L2_M_CODE_LENGTH_CHIPS))));
     trk_params.vector_length = vector_length;
     if (trk_params.extend_correlation_symbols != 1)
         {
             trk_params.extend_correlation_symbols = 1;
-            std::cout << TEXT_RED << "WARNING: Extended coherent integration is not allowed in GPS L2. Coherent integration has been set to 20 ms (1 symbol)" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: Extended coherent integration is not allowed in GPS L2. Coherent integration has been set to 20 ms (1 symbol)" << TEXT_RESET << '\n';
         }
     trk_params.track_pilot = configuration->property(role + ".track_pilot", false);
     if (trk_params.track_pilot)
         {
             trk_params.track_pilot = false;
-            std::cout << TEXT_RED << "WARNING: GPS L2 does not have pilot signal. Data tracking has been enabled" << TEXT_RESET << std::endl;
+            std::cout << TEXT_RED << "WARNING: GPS L2 does not have pilot signal. Data tracking has been enabled" << TEXT_RESET << '\n';
         }
     trk_params.system = 'G';
-    std::array<char, 3> sig_{'2', 'S', '\0'};
+    const std::array<char, 3> sig_{'2', 'S', '\0'};
     std::memcpy(trk_params.signal, sig_.data(), 3);
 
     // ################# Make a GNU Radio Tracking block object ################
@@ -65,7 +62,7 @@ GpsL2MDllPllTracking::GpsL2MDllPllTracking(
         }
     else
         {
-            item_size_ = sizeof(gr_complex);
+            item_size_ = 0;
             LOG(WARNING) << trk_params.item_type << " unknown tracking item type.";
         }
     channel_ = 0;

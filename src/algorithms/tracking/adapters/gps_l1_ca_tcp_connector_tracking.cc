@@ -10,18 +10,15 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkhauser, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l1_ca_tcp_connector_tracking.h"
@@ -32,29 +29,22 @@
 
 
 GpsL1CaTcpConnectorTracking::GpsL1CaTcpConnectorTracking(
-    ConfigurationInterface* configuration, const std::string& role,
+    const ConfigurationInterface* configuration, const std::string& role,
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     DLOG(INFO) << "role " << role;
     //################# CONFIGURATION PARAMETERS ########################
-    int fs_in;
-    int vector_length;
-    bool dump;
-    std::string dump_filename;
-    std::string item_type;
-    std::string default_item_type = "gr_complex";
-    float early_late_space_chips;
-    size_t port_ch0;
-    item_type = configuration->property(role + ".item_type", default_item_type);
+    const std::string default_item_type("gr_complex");
+    std::string item_type = configuration->property(role + ".item_type", default_item_type);
     // vector_length = configuration->property(role + ".vector_length", 2048);
     int fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", 2048000);
-    fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
-    dump = configuration->property(role + ".dump", false);
-    early_late_space_chips = configuration->property(role + ".early_late_space_chips", 0.5);
-    port_ch0 = configuration->property(role + ".port_ch0", 2060);
-    std::string default_dump_filename = "./track_ch";
-    dump_filename = configuration->property(role + ".dump_filename", default_dump_filename);
-    vector_length = std::round(fs_in / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS));
+    int fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
+    bool dump = configuration->property(role + ".dump", false);
+    float early_late_space_chips = configuration->property(role + ".early_late_space_chips", static_cast<float>(0.5));
+    size_t port_ch0 = configuration->property(role + ".port_ch0", 2060);
+    const std::string default_dump_filename("./track_ch");
+    std::string dump_filename = configuration->property(role + ".dump_filename", default_dump_filename);
+    const auto vector_length = static_cast<int>(std::round(fs_in / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));
 
     // ################# MAKE TRACKING GNURadio object ###################
     if (item_type == "gr_complex")
@@ -70,7 +60,7 @@ GpsL1CaTcpConnectorTracking::GpsL1CaTcpConnectorTracking(
         }
     else
         {
-            item_size_ = sizeof(gr_complex);
+            item_size_ = 0;
             LOG(WARNING) << item_type << " unknown tracking item type.";
         }
 

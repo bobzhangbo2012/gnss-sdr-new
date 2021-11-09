@@ -19,7 +19,7 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
@@ -28,7 +28,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  *
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #ifndef GNSS_SDR_RTKLIB_RTCM3_H
 #define GNSS_SDR_RTKLIB_RTCM3_H
@@ -37,9 +38,9 @@
 
 /* constants -----------------------------------------------------------------*/
 
-const double PRUNIT_GPS = 299792.458;           /* rtcm ver.3 unit of gps pseudorange (m) */
-const double PRUNIT_GLO = 599584.916;           /* rtcm ver.3 unit of glonass pseudorange (m) */
-const double RANGE_MS = SPEED_OF_LIGHT * 0.001; /* range in 1 ms */
+const double PRUNIT_GPS = 299792.458;               /* rtcm ver.3 unit of gps pseudorange (m) */
+const double PRUNIT_GLO = 599584.916;               /* rtcm ver.3 unit of glonass pseudorange (m) */
+const double RANGE_MS = SPEED_OF_LIGHT_M_S * 0.001; /* range in 1 ms */
 
 
 /* ssr update intervals ------------------------------------------------------*/

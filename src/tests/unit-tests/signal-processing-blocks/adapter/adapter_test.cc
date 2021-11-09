@@ -4,18 +4,15 @@
  * \author Carles Fernandez-Prades, 2017. cfernandez(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "byte_to_short.h"
@@ -42,12 +39,12 @@ class DataTypeAdapter : public ::testing::Test
 public:
     DataTypeAdapter();
     ~DataTypeAdapter() override;
-    int run_byte_to_short_block();
-    int run_ibyte_to_cbyte_block();
-    int run_ibyte_to_complex_block();
-    int run_ibyte_to_cshort_block();
-    int run_ishort_to_complex_block();
-    int run_ishort_to_cshort_block();
+    int run_byte_to_short_block() const;
+    int run_ibyte_to_cbyte_block() const;
+    int run_ibyte_to_complex_block() const;
+    int run_ibyte_to_cshort_block() const;
+    int run_ishort_to_complex_block() const;
+    int run_ishort_to_cshort_block() const;
     std::string file_name_input;
     std::string file_name_output;
     std::vector<int8_t> input_data_bytes;
@@ -73,7 +70,7 @@ DataTypeAdapter::DataTypeAdapter()
 DataTypeAdapter::~DataTypeAdapter() = default;
 
 
-int DataTypeAdapter::run_ishort_to_cshort_block()
+int DataTypeAdapter::run_ishort_to_cshort_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Ishort_To_Cshort");
@@ -101,7 +98,7 @@ int DataTypeAdapter::run_ishort_to_cshort_block()
 }
 
 
-int DataTypeAdapter::run_ishort_to_complex_block()
+int DataTypeAdapter::run_ishort_to_complex_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Ishort_To_Complex");
@@ -129,7 +126,7 @@ int DataTypeAdapter::run_ishort_to_complex_block()
 }
 
 
-int DataTypeAdapter::run_ibyte_to_cshort_block()
+int DataTypeAdapter::run_ibyte_to_cshort_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Ibyte_To_Cshort");
@@ -157,7 +154,7 @@ int DataTypeAdapter::run_ibyte_to_cshort_block()
 }
 
 
-int DataTypeAdapter::run_ibyte_to_complex_block()
+int DataTypeAdapter::run_ibyte_to_complex_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Ibyte_To_Complex");
@@ -185,7 +182,7 @@ int DataTypeAdapter::run_ibyte_to_complex_block()
 }
 
 
-int DataTypeAdapter::run_ibyte_to_cbyte_block()
+int DataTypeAdapter::run_ibyte_to_cbyte_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Ibyte_To_Cbyte");
@@ -213,7 +210,7 @@ int DataTypeAdapter::run_ibyte_to_cbyte_block()
 }
 
 
-int DataTypeAdapter::run_byte_to_short_block()
+int DataTypeAdapter::run_byte_to_short_block() const
 {
     std::shared_ptr<ConfigurationInterface> config = std::make_shared<InMemoryConfiguration>();
     config->set_property("Test.implementation", "Byte_To_Short");
@@ -258,7 +255,7 @@ TEST_F(DataTypeAdapter, ByteToShortValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";
@@ -284,7 +281,7 @@ TEST_F(DataTypeAdapter, IbyteToCbyteValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";
@@ -310,7 +307,7 @@ TEST_F(DataTypeAdapter, IbyteToComplexValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";
@@ -336,7 +333,7 @@ TEST_F(DataTypeAdapter, IbyteToCshortValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";
@@ -362,7 +359,7 @@ TEST_F(DataTypeAdapter, IshortToComplexValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";
@@ -388,7 +385,7 @@ TEST_F(DataTypeAdapter, IshortToCshortValidationOfResults)
         }
     catch (std::system_error& e)
         {
-            std::cerr << e.code().message() << std::endl;
+            std::cerr << e.code().message() << '\n';
         }
     ifs.close();
     ASSERT_EQ(remove(file_name_input.c_str()), 0) << "Problem deleting temporary file";

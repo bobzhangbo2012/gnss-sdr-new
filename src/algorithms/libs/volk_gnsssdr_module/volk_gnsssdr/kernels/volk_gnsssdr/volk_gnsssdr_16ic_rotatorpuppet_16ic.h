@@ -7,18 +7,15 @@
  *
  * VOLK_GNSSSDR puppet for integrating the rotator into the test system
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef INCLUDED_volk_gnsssdr_16ic_rotatorpuppet_16ic_H
@@ -126,7 +123,7 @@ static inline void volk_gnsssdr_16ic_rotatorpuppet_16ic_u_sse3_reload(lv_16sc_t*
 #endif /* LV_HAVE_SSE3 */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 static inline void volk_gnsssdr_16ic_rotatorpuppet_16ic_neon(lv_16sc_t* outVector, const lv_16sc_t* inVector, unsigned int num_points)
 {
     // phases must be normalized. Phase rotator expects a complex exponential input!
@@ -139,10 +136,10 @@ static inline void volk_gnsssdr_16ic_rotatorpuppet_16ic_neon(lv_16sc_t* outVecto
     volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_neon(outVector, inVector, phase_inc[0], phase, num_points);
 }
 
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 static inline void volk_gnsssdr_16ic_rotatorpuppet_16ic_neon_reload(lv_16sc_t* outVector, const lv_16sc_t* inVector, unsigned int num_points)
 {
     // phases must be normalized. Phase rotator expects a complex exponential input!
@@ -155,7 +152,7 @@ static inline void volk_gnsssdr_16ic_rotatorpuppet_16ic_neon_reload(lv_16sc_t* o
     volk_gnsssdr_16ic_s32fc_x2_rotator_16ic_neon_reload(outVector, inVector, phase_inc[0], phase, num_points);
 }
 
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 
 #endif /* INCLUDED_volk_gnsssdr_16ic_rotatorpuppet_16ic_H */

@@ -5,22 +5,19 @@
  *          <li> Javier Arribas, 2013. jarribas(at)cttc.es
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "pcps_assisted_acquisition_cc.h"
-#include "GPS_L1_CA.h"
+#include "MATH_CONSTANTS.h"
 #include "concurrent_map.h"
 #include "gps_acq_assist.h"
 #include <glog/logging.h>
@@ -39,20 +36,20 @@ extern Concurrent_Map<Gps_Acq_Assist> global_gps_acq_assist_map;
 pcps_assisted_acquisition_cc_sptr pcps_make_assisted_acquisition_cc(
     int32_t max_dwells, uint32_t sampled_ms, int32_t doppler_max, int32_t doppler_min,
     int64_t fs_in, int32_t samples_per_ms, bool dump,
-    const std::string &dump_filename)
+    const std::string &dump_filename, bool enable_monitor_output)
 {
     return pcps_assisted_acquisition_cc_sptr(
         new pcps_assisted_acquisition_cc(max_dwells, sampled_ms, doppler_max, doppler_min,
-            fs_in, samples_per_ms, dump, dump_filename));
+            fs_in, samples_per_ms, dump, dump_filename, enable_monitor_output));
 }
 
 
 pcps_assisted_acquisition_cc::pcps_assisted_acquisition_cc(
     int32_t max_dwells, uint32_t sampled_ms, int32_t doppler_max, int32_t doppler_min,
-    int64_t fs_in, int32_t samples_per_ms, bool dump,
-    const std::string &dump_filename) : gr::block("pcps_assisted_acquisition_cc",
-                                            gr::io_signature::make(1, 1, sizeof(gr_complex)),
-                                            gr::io_signature::make(0, 0, sizeof(gr_complex)))
+    int64_t fs_in, int32_t samples_per_ms, bool dump, const std::string &dump_filename,
+    bool enable_monitor_output) : gr::block("pcps_assisted_acquisition_cc",
+                                      gr::io_signature::make(1, 1, sizeof(gr_complex)),
+                                      gr::io_signature::make(0, 1, sizeof(Gnss_Synchro)))
 {
     this->message_port_register_out(pmt::mp("events"));
     d_sample_counter = 0ULL;  // SAMPLE COUNTER
@@ -69,17 +66,16 @@ pcps_assisted_acquisition_cc::pcps_assisted_acquisition_cc(
     d_input_power = 0.0;
     d_state = 0;
     d_disable_assist = false;
-    d_fft_codes.reserve(d_fft_size);
+    d_fft_codes = std::vector<gr_complex>(d_fft_size);
 
-    // Direct FFT
-    d_fft_if = std::make_shared<gr::fft::fft_complex>(d_fft_size, true);
-
-    // Inverse FFT
-    d_ifft = std::make_shared<gr::fft::fft_complex>(d_fft_size, false);
+    d_fft_if = gnss_fft_fwd_make_unique(d_fft_size);
+    d_ifft = gnss_fft_rev_make_unique(d_fft_size);
 
     // For dumping samples into a file
     d_dump = dump;
     d_dump_filename = dump_filename;
+
+    d_enable_monitor_output = enable_monitor_output;
 
     d_doppler_resolution = 0;
     d_threshold = 0;
@@ -166,22 +162,22 @@ void pcps_assisted_acquisition_cc::get_assistance()
             // TODO: use the LO tolerance here
             if (gps_acq_assisistance.dopplerUncertainty >= 1000)
                 {
-                    d_doppler_max = gps_acq_assisistance.d_Doppler0 + gps_acq_assisistance.dopplerUncertainty * 2;
-                    d_doppler_min = gps_acq_assisistance.d_Doppler0 - gps_acq_assisistance.dopplerUncertainty * 2;
+                    d_doppler_max = gps_acq_assisistance.Doppler0 + gps_acq_assisistance.dopplerUncertainty * 2;
+                    d_doppler_min = gps_acq_assisistance.Doppler0 - gps_acq_assisistance.dopplerUncertainty * 2;
                 }
             else
                 {
-                    d_doppler_max = gps_acq_assisistance.d_Doppler0 + 1000;
-                    d_doppler_min = gps_acq_assisistance.d_Doppler0 - 1000;
+                    d_doppler_max = gps_acq_assisistance.Doppler0 + 1000;
+                    d_doppler_min = gps_acq_assisistance.Doppler0 - 1000;
                 }
             this->d_disable_assist = false;
             std::cout << "Acq assist ENABLED for GPS SV " << this->d_gnss_synchro->PRN << " (Doppler max,Doppler min)=("
-                      << d_doppler_max << "," << d_doppler_min << ")" << std::endl;
+                      << d_doppler_max << "," << d_doppler_min << ")\n";
         }
     else
         {
             this->d_disable_assist = true;
-            std::cout << "Acq assist DISABLED for GPS SV " << this->d_gnss_synchro->PRN << std::endl;
+            std::cout << "Acq assist DISABLED for GPS SV " << this->d_gnss_synchro->PRN << '\n';
         }
 }
 
@@ -220,14 +216,14 @@ void pcps_assisted_acquisition_cc::redefine_grid()
             doppler_hz = d_doppler_min + d_doppler_step * doppler_index;
             // doppler search steps
             // compute the carrier doppler wipe-off signal and store it
-            phase_step_rad = static_cast<float>(GPS_TWO_PI) * doppler_hz / static_cast<float>(d_fs_in);
+            phase_step_rad = static_cast<float>(TWO_PI) * doppler_hz / static_cast<float>(d_fs_in);
             std::array<float, 1> _phase{};
             volk_gnsssdr_s32f_sincos_32fc(d_grid_doppler_wipeoffs[doppler_index].data(), -phase_step_rad, _phase.data(), d_fft_size);
         }
 }
 
 
-double pcps_assisted_acquisition_cc::search_maximum()
+float pcps_assisted_acquisition_cc::search_maximum()
 {
     float magt = 0.0;
     float fft_normalization_factor;
@@ -251,7 +247,7 @@ double pcps_assisted_acquisition_cc::search_maximum()
     magt = magt / (fft_normalization_factor * fft_normalization_factor);
 
     // 5- Compute the test statistics and compare to the threshold
-    d_test_statistics = 2 * d_fft_size * magt / (d_input_power * d_well_count);
+    d_test_statistics = 2.0F * d_fft_size * magt / (d_input_power * d_well_count);
 
     // 4- record the maximum peak and the associated synchronization parameters
     d_gnss_synchro->Acq_delay_samples = static_cast<double>(index_time);
@@ -277,7 +273,7 @@ double pcps_assisted_acquisition_cc::search_maximum()
 }
 
 
-float pcps_assisted_acquisition_cc::estimate_input_power(gr_vector_const_void_star &input_items)
+float pcps_assisted_acquisition_cc::estimate_input_power(gr_vector_const_void_star &input_items) const
 {
     const auto *in = reinterpret_cast<const gr_complex *>(input_items[0]);  // Get the input samples pointer
     // 1- Compute the input signal power estimation
@@ -333,7 +329,7 @@ int32_t pcps_assisted_acquisition_cc::compute_and_accumulate_grid(gr_vector_cons
 
 int pcps_assisted_acquisition_cc::general_work(int noutput_items,
     gr_vector_int &ninput_items, gr_vector_const_void_star &input_items,
-    gr_vector_void_star &output_items __attribute__((unused)))
+    gr_vector_void_star &output_items)
 {
     /*!
      * TODO:     High sensitivity acquisition algorithm:
@@ -393,7 +389,7 @@ int pcps_assisted_acquisition_cc::general_work(int noutput_items,
                     if (d_disable_assist == false)
                         {
                             d_disable_assist = true;
-                            std::cout << "Acq assist DISABLED for GPS SV " << this->d_gnss_synchro->PRN << std::endl;
+                            std::cout << "Acq assist DISABLED for GPS SV " << this->d_gnss_synchro->PRN << '\n';
                             d_state = 4;
                         }
                     else
@@ -427,6 +423,15 @@ int pcps_assisted_acquisition_cc::general_work(int noutput_items,
             d_sample_counter += static_cast<uint64_t>(ninput_items[0]);  // sample counter
             consume_each(ninput_items[0]);
             d_state = 0;
+            // Copy and push current Gnss_Synchro to monitor queue
+            if (d_enable_monitor_output)
+                {
+                    auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
+                    Gnss_Synchro current_synchro_data = Gnss_Synchro();
+                    current_synchro_data = *d_gnss_synchro;
+                    *out[0] = current_synchro_data;
+                    noutput_items = 1;  // Number of Gnss_Synchro objects produced
+                }
             break;
         case 6:  // Negative_Acq
             DLOG(INFO) << "negative acquisition";

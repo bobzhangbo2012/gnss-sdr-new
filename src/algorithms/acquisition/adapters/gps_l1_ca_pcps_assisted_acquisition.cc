@@ -7,37 +7,34 @@
  *          <li> Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l1_ca_pcps_assisted_acquisition.h"
 #include "GPS_L1_CA.h"
 #include "configuration_interface.h"
 #include "gnss_sdr_flags.h"
-#include "gps_sdr_signal_processing.h"
+#include "gps_sdr_signal_replica.h"
 #include <glog/logging.h>
 
 
 GpsL1CaPcpsAssistedAcquisition::GpsL1CaPcpsAssistedAcquisition(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
-    std::string default_item_type = "gr_complex";
+    const std::string default_item_type("gr_complex");
     std::string default_dump_filename = "./data/acquisition.dat";
 
     DLOG(INFO) << "role " << role;
@@ -55,18 +52,19 @@ GpsL1CaPcpsAssistedAcquisition::GpsL1CaPcpsAssistedAcquisition(
     sampled_ms_ = configuration->property(role + ".coherent_integration_time_ms", 1);
     max_dwells_ = configuration->property(role + ".max_dwells", 1);
     dump_filename_ = configuration->property(role + ".dump_filename", default_dump_filename);
+    bool enable_monitor_output = configuration->property("AcquisitionMonitor.enable_monitor", false);
 
     // --- Find number of samples per spreading code -------------------------
-    vector_length_ = round(fs_in_ / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS));
+    vector_length_ = static_cast<unsigned int>(round(fs_in_ / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));
 
-    code_ = std::make_shared<std::complex<float>>(vector_length_);
+    code_ = std::vector<std::complex<float>>(vector_length_);
 
     if (item_type_ == "gr_complex")
         {
             item_size_ = sizeof(gr_complex);
             acquisition_cc_ = pcps_make_assisted_acquisition_cc(max_dwells_, sampled_ms_,
                 doppler_max_, doppler_min_, fs_in_, vector_length_,
-                dump_, dump_filename_);
+                dump_, dump_filename_, enable_monitor_output);
         }
     else
         {
@@ -92,6 +90,8 @@ GpsL1CaPcpsAssistedAcquisition::GpsL1CaPcpsAssistedAcquisition(
 
 void GpsL1CaPcpsAssistedAcquisition::stop_acquisition()
 {
+    acquisition_cc_->set_active(false);
+    acquisition_cc_->set_state(0);
 }
 
 
@@ -104,7 +104,7 @@ void GpsL1CaPcpsAssistedAcquisition::set_threshold(float threshold)
 
 void GpsL1CaPcpsAssistedAcquisition::set_doppler_max(unsigned int doppler_max)
 {
-    doppler_max_ = doppler_max;
+    doppler_max_ = static_cast<int>(doppler_max);
     acquisition_cc_->set_doppler_max(doppler_max_);
 }
 
@@ -138,7 +138,7 @@ void GpsL1CaPcpsAssistedAcquisition::init()
 void GpsL1CaPcpsAssistedAcquisition::set_local_code()
 {
     gps_l1_ca_code_gen_complex_sampled(code_, gnss_synchro_->PRN, fs_in_, 0);
-    acquisition_cc_->set_local_code(code_.get());
+    acquisition_cc_->set_local_code(code_.data());
 }
 
 

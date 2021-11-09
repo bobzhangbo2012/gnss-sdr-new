@@ -2,7 +2,10 @@
  * \file bits.c
  * \author Fergus Noble <fergus@swift-nav.com>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
+ * This file is part of GNSS-SDR.
+ *
  * This file was originally borrowed from libswiftnav
  * <https://github.com/swift-nav/libswiftnav>,
  * a portable C library implementing GNSS related functions and algorithms,
@@ -11,13 +14,8 @@
  * Copyright (C) 2013, 2016 Swift Navigation Inc.
  * Contact: Fergus Noble <fergus@swift-nav.com>
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
- * This file is part of GNSS-SDR.
- *
  * SPDX-License-Identifier: LGPL-3.0-only
- *.
+ *
  */
 
 #include "bits.h"
@@ -26,10 +24,6 @@
 
 
 static const uint8_t BITN[16] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
-
-/** \defgroup bits Bit Utils
- * Bit field packing, unpacking and utility functions.
- * \{ */
 
 /** Computes the parity of a 32-bit word.
  *
@@ -85,12 +79,12 @@ uint32_t getbitu(const uint8_t *buff, uint32_t pos, uint8_t len)
  */
 int32_t getbits(const uint8_t *buff, uint32_t pos, uint8_t len)
 {
-    int32_t bits = (int32_t)getbitu(buff, pos, len);
+    const int32_t bits = (int32_t)getbitu(buff, pos, len);
 
     /* Sign extend, taken from:
      * http://graphics.stanford.edu/~seander/bithacks.html#VariableSignExtend
      */
-    int32_t m = 1U << (len - 1);
+    const int32_t m = 1U << (len - 1);
     return (bits ^ m) - m;
 }
 
@@ -161,9 +155,9 @@ void bitshl(void *buf, uint32_t size, uint32_t shift)
     unsigned char *dst = buf;                          /* Destination byte. */
     const unsigned char *src = dst + shift / CHAR_BIT; /* First source byte, possibly incomplete. */
 
-    uint32_t copy_bits = size * CHAR_BIT - shift; /* Number of bits to move */
-    uint32_t byte_shift = copy_bits % CHAR_BIT;   /* Shift of data */
-    uint32_t full_bytes = copy_bits / CHAR_BIT;   /* Number of bytes to move */
+    const uint32_t copy_bits = size * CHAR_BIT - shift; /* Number of bits to move */
+    const uint32_t byte_shift = copy_bits % CHAR_BIT;   /* Shift of data */
+    const uint32_t full_bytes = copy_bits / CHAR_BIT;   /* Number of bytes to move */
 
     if (0 == byte_shift)
         {
@@ -209,19 +203,19 @@ void bitshl(void *buf, uint32_t size, uint32_t shift)
 void bitcopy(void *dst, uint32_t dst_index, const void *src, uint32_t src_index,
     uint32_t count)
 {
-    uint32_t limit1 = count / 32;
-    uint32_t limit2 = count % 32;
+    const uint32_t limit1 = count / 32;
+    const uint32_t limit2 = count % 32;
     uint32_t idx = 0;
     for (idx = 0; idx < limit1; ++idx)
         {
-            uint32_t tmp = getbitu(src, src_index, 32);
+            const uint32_t tmp = getbitu(src, src_index, 32);
             setbitu(dst, dst_index, 32, tmp);
             src_index += 32;
             dst_index += 32;
         }
     if (0 != limit2)
         {
-            uint32_t tmp = getbitu(src, src_index, limit2);
+            const uint32_t tmp = getbitu(src, src_index, limit2);
             setbitu(dst, dst_index, limit2, tmp);
         }
 }
@@ -301,5 +295,3 @@ uint8_t count_bits_u8(uint8_t v, uint8_t bv)
         }
     return bv == 1 ? r : 8 - r;
 }
-
-/** \} */

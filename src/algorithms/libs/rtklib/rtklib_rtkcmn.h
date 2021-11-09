@@ -19,7 +19,7 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
@@ -29,8 +29,8 @@
  *
  *
  * References :
- *     [1] IS-GPS-200K, Navstar GPS Space Segment/Navigation User Interfaces,
- *         7 March, 2006
+ *     [1] IS-GPS-200M, Navstar GPS Space Segment/Navigation User Interfaces,
+ *         May, 2021
  *     [2] RTCA/DO-229C, Minimum operational performanc standards for global
  *         positioning system/wide area augmentation system airborne equipment,
  *         RTCA inc, November 28, 2001
@@ -52,12 +52,14 @@
  *     [10] GLONASS/GPS/Galileo/Compass/SBAS NV08C receiver series BINR interface
  *         protocol specification ver.1.3, August, 2012
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #ifndef GNSS_SDR_RTKLIB_RTKCMN_H
 #define GNSS_SDR_RTKLIB_RTKCMN_H
 
 #include "rtklib.h"
+#include <cstddef>
 #include <string>
 
 
@@ -95,7 +97,7 @@
         }                                            \
     while (0)
 
-
+char *strncpy_no_trunc(char *out, size_t outsz, const char *in, size_t insz);
 void fatalerr(const char *format, ...);
 int satno(int sys, int prn);
 int satsys(int sat, int *prn);

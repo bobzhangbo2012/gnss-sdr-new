@@ -4,18 +4,15 @@
  * \author David Pubill, 2011. dpubill(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_TCP_COMMUNICATION_H
@@ -25,7 +22,13 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 
-#if BOOST_GREATER_1_65
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
+
+
+#if USE_BOOST_ASIO_IO_CONTEXT
 using b_io_context = boost::asio::io_context;
 #else
 using b_io_context = boost::asio::io_service;
@@ -54,4 +57,7 @@ private:
     boost::asio::ip::tcp::socket tcp_socket_;
 };
 
+
+/** \} */
+/** \} */
 #endif

@@ -17,18 +17,15 @@
  *          <li> Gerald LaMountain, 2018. gerald(at)ece.neu.edu
  *          <li> Jordi Vila-Valls 2018. jvila(at)cttc.es
  *          </ul>
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_BAYESIAN_ESTIMATION_H
@@ -40,6 +37,12 @@
 
 #include <armadillo>
 #include <gnuradio/gr_complex.h>
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
+
 
 /*! \brief Bayesian_estimator is an estimator of noise characteristics (i.e. mean, covariance)
  *
@@ -73,11 +76,13 @@ public:
 private:
     arma::vec mu_est;
     arma::mat Psi_est;
-
     arma::vec mu_prior;
+    arma::mat Psi_prior;
     int kappa_prior;
     int nu_prior;
-    arma::mat Psi_prior;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_BAYESIAN_ESTIMATION_H

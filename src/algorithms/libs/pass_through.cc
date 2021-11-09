@@ -5,18 +5,15 @@
  * \author Carlos Aviles, 2010. carlos.avilesr(at)googlemail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "pass_through.h"
@@ -28,23 +25,14 @@
 #include <ostream>  // for operator<<
 
 
-Pass_Through::Pass_Through(ConfigurationInterface* configuration, const std::string& role,
+Pass_Through::Pass_Through(const ConfigurationInterface* configuration, const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
-    std::string default_item_type = "gr_complex";
-    std::string input_type = configuration->property(role + ".input_item_type", default_item_type);
-    std::string output_type = configuration->property(role + ".output_item_type", default_item_type);
-    if (input_type != output_type)
-        {
-            LOG(WARNING) << "input_item_type and output_item_type are different in a Pass_Through implementation! Taking "
-                         << input_type
-                         << ", but item_size will supersede it.";
-        }
-
-    item_type_ = configuration->property(role + ".item_type", input_type);
+    const std::string default_item_type("gr_complex");
+    item_type_ = configuration->property(role + ".item_type", default_item_type);
     inverted_spectrum = configuration->property(role + ".inverted_spectrum", false);
 
     if (item_type_ == "float")
@@ -59,11 +47,7 @@ Pass_Through::Pass_Through(ConfigurationInterface* configuration, const std::str
                     conjugate_cc_ = make_conjugate_cc();
                 }
         }
-    else if (item_type_ == "short")
-        {
-            item_size_ = sizeof(int16_t);
-        }
-    else if (item_type_ == "ishort")
+    else if ((item_type_ == "short") || (item_type_ == "ishort"))
         {
             item_size_ = sizeof(int16_t);
         }
@@ -75,11 +59,7 @@ Pass_Through::Pass_Through(ConfigurationInterface* configuration, const std::str
                     conjugate_sc_ = make_conjugate_sc();
                 }
         }
-    else if (item_type_ == "byte")
-        {
-            item_size_ = sizeof(int8_t);
-        }
-    else if (item_type_ == "ibyte")
+    else if ((item_type_ == "byte") || (item_type_ == "ibyte"))
         {
             item_size_ = sizeof(int8_t);
         }
@@ -98,7 +78,7 @@ Pass_Through::Pass_Through(ConfigurationInterface* configuration, const std::str
         }
 
     kludge_copy_ = gr::blocks::copy::make(item_size_);
-    uint64_t max_source_buffer_samples = configuration->property("GNSS-SDR.max_source_buffer_samples", 0);
+    const uint64_t max_source_buffer_samples = configuration->property("GNSS-SDR.max_source_buffer_samples", 0);
     if (max_source_buffer_samples > 0)
         {
             kludge_copy_->set_max_output_buffer(max_source_buffer_samples);
@@ -107,13 +87,11 @@ Pass_Through::Pass_Through(ConfigurationInterface* configuration, const std::str
     DLOG(INFO) << "kludge_copy(" << kludge_copy_->unique_id() << ")";
     if (in_streams_ > 1)
         {
-            LOG(ERROR) << "This implementation only supports one input stream";
-            LOG(ERROR) << in_streams_;
+            LOG(ERROR) << "This implementation only supports one input stream but it is set to " << in_streams_;
         }
     if (out_streams_ > 1)
         {
-            LOG(ERROR) << "This implementation only supports one output stream";
-            LOG(ERROR) << out_streams_;
+            LOG(ERROR) << "This implementation only supports one output stream but it is set to " << out_streams_;
         }
 }
 

@@ -5,44 +5,39 @@
  *        gr_complex input and gr_complex output
  * \author Luis Esteve, 2011. luis(at)epsilon-formacion.com
  *
- * This block takes in a signal stream and performs direct
- * resampling.
- * The theory behind this block can be found in Chapter 7.5 of
- * the following book.
+ * This block takes in a signal stream and performs direct resampling.
+ * The theory behind this block can be found in Chapter 7.5 of the following
+ * book:
+ * R. Lyons, Undestanding Digital Signal Processing, 3rd ed., Pearson Education,
+ * 2010.
  *
+ * -----------------------------------------------------------------------------
  *
- * -------------------------------------------------------------------------
- *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_DIRECT_RESAMPLER_CONDITIONER_CC_H
 #define GNSS_SDR_DIRECT_RESAMPLER_CONDITIONER_CC_H
 
+#include "gnss_block_interface.h"
 #include <gnuradio/block.h>
 #include <cstdint>
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Resampler
+ * \{ */
+/** \addtogroup Resampler_gnuradio_blocks resampler_gr_blocks
+ * \{ */
+
 
 class direct_resampler_conditioner_cc;
 
-#if GNURADIO_USES_STD_POINTERS
-using direct_resampler_conditioner_cc_sptr = std::shared_ptr<direct_resampler_conditioner_cc>;
-#else
-using direct_resampler_conditioner_cc_sptr = boost::shared_ptr<direct_resampler_conditioner_cc>;
-#endif
+using direct_resampler_conditioner_cc_sptr = gnss_shared_ptr<direct_resampler_conditioner_cc>;
 
 direct_resampler_conditioner_cc_sptr direct_resampler_make_conditioner_cc(
     double sample_freq_in,
@@ -89,4 +84,7 @@ private:
     uint32_t d_phase_step;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_DIRECT_RESAMPLER_CONDITIONER_CC_H

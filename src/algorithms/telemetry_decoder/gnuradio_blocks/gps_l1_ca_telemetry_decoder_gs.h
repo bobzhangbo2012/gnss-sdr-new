@@ -3,59 +3,59 @@
  * \brief Interface of a NAV message demodulator block based on
  * Kay Borre book MATLAB-based GPS receiver
  * \author Javier Arribas, 2011. jarribas(at)cttc.es
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_GPS_L1_CA_TELEMETRY_DECODER_GS_H
 #define GNSS_SDR_GPS_L1_CA_TELEMETRY_DECODER_GS_H
 
 #include "GPS_L1_CA.h"
+#include "gnss_block_interface.h"
 #include "gnss_satellite.h"
 #include "gnss_synchro.h"
 #include "gps_navigation_message.h"
+#include "nav_message_packet.h"
+#include "tlm_conf.h"
+#include "tlm_crc_stats.h"
 #include <boost/circular_buffer.hpp>
 #include <gnuradio/block.h>  // for block
 #include <gnuradio/types.h>  // for gr_vector_const_void_star
 #include <array>             // for array
 #include <cstdint>           // for int32_t
 #include <fstream>           // for ofstream
+#include <memory>            // for std::unique_ptr
 #include <string>            // for string
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>  // for std::shared_ptr
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+/** \addtogroup Telemetry_Decoder
+ * \{ */
+/** \addtogroup Telemetry_Decoder_gnuradio_blocks telemetry_decoder_gr_blocks
+ * GNU Radio blocks for the demodulation of GNSS navigation messages.
+ * \{ */
+
 
 class gps_l1_ca_telemetry_decoder_gs;
 
-#if GNURADIO_USES_STD_POINTERS
-using gps_l1_ca_telemetry_decoder_gs_sptr = std::shared_ptr<gps_l1_ca_telemetry_decoder_gs>;
-#else
-using gps_l1_ca_telemetry_decoder_gs_sptr = boost::shared_ptr<gps_l1_ca_telemetry_decoder_gs>;
-#endif
+using gps_l1_ca_telemetry_decoder_gs_sptr = gnss_shared_ptr<gps_l1_ca_telemetry_decoder_gs>;
 
 gps_l1_ca_telemetry_decoder_gs_sptr gps_l1_ca_make_telemetry_decoder_gs(
     const Gnss_Satellite &satellite,
-    bool dump);
+    const Tlm_Conf &conf);
 
 /*!
- * \brief This class implements a block that decodes the NAV data defined in IS-GPS-200K
+ * \brief This class implements a block that decodes the NAV data defined in IS-GPS-200M
  */
 class gps_l1_ca_telemetry_decoder_gs : public gr::block
 {
 public:
-    ~gps_l1_ca_telemetry_decoder_gs();
+    ~gps_l1_ca_telemetry_decoder_gs() override;
     void set_satellite(const Gnss_Satellite &satellite);  //!< Set satellite PRN
     void set_channel(int channel);                        //!< Set receiver's channel
     void reset();
@@ -64,53 +64,60 @@ public:
      * \brief This is where all signal processing takes place
      */
     int general_work(int noutput_items, gr_vector_int &ninput_items,
-        gr_vector_const_void_star &input_items, gr_vector_void_star &output_items);
+        gr_vector_const_void_star &input_items, gr_vector_void_star &output_items) override;
 
 private:
     friend gps_l1_ca_telemetry_decoder_gs_sptr gps_l1_ca_make_telemetry_decoder_gs(
         const Gnss_Satellite &satellite,
-        bool dump);
+        const Tlm_Conf &conf);
 
-    gps_l1_ca_telemetry_decoder_gs(const Gnss_Satellite &satellite, bool dump);
+    gps_l1_ca_telemetry_decoder_gs(const Gnss_Satellite &satellite, const Tlm_Conf &conf);
+
     bool gps_word_parityCheck(uint32_t gpsword);
-    bool decode_subframe();
+    bool decode_subframe(bool flag_invert);
 
-    int32_t d_bits_per_preamble;
-    int32_t d_samples_per_preamble;
-    int32_t d_preamble_period_symbols;
-    std::array<int32_t, GPS_CA_PREAMBLE_LENGTH_BITS> d_preamble_samples{};
-    uint32_t d_required_symbols;
-    uint32_t d_frame_length_symbols;
-    bool flag_PLL_180_deg_phase_locked;
-
-    // navigation message vars
     Gps_Navigation_Message d_nav;
-    uint32_t d_prev_GPS_frame_4bytes;
+    Gnss_Satellite d_satellite;
+    Nav_Message_Packet d_nav_msg_packet;
+    std::unique_ptr<Tlm_CRC_Stats> d_Tlm_CRC_Stats;
+
+    std::array<int32_t, GPS_CA_PREAMBLE_LENGTH_BITS> d_preamble_samples{};
+
+    std::string d_dump_filename;
+    std::ofstream d_dump_file;
 
     boost::circular_buffer<float> d_symbol_history;
 
     uint64_t d_sample_counter;
     uint64_t d_preamble_index;
     uint64_t d_last_valid_preamble;
-    uint32_t d_max_symbols_without_valid_frame;
 
-    bool d_sent_tlm_failed_msg;
-    uint32_t d_stat;
-    bool d_flag_frame_sync;
-    bool d_flag_parity;
-    bool d_flag_preamble;
+    int32_t d_bits_per_preamble;
+    int32_t d_samples_per_preamble;
+    int32_t d_preamble_period_symbols;
     int32_t d_CRC_error_counter;
-
-    Gnss_Satellite d_satellite;
     int32_t d_channel;
 
+    uint32_t d_required_symbols;
+    uint32_t d_prev_GPS_frame_4bytes;
+    uint32_t d_max_symbols_without_valid_frame;
+    uint32_t d_stat;
     uint32_t d_TOW_at_Preamble_ms;
     uint32_t d_TOW_at_current_symbol_ms;
 
-    bool flag_TOW_set;
+    bool d_flag_frame_sync;
+    bool d_flag_preamble;
+    bool d_sent_tlm_failed_msg;
+    bool d_flag_PLL_180_deg_phase_locked;
+    bool d_flag_TOW_set;
     bool d_dump;
-    std::string d_dump_filename;
-    std::ofstream d_dump_file;
+    bool d_dump_mat;
+    bool d_remove_dat;
+    bool d_enable_navdata_monitor;
+    bool d_dump_crc_stats;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_GPS_L1_CA_TELEMETRY_DECODER_GS_H

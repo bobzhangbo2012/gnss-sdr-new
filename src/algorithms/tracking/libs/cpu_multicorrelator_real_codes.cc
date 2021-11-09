@@ -8,35 +8,20 @@
  *
  * Class that implements a highly optimized vector multiTAP correlator class for CPUs
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "cpu_multicorrelator_real_codes.h"
 #include <volk_gnsssdr/volk_gnsssdr.h>
 #include <cmath>
-
-Cpu_Multicorrelator_Real_Codes::Cpu_Multicorrelator_Real_Codes()
-{
-    d_sig_in = nullptr;
-    d_local_code_in = nullptr;
-    d_shifts_chips = nullptr;
-    d_corr_out = nullptr;
-    d_local_codes_resampled = nullptr;
-    d_code_length_chips = 0;
-    d_n_correlators = 0;
-    d_use_high_dynamics_resampler = true;
-}
 
 
 Cpu_Multicorrelator_Real_Codes::~Cpu_Multicorrelator_Real_Codes()

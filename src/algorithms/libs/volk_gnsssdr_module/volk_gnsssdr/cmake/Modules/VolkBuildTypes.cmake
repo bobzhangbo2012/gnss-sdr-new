@@ -1,10 +1,8 @@
-# Copyright (C) 2014-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2015-2020  (see AUTHORS file for a list of contributors)
+# SPDX-License-Identifier: BSD-3-Clause
 
 if(DEFINED __INCLUDED_VOLK_BUILD_TYPES_CMAKE)
     return()
@@ -51,8 +49,10 @@ function(VOLK_CHECK_BUILD_TYPE settype)
       return() # found it; exit cleanly
     endif()
   endforeach()
-  # Build type not found; error out
-  message(FATAL_ERROR "Build type '${settype}' not valid, must be one of: ${AVAIL_BUILDTYPES}")
+  # Build type not found; warn out at set it to None
+  message(STATUS "Warning: Build type '${settype}' not valid, must be one of: ${AVAIL_BUILDTYPES}.")
+  message(STATUS "Setting the build type to 'None'")
+  set(CMAKE_BUILD_TYPE "None" PARENT_SCOPE)
 endfunction()
 
 ########################################################################

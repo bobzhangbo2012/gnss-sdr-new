@@ -5,18 +5,15 @@
  *          <li> Andres Cecilia, 2014. a.cecilia.luque(at)gmail.com
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -57,8 +54,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_generic(lv_8sc_t* outputVector,
 {
     float* inputVectorPtr = (float*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
-    const float min_val = (float)SCHAR_MIN;
-    const float max_val = (float)SCHAR_MAX;
+    const float min_val = (float)INT8_MIN;
+    const float max_val = (float)INT8_MAX;
     float aux;
     unsigned int i;
     for (i = 0; i < num_points * 2; i++)
@@ -84,8 +81,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_u_avx2(lv_8sc_t* outputVector, 
     float* inputVectorPtr = (float*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
 
-    const float min_val = (float)SCHAR_MIN;
-    const float max_val = (float)SCHAR_MAX;
+    const float min_val = (float)INT8_MIN;
+    const float max_val = (float)INT8_MAX;
     float aux;
     unsigned int i;
 
@@ -158,8 +155,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_a_avx2(lv_8sc_t* outputVector, 
     float* inputVectorPtr = (float*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
 
-    const float min_val = (float)SCHAR_MIN;
-    const float max_val = (float)SCHAR_MAX;
+    const float min_val = (float)INT8_MIN;
+    const float max_val = (float)INT8_MAX;
     float aux;
     unsigned int i;
 
@@ -232,8 +229,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_u_sse2(lv_8sc_t* outputVector, 
     float* inputVectorPtr = (float*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
 
-    const float min_val = (float)SCHAR_MIN;
-    const float max_val = (float)SCHAR_MAX;
+    const float min_val = (float)INT8_MIN;
+    const float max_val = (float)INT8_MAX;
     float aux;
     unsigned int i;
 
@@ -302,8 +299,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_a_sse2(lv_8sc_t* outputVector, 
     float* inputVectorPtr = (float*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
 
-    const float min_val = (float)SCHAR_MIN;
-    const float max_val = (float)SCHAR_MAX;
+    const float min_val = (float)INT8_MIN;
+    const float max_val = (float)INT8_MAX;
     float aux;
     unsigned int i;
 
@@ -362,7 +359,7 @@ static inline void volk_gnsssdr_32fc_convert_8ic_a_sse2(lv_8sc_t* outputVector, 
 #endif /* LV_HAVE_SSE2 */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_32fc_convert_8ic_neon(lv_8sc_t* outputVector, const lv_32fc_t* inputVector, unsigned int num_points)
@@ -371,8 +368,8 @@ static inline void volk_gnsssdr_32fc_convert_8ic_neon(lv_8sc_t* outputVector, co
 
     float32_t* inputVectorPtr = (float32_t*)inputVector;
     int8_t* outputVectorPtr = (int8_t*)outputVector;
-    const float32_t max_val_f = (float32_t)SCHAR_MAX;
-    const float32_t min_val_f = (float32_t)SCHAR_MIN;
+    const float32_t max_val_f = (float32_t)INT8_MAX;
+    const float32_t min_val_f = (float32_t)INT8_MIN;
     float32_t aux;
     unsigned int i;
 
@@ -453,6 +450,6 @@ static inline void volk_gnsssdr_32fc_convert_8ic_neon(lv_8sc_t* outputVector, co
         }
 }
 
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 #endif /* INCLUDED_volk_gnsssdr_32fc_convert_8ic_H */

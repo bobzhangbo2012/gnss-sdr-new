@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 set(ACQ_GR_BLOCKS_SOURCES
@@ -43,18 +40,17 @@ endif()
 list(SORT ACQ_GR_BLOCKS_HEADERS)
 list(SORT ACQ_GR_BLOCKS_SOURCES)
 
-source_group(Headers FILES ${ACQ_GR_BLOCKS_HEADERS})
-
-add_library(acquisition_gr_blocks ${ACQ_GR_BLOCKS_SOURCES} ${ACQ_GR_BLOCKS_HEADERS})
-
-if(${FILESYSTEM_FOUND})
-    target_compile_definitions(acquisition_gr_blocks PRIVATE -DHAS_STD_FILESYSTEM=1)
-    if(${find_experimental})
-        target_compile_definitions(acquisition_gr_blocks PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
-    endif()
-    target_link_libraries(acquisition_gr_blocks PRIVATE std::filesystem)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(acquisition_gr_blocks STATIC)
+    target_sources(acquisition_gr_blocks
+        PRIVATE
+            ${ACQ_GR_BLOCKS_SOURCES}
+        PUBLIC
+            ${ACQ_GR_BLOCKS_HEADERS}
+    )
 else()
-    target_link_libraries(acquisition_gr_blocks PRIVATE Boost::filesystem)
+    source_group(Headers FILES ${ACQ_GR_BLOCKS_HEADERS})
+    add_library(acquisition_gr_blocks ${ACQ_GR_BLOCKS_SOURCES} ${ACQ_GR_BLOCKS_HEADERS})
 endif()
 
 target_link_libraries(acquisition_gr_blocks
@@ -75,8 +71,6 @@ target_link_libraries(acquisition_gr_blocks
 )
 
 target_include_directories(acquisition_gr_blocks
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/algorithms/libs
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/core/receiver
 )
@@ -90,6 +84,12 @@ endif()
 if(ENABLE_ARMA_NO_DEBUG)
     target_compile_definitions(acquisition_gr_blocks
         PUBLIC -DARMA_NO_BOUND_CHECKING=1
+    )
+endif()
+
+if(has_span)
+    target_compile_definitions(acquisition_gr_blocks
+        PRIVATE -DHAS_STD_SPAN=1
     )
 endif()
 

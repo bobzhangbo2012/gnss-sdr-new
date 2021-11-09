@@ -3,7 +3,10 @@
  * \author Phil Karn, KA9Q
  * \brief K=7 r=1/2 Viterbi decoder in portable C
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
+ * This file is part of GNSS-SDR.
+ *
  * This file was originally borrowed from libswiftnav
  * <https://github.com/swift-nav/libswiftnav>,
  * a portable C library implementing GNSS related functions and algorithms,
@@ -11,13 +14,8 @@
  *
  * Copyright (C) 2004, Phil Karn, KA9Q
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
- * This file is part of GNSS-SDR.
- *
  * SPDX-License-Identifier: LGPL-3.0-only
- *.
+ *
  */
 
 
@@ -115,7 +113,6 @@ void v27_update(v27_t *v, const unsigned char *syms, int nbits)
     unsigned char sym0;
     unsigned char sym1;
     unsigned int *tmp;
-    int normalize = 0;
 
     while (nbits--)
         {
@@ -176,8 +173,6 @@ void v27_update(v27_t *v, const unsigned char *syms, int nbits)
                         {
                             v->new_metrics[i] -= minmetric;
                         }
-
-                    normalize += minmetric;
                 }
 
             /* Advance decision index */

@@ -9,18 +9,15 @@
  * A Software-Defined GPS and Galileo Receiver. A Single-Frequency
  * Approach, Birkhauser, 2007
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -32,7 +29,7 @@
 
 
 GpsL1CaDllPllTrackingGPU::GpsL1CaDllPllTrackingGPU(
-    ConfigurationInterface* configuration, std::string role,
+    const ConfigurationInterface* configuration, std::string role,
     unsigned int in_streams, unsigned int out_streams) : role_(role), in_streams_(in_streams), out_streams_(out_streams)
 {
     DLOG(INFO) << "role " << role;
@@ -42,7 +39,7 @@ GpsL1CaDllPllTrackingGPU::GpsL1CaDllPllTrackingGPU(
     bool dump;
     std::string dump_filename;
     std::string item_type;
-    std::string default_item_type = "gr_complex";
+    const std::string default_item_type("gr_complex");
     float pll_bw_hz;
     float dll_bw_hz;
     float early_late_space_chips;
@@ -56,7 +53,7 @@ GpsL1CaDllPllTrackingGPU::GpsL1CaDllPllTrackingGPU(
     dll_bw_hz = configuration->property(role + ".dll_bw_hz", 2.0);
     if (FLAGS_dll_bw_hz != 0.0) dll_bw_hz = static_cast<float>(FLAGS_dll_bw_hz);
     early_late_space_chips = configuration->property(role + ".early_late_space_chips", 0.5);
-    std::string default_dump_filename = "./track_ch";
+    const std::string default_dump_filename("./track_ch");
     dump_filename = configuration->property(role + ".dump_filename", default_dump_filename);
     vector_length = std::round(fs_in / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS));
 
@@ -75,7 +72,7 @@ GpsL1CaDllPllTrackingGPU::GpsL1CaDllPllTrackingGPU(
         }
     else
         {
-            item_size_ = sizeof(gr_complex);
+            item_size_ = 0;
             LOG(WARNING) << item_type << " unknown tracking item type.";
         }
     channel_ = 0;

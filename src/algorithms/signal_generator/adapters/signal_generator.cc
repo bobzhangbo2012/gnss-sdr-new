@@ -4,18 +4,15 @@
  * \author Marc Molina, 2013. marc.molina.pena@gmail.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -25,30 +22,33 @@
 #include "GPS_L1_CA.h"
 #include "Galileo_E1.h"
 #include "Galileo_E5a.h"
+#include "Galileo_E5b.h"
+#include "Galileo_E6.h"
 #include "configuration_interface.h"
 #include <glog/logging.h>
 #include <cstdint>
 #include <utility>
 
 
-SignalGenerator::SignalGenerator(ConfigurationInterface* configuration,
+SignalGenerator::SignalGenerator(const ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_stream,
-    unsigned int out_stream, std::shared_ptr<Concurrent_Queue<pmt::pmt_t> > queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(std::move(queue))
+    unsigned int out_stream,
+    Concurrent_Queue<pmt::pmt_t>* queue __attribute__((unused))) : role_(role), in_stream_(in_stream), out_stream_(out_stream)
 {
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_file = "./data/gen_source.dat";
-    std::string default_system = "G";
-    std::string default_signal = "1C";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_file("./data/gen_source.dat");
+    const std::string default_system("G");
+    const std::string default_signal("1C");
 
     item_type_ = configuration->property(role + ".item_type", default_item_type);
     dump_ = configuration->property(role + ".dump", false);
     dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
 
-    unsigned int fs_in = configuration->property("SignalSource.fs_hz", 4e6);
-    bool data_flag = configuration->property("SignalSource.data_flag", false);
-    bool noise_flag = configuration->property("SignalSource.noise_flag", false);
-    float BW_BB = configuration->property("SignalSource.BW_BB", 1.0);
-    unsigned int num_satellites = configuration->property("SignalSource.num_satellites", 1);
+    const unsigned int fs_in = configuration->property("SignalSource.fs_hz", static_cast<unsigned>(4e6));
+    const bool data_flag = configuration->property("SignalSource.data_flag", false);
+    const bool noise_flag = configuration->property("SignalSource.noise_flag", false);
+    const float BW_BB = configuration->property("SignalSource.BW_BB", static_cast<float>(1.0));
+    const unsigned int num_satellites = configuration->property("SignalSource.num_satellites", 1);
 
     std::vector<std::string> signal1;
     std::vector<std::string> system;
@@ -57,6 +57,14 @@ SignalGenerator::SignalGenerator(ConfigurationInterface* configuration,
     std::vector<float> doppler_Hz;
     std::vector<unsigned int> delay_chips;
     std::vector<unsigned int> delay_sec;
+
+    signal1.reserve(num_satellites);
+    system.reserve(num_satellites);
+    PRN.reserve(num_satellites);
+    CN0_dB.reserve(num_satellites);
+    doppler_Hz.reserve(num_satellites);
+    delay_chips.reserve(num_satellites);
+    delay_sec.reserve(num_satellites);
 
     for (unsigned int sat_idx = 0; sat_idx < num_satellites; sat_idx++)
         {
@@ -77,34 +85,41 @@ SignalGenerator::SignalGenerator(ConfigurationInterface* configuration,
         {
             if (signal1[0].at(0) == '5')
                 {
-                    vector_length = round(static_cast<float>(fs_in) / (GALILEO_E5A_CODE_CHIP_RATE_CPS / GALILEO_E5A_CODE_LENGTH_CHIPS));
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GALILEO_E5A_CODE_CHIP_RATE_CPS / GALILEO_E5A_CODE_LENGTH_CHIPS)));
+                }
+            else if (signal1[0].at(0) == '7')
+                {
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GALILEO_E5B_CODE_CHIP_RATE_CPS / GALILEO_E5B_CODE_LENGTH_CHIPS)));
+                }
+            else if (signal1[0].at(1) == '6')
+                {
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GALILEO_E6_C_CODE_CHIP_RATE_CPS / GALILEO_E6_C_CODE_LENGTH_CHIPS)) * GALILEO_E6_C_SECONDARY_CODE_LENGTH_CHIPS);
                 }
             else
                 {
-                    vector_length = round(static_cast<float>(fs_in) / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS)) * GALILEO_E1_C_SECONDARY_CODE_LENGTH;
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS)) * GALILEO_E1_C_SECONDARY_CODE_LENGTH);
                 }
         }
     else if (std::find(system.begin(), system.end(), "G") != system.end())
         {
-            vector_length = round(static_cast<float>(fs_in) / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS));
+            vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GPS_L1_CA_CODE_RATE_CPS / GPS_L1_CA_CODE_LENGTH_CHIPS)));
         }
     else if (std::find(system.begin(), system.end(), "R") != system.end())
         {
             if (signal1[0].at(0) == '1')
                 {
-                    vector_length = round(static_cast<float>(fs_in) / (GLONASS_L1_CA_CODE_RATE_CPS / GLONASS_L1_CA_CODE_LENGTH_CHIPS));
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GLONASS_L1_CA_CODE_RATE_CPS / GLONASS_L1_CA_CODE_LENGTH_CHIPS)));
                 }
             else
                 {
-                    vector_length = round(static_cast<float>(fs_in) / (GLONASS_L2_CA_CODE_RATE_CPS / GLONASS_L2_CA_CODE_LENGTH_CHIPS));
+                    vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (GLONASS_L2_CA_CODE_RATE_CPS / GLONASS_L2_CA_CODE_LENGTH_CHIPS)));
                 }
         }
 
     else if (std::find(system.begin(), system.end(), "B") != system.end())
         {
-            vector_length = round(static_cast<float>(fs_in) / (BEIDOU_B1I_CODE_RATE_CPS / BEIDOU_B1I_CODE_LENGTH_CHIPS));
+            vector_length = static_cast<unsigned int>(round(static_cast<float>(fs_in) / (BEIDOU_B1I_CODE_RATE_CPS / BEIDOU_B1I_CODE_LENGTH_CHIPS)));
         }
-
 
     if (item_type_ == "gr_complex")
         {

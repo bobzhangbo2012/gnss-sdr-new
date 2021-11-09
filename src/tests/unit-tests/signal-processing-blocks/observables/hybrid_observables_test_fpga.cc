@@ -8,18 +8,15 @@
  *          </ul>
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "GPS_L1_CA.h"
@@ -66,30 +63,34 @@
 #include <gpstk/RinexUtilities.hpp>
 #include <gtest/gtest.h>
 #include <matio.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <cmath>
 #include <exception>
 #include <pthread.h>
 #include <unistd.h>
 #include <utility>
+
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
+
 #ifdef GR_GREATER_38
 #include <gnuradio/filter/fir_filter_blk.h>
 #else
 #include <gnuradio/filter/fir_filter_ccf.h>
 #endif
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>
+
+#if PMT_USES_BOOST_ANY
+namespace wht = boost;
 #else
-#include <boost/shared_ptr.hpp>
+namespace wht = std;
 #endif
 
 class HybridObservablesTest_msg_rx_Fpga;
 
-#if GNURADIO_USES_STD_POINTERS
-using HybridObservablesTest_msg_rx_Fpga_sptr = std::shared_ptr<HybridObservablesTest_msg_rx_Fpga>;
-#else
-using HybridObservablesTest_msg_rx_Fpga_sptr = boost::shared_ptr<HybridObservablesTest_msg_rx_Fpga>;
-#endif
+using HybridObservablesTest_msg_rx_Fpga_sptr = gnss_shared_ptr<HybridObservablesTest_msg_rx_Fpga>;
 
 HybridObservablesTest_msg_rx_Fpga_sptr HybridObservablesTest_msg_rx_Fpga_make();
 
@@ -97,7 +98,7 @@ class HybridObservablesTest_msg_rx_Fpga : public gr::block
 {
 private:
     friend HybridObservablesTest_msg_rx_Fpga_sptr HybridObservablesTest_msg_rx_Fpga_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     HybridObservablesTest_msg_rx_Fpga();
 
 public:
@@ -105,46 +106,62 @@ public:
     ~HybridObservablesTest_msg_rx_Fpga();  //!< Default destructor
 };
 
+
 HybridObservablesTest_msg_rx_Fpga_sptr HybridObservablesTest_msg_rx_Fpga_make()
 {
     return HybridObservablesTest_msg_rx_Fpga_sptr(new HybridObservablesTest_msg_rx_Fpga());
 }
 
-void HybridObservablesTest_msg_rx_Fpga::msg_handler_events(pmt::pmt_t msg)
+
+void HybridObservablesTest_msg_rx_Fpga::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
 
+
 HybridObservablesTest_msg_rx_Fpga::HybridObservablesTest_msg_rx_Fpga() : gr::block("HybridObservablesTest_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&HybridObservablesTest_msg_rx_Fpga::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&HybridObservablesTest_msg_rx_Fpga::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&HybridObservablesTest_msg_rx_Fpga::msg_handler_channel_events, this, _1));
+#endif
+#endif
     rx_message = 0;
 }
+
 
 HybridObservablesTest_msg_rx_Fpga::~HybridObservablesTest_msg_rx_Fpga() = default;
 
 
 class HybridObservablesTest_tlm_msg_rx_Fpga;
 
+
 using HybridObservablesTest_tlm_msg_rx_Fpga_sptr = std::shared_ptr<HybridObservablesTest_tlm_msg_rx_Fpga>;
 
+
 HybridObservablesTest_tlm_msg_rx_Fpga_sptr HybridObservablesTest_tlm_msg_rx_Fpga_make();
+
 
 class HybridObservablesTest_tlm_msg_rx_Fpga : public gr::block
 {
 private:
     friend HybridObservablesTest_tlm_msg_rx_Fpga_sptr HybridObservablesTest_tlm_msg_rx_Fpga_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     HybridObservablesTest_tlm_msg_rx_Fpga();
 
 public:
@@ -152,33 +169,38 @@ public:
     ~HybridObservablesTest_tlm_msg_rx_Fpga();  //!< Default destructor
 };
 
+
 HybridObservablesTest_tlm_msg_rx_Fpga_sptr HybridObservablesTest_tlm_msg_rx_Fpga_make()
 {
     return HybridObservablesTest_tlm_msg_rx_Fpga_sptr(new HybridObservablesTest_tlm_msg_rx_Fpga());
 }
 
-void HybridObservablesTest_tlm_msg_rx_Fpga::msg_handler_events(pmt::pmt_t msg)
+
+void HybridObservablesTest_tlm_msg_rx_Fpga::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
 
+
 HybridObservablesTest_tlm_msg_rx_Fpga::HybridObservablesTest_tlm_msg_rx_Fpga() : gr::block("HybridObservablesTest_tlm_msg_rx_Fpga", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&HybridObservablesTest_tlm_msg_rx_Fpga::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"), boost::bind(&HybridObservablesTest_tlm_msg_rx_Fpga::msg_handler_channel_events, this, boost::placeholders::_1));
     rx_message = 0;
 }
 
+
 HybridObservablesTest_tlm_msg_rx_Fpga::~HybridObservablesTest_tlm_msg_rx_Fpga() = default;
+
 
 class HybridObservablesTestFpga : public ::testing::Test
 {
@@ -272,6 +294,7 @@ public:
     static constexpr float DMA_SIGNAL_SCALING_FACTOR = 8.0;
 };
 
+
 int HybridObservablesTestFpga::configure_generator()
 {
     // Configure signal generator
@@ -307,15 +330,16 @@ int HybridObservablesTestFpga::generate_signal()
     else if (pid == 0)
         {
             execv(&generator_binary[0], parmList);
-            std::cout << "Return not expected. Must be an execv err." << std::endl;
+            std::cout << "Return not expected. Must be an execv err.\n";
             std::terminate();
         }
 
     waitpid(pid, &child_status, 0);
 
-    std::cout << "Signal and Observables RINEX and RAW files created." << std::endl;
+    std::cout << "Signal and Observables RINEX and RAW files created.\n";
     return 0;
 }
+
 
 struct DMA_handler_args_obs_test
 {
@@ -326,10 +350,12 @@ struct DMA_handler_args_obs_test
     float scaling_factor;
 };
 
+
 struct acquisition_handler_args_obs_test
 {
     std::shared_ptr<AcquisitionInterface> acquisition;
 };
+
 
 void* handler_acquisition_obs_test(void* arguments)
 {
@@ -339,6 +365,7 @@ void* handler_acquisition_obs_test(void* arguments)
     args->acquisition->reset();
     return nullptr;
 }
+
 
 void* handler_DMA_obs_test(void* arguments)
 {
@@ -368,7 +395,7 @@ void* handler_DMA_obs_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception opening file " << Filename << std::endl;
+            std::cerr << "Exception opening file " << Filename << '\n';
             return nullptr;
         }
 
@@ -378,7 +405,7 @@ void* handler_DMA_obs_test(void* arguments)
     tx_fd = open("/dev/loop_tx", O_WRONLY);
     if (tx_fd < 0)
         {
-            std::cout << "Cannot open loop device" << std::endl;
+            std::cout << "Cannot open loop device\n";
             return nullptr;
         }
 
@@ -396,7 +423,7 @@ void* handler_DMA_obs_test(void* arguments)
                 }
             catch (const std::ifstream::failure& e)
                 {
-                    std::cerr << "Exception reading file " << Filename << std::endl;
+                    std::cerr << "Exception reading file " << Filename << '\n';
                 }
         }
 
@@ -423,7 +450,7 @@ void* handler_DMA_obs_test(void* arguments)
                 }
             catch (const std::ifstream::failure& e)
                 {
-                    std::cerr << "Exception reading file " << Filename << std::endl;
+                    std::cerr << "Exception reading file " << Filename << '\n';
                 }
 
             for (int index0 = 0; index0 < (nsamples_block_size * 2); index0 += 2)
@@ -450,10 +477,10 @@ void* handler_DMA_obs_test(void* arguments)
                     dma_index += 4;
                 }
 
-            // std::cout << "DMA: sending nsamples_block_size = " << nsamples_block_size << " samples" << std::endl;
+            // std::cout << "DMA: sending nsamples_block_size = " << nsamples_block_size << " samples\n";
             if (write(tx_fd, input_samples_dma.data(), (int)(nsamples_block_size * 4)) != (int)(nsamples_block_size * 4))
                 {
-                    std::cerr << "Error: DMA could not send all the required samples " << std::endl;
+                    std::cerr << "Error: DMA could not send all the required samples \n";
                 }
 
             // Throttle the DMA
@@ -474,7 +501,7 @@ void* handler_DMA_obs_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception closing files " << Filename << std::endl;
+            std::cerr << "Exception closing files " << Filename << '\n';
         }
 
     try
@@ -483,7 +510,7 @@ void* handler_DMA_obs_test(void* arguments)
         }
     catch (const std::ifstream::failure& e)
         {
-            std::cerr << "Exception closing loop device " << std::endl;
+            std::cerr << "Exception closing loop device \n";
         }
 
     return nullptr;
@@ -695,7 +722,7 @@ bool HybridObservablesTestFpga::acquire_signal()
                     // create DMA child process
                     if (pthread_create(&thread_DMA, nullptr, handler_DMA_obs_test, reinterpret_cast<void*>(&args)) < 0)
                         {
-                            std::cout << "ERROR cannot create DMA Process" << std::endl;
+                            std::cout << "ERROR cannot create DMA Process\n";
                         }
 
                     pthread_join(thread_DMA, nullptr);
@@ -715,13 +742,13 @@ bool HybridObservablesTestFpga::acquire_signal()
 
             if (pthread_create(&thread_acquisition, nullptr, handler_acquisition_obs_test, reinterpret_cast<void*>(&args_acq)) < 0)
                 {
-                    std::cout << "ERROR cannot create acquisition Process" << std::endl;
+                    std::cout << "ERROR cannot create acquisition Process\n";
                 }
 
             if (start_msg == true)
                 {
-                    std::cout << "Reading external signal file: " << FLAGS_signal_file << std::endl;
-                    std::cout << "Searching for " << System_and_Signal << " Satellites..." << std::endl;
+                    std::cout << "Reading external signal file: " << FLAGS_signal_file << '\n';
+                    std::cout << "Searching for " << System_and_Signal << " Satellites...\n";
                     std::cout << "[";
                     start_msg = false;
                 }
@@ -732,7 +759,7 @@ bool HybridObservablesTestFpga::acquire_signal()
             // create DMA child process
             if (pthread_create(&thread_DMA, nullptr, handler_DMA_obs_test, reinterpret_cast<void*>(&args)) < 0)
                 {
-                    std::cout << "ERROR cannot create DMA Process" << std::endl;
+                    std::cout << "ERROR cannot create DMA Process\n";
                 }
 
             // wait until the acquisition is finished
@@ -757,7 +784,7 @@ bool HybridObservablesTestFpga::acquire_signal()
             std::cout.flush();
         }
 
-    std::cout << "]" << std::endl;
+    std::cout << "]\n";
     std::cout << "-------------------------------------------\n";
 
     for (auto& x : gnss_synchro_vec)
@@ -774,7 +801,7 @@ bool HybridObservablesTestFpga::acquire_signal()
     elapsed_seconds = end - start;
     std::cout << "Total signal acquisition run time "
               << elapsed_seconds.count()
-              << " [seconds]" << std::endl;
+              << " [seconds]\n";
     if (!gnss_synchro_vec.empty())
         {
             return true;
@@ -951,7 +978,7 @@ void HybridObservablesTestFpga::check_results_carrier_phase(
               << ", stdev = " << sqrt(error_var_ch0)
               << " (max,min) = " << max_error_ch0
               << "," << min_error_ch0
-              << " [cycles]" << std::endl;
+              << " [cycles]\n";
     std::cout.precision(ss);
 
     // plots
@@ -1040,7 +1067,7 @@ void HybridObservablesTestFpga::check_results_carrier_phase_double_diff(
               << ", stdev = " << sqrt(error_var)
               << " (max,min) = " << max_error
               << "," << min_error
-              << " [Cycles]" << std::endl;
+              << " [Cycles]\n";
     std::cout.precision(ss);
 
     // plots
@@ -1128,7 +1155,7 @@ void HybridObservablesTestFpga::check_results_carrier_doppler_double_diff(
               << ", stdev = " << sqrt(error_var)
               << " (max,min) = " << max_error
               << "," << min_error
-              << " [Hz]" << std::endl;
+              << " [Hz]\n";
     std::cout.precision(ss);
 
     // plots
@@ -1206,7 +1233,7 @@ void HybridObservablesTestFpga::check_results_carrier_doppler(
               << ", stdev = " << sqrt(error_var_ch0)
               << " (max,min) = " << max_error_ch0
               << "," << min_error_ch0
-              << " [Hz]" << std::endl;
+              << " [Hz]\n";
     std::cout.precision(ss);
 
     // plots
@@ -1340,7 +1367,7 @@ void HybridObservablesTestFpga::check_results_duplicated_satellite(
                       << ", stdev = " << sqrt(error_var_ch0)
                       << " (max,min) = " << max_error_ch0
                       << "," << min_error_ch0
-                      << " [Hz]" << std::endl;
+                      << " [Hz]\n";
             std::cout.precision(ss);
 
             // plots
@@ -1400,7 +1427,7 @@ void HybridObservablesTestFpga::check_results_duplicated_satellite(
                       << ", stdev = " << sqrt(error_var_carrier_phase)
                       << " (max,min) = " << max_error_carrier_phase
                       << "," << min_error_carrier_phase
-                      << " [Cycles]" << std::endl;
+                      << " [Cycles]\n";
             std::cout.precision(ss);
 
             // plots
@@ -1459,7 +1486,7 @@ void HybridObservablesTestFpga::check_results_duplicated_satellite(
                       << ", stdev = " << sqrt(error_var_pseudorange)
                       << " (max,min) = " << max_error_pseudorange
                       << "," << min_error_pseudorange
-                      << " [meters]" << std::endl;
+                      << " [meters]\n";
             std::cout.precision(ss);
 
             // plots
@@ -1500,7 +1527,7 @@ bool HybridObservablesTestFpga::save_mat_xy(std::vector<double>& x, std::vector<
             mat_t* matfp;
             matvar_t* matvar;
             filename.append(".mat");
-            std::cout << "save_mat_xy write " << filename << std::endl;
+            std::cout << "save_mat_xy write " << filename << '\n';
             matfp = Mat_CreateVer(filename.c_str(), nullptr, MAT_FT_MAT5);
             if (reinterpret_cast<int64_t*>(matfp) != nullptr)
                 {
@@ -1515,14 +1542,14 @@ bool HybridObservablesTestFpga::save_mat_xy(std::vector<double>& x, std::vector<
                 }
             else
                 {
-                    std::cout << "save_mat_xy: error creating file" << std::endl;
+                    std::cout << "save_mat_xy: error creating file\n";
                 }
             Mat_Close(matfp);
             return true;
         }
     catch (const std::exception& ex)
         {
-            std::cout << "save_mat_xy: " << ex.what() << std::endl;
+            std::cout << "save_mat_xy: " << ex.what() << '\n';
             return false;
         }
 }
@@ -1584,7 +1611,7 @@ void HybridObservablesTestFpga::check_results_code_pseudorange(
               << ", stdev = " << sqrt(error_var)
               << " (max,min) = " << max_error
               << "," << min_error
-              << " [meters]" << std::endl;
+              << " [meters]\n";
     std::cout.precision(ss);
 
     // plots
@@ -1646,13 +1673,25 @@ bool HybridObservablesTestFpga::ReadRinexObs(std::vector<arma::mat>* obs_vec, Gn
                             switch (gnss.System)
                                 {
                                 case 'G':
+#if OLD_GPSTK
                                     prn = gpstk::SatID(myprn, gpstk::SatID::systemGPS);
+#else
+                                    prn = gpstk::SatID(myprn, gpstk::SatelliteSystem::GPS);
+#endif
                                     break;
                                 case 'E':
+#if OLD_GPSTK
                                     prn = gpstk::SatID(myprn, gpstk::SatID::systemGalileo);
+#else
+                                    prn = gpstk::SatID(myprn, gpstk::SatelliteSystem::Galileo);
+#endif
                                     break;
                                 default:
+#if OLD_GPSTK
                                     prn = gpstk::SatID(myprn, gpstk::SatID::systemGPS);
+#else
+                                    prn = gpstk::SatID(myprn, gpstk::SatelliteSystem::GPS);
+#endif
                                 }
 
                             gpstk::CommonTime time = r_ref_data.time;
@@ -1726,7 +1765,7 @@ bool HybridObservablesTestFpga::ReadRinexObs(std::vector<arma::mat>* obs_vec, Gn
                                         }
                                     else
                                         {
-                                            std::cout << "ReadRinexObs unknown signal requested: " << gnss.Signal << std::endl;
+                                            std::cout << "ReadRinexObs unknown signal requested: " << gnss.Signal << '\n';
                                             return false;
                                         }
                                 }
@@ -1747,14 +1786,14 @@ bool HybridObservablesTestFpga::ReadRinexObs(std::vector<arma::mat>* obs_vec, Gn
     catch (const std::exception& e)
         {
             std::cout << "Exception: " << e.what();
-            std::cout << "unknown error.  I don't feel so well..." << std::endl;
+            std::cout << "unknown error.  I don't feel so well...\n";
             return false;
         }
-    std::cout << "ReadRinexObs info:" << std::endl;
+    std::cout << "ReadRinexObs info:\n";
 
     for (unsigned int n = 0; n < gnss_synchro_vec.size(); n++)
         {
-            std::cout << "SAT PRN " << gnss_synchro_vec.at(n).PRN << " RINEX epoch read: " << obs_vec->at(n).n_rows << std::endl;
+            std::cout << "SAT PRN " << gnss_synchro_vec.at(n).PRN << " RINEX epoch read: " << obs_vec->at(n).n_rows << '\n';
         }
     return true;
 }
@@ -1820,7 +1859,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                     std::vector<std::shared_ptr<Tracking_True_Obs_Reader>> true_reader_vec;
                     // read true data from the generator logs
                     true_reader_vec.push_back(std::make_shared<Tracking_True_Obs_Reader>());
-                    std::cout << "Loading true observable data for PRN " << n.PRN << std::endl;
+                    std::cout << "Loading true observable data for PRN " << n.PRN << '\n';
                     std::string true_obs_file = std::string("./gps_l1_ca_obs_prn");
                     true_obs_file.append(std::to_string(n.PRN));
                     true_obs_file.append(".dat");
@@ -1843,7 +1882,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                     true_reader_vec.back()->restart();
 
                     std::cout << "Initial Doppler [Hz]=" << true_reader_vec.back()->doppler_l1_hz << " Initial code delay [Chips]="
-                              << true_reader_vec.back()->prn_delay_chips << std::endl;
+                              << true_reader_vec.back()->prn_delay_chips << '\n';
                     n.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_reader_vec.back()->prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S;
                     n.Acq_doppler_hz = true_reader_vec.back()->doppler_l1_hz;
                     n.Acq_samplestamp_samples = 0;
@@ -1853,7 +1892,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                     // based on the signal acquisition process
                     std::cout << "Estimated Initial Doppler " << n.Acq_doppler_hz
                               << " [Hz], estimated Initial code delay " << n.Acq_delay_samples << " [Samples]"
-                              << " Acquisition SampleStamp is " << n.Acq_samplestamp_samples << std::endl;
+                              << " Acquisition SampleStamp is " << n.Acq_samplestamp_samples << '\n';
                     // n.Acq_samplestamp_samples = 0;
                 }
         }
@@ -1905,9 +1944,9 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
             gnss_synchro_vec.at(n).Channel_ID = n;
 
             // create the tracking channels and create the telemetry decoders
-            std::shared_ptr<GNSSBlockInterface> trk_ = factory->GetBlock(config, "Tracking", config->property("Tracking.implementation", std::string("undefined")), 1, 1);
+            std::shared_ptr<GNSSBlockInterface> trk_ = factory->GetBlock(config.get(), "Tracking", 1, 1);
             tracking_ch_vec.push_back(std::dynamic_pointer_cast<TrackingInterface>(trk_));
-            std::shared_ptr<GNSSBlockInterface> tlm_ = factory->GetBlock(config, "TelemetryDecoder", config->property("TelemetryDecoder.implementation", std::string("undefined")), 1, 1);
+            std::shared_ptr<GNSSBlockInterface> tlm_ = factory->GetBlock(config.get(), "TelemetryDecoder", 1, 1);
             tlm_ch_vec.push_back(std::dynamic_pointer_cast<TelemetryDecoderInterface>(tlm_));
 
             // create null sinks for observables output
@@ -1999,7 +2038,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
 
     if (pthread_create(&thread_DMA, nullptr, handler_DMA_obs_test, reinterpret_cast<void*>(&args)) < 0)
         {
-            std::cout << "ERROR cannot create DMA Process" << std::endl;
+            std::cout << "ERROR cannot create DMA Process\n";
         }
 
     EXPECT_NO_THROW({
@@ -2044,7 +2083,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
 
             auto nepoch = static_cast<unsigned int>(true_observables.num_epochs());
 
-            std::cout << "True observation epochs = " << nepoch << std::endl;
+            std::cout << "True observation epochs = " << nepoch << '\n';
 
             true_observables.restart();
             int64_t epoch_counter = 0;
@@ -2061,7 +2100,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                                 if (round(true_observables.prn[n]) != gnss_synchro_vec.at(n).PRN)
                                     {
                                         std::cout << "True observables SV PRN does not match measured ones: "
-                                                  << round(true_observables.prn[n]) << " vs. " << gnss_synchro_vec.at(n).PRN << std::endl;
+                                                  << round(true_observables.prn[n]) << " vs. " << gnss_synchro_vec.at(n).PRN << '\n';
                                         throw std::exception();
                                     }
                                 true_obs_vec.at(n)(epoch_counter, 0) = true_observables.gps_time_sec[n];
@@ -2082,7 +2121,6 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                 }
         }
 
-
     // read measured values
     Observables_Dump_Reader estimated_observables(tracking_ch_vec.size());
     ASSERT_NO_THROW({
@@ -2093,7 +2131,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
     }) << "Failure opening dump observables file";
 
     auto nepoch = static_cast<unsigned int>(estimated_observables.num_epochs());
-    std::cout << "Measured observations epochs = " << nepoch << std::endl;
+    std::cout << "Measured observations epochs = " << nepoch << '\n';
 
     // Matrices for storing columnwise measured RX_time, TOW, Doppler, Carrier phase and Pseudorange
     std::vector<arma::mat> measured_obs_vec;
@@ -2242,8 +2280,8 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
             index2 = arma::find(true_obs_vec.at(min_pr_ch_id).col(0) >= measured_obs_vec.at(min_pr_ch_id).col(0)(0), 1, "first");
             if ((!index2.empty()) and (index2(0) > 0))
                 {
-                    receiver_time_offset_ref_channel_s = (true_obs_vec.at(min_pr_ch_id).col(1)(index2(0)) - measured_obs_vec.at(min_pr_ch_id).col(4)(0)) / GPS_C_M_S;
-                    std::cout << "Ref. channel initial Receiver time offset " << receiver_time_offset_ref_channel_s(0) * 1e3 << " [ms]" << std::endl;
+                    receiver_time_offset_ref_channel_s = (true_obs_vec.at(min_pr_ch_id).col(1)(index2(0)) - measured_obs_vec.at(min_pr_ch_id).col(4)(0)) / SPEED_OF_LIGHT_M_S;
+                    std::cout << "Ref. channel initial Receiver time offset " << receiver_time_offset_ref_channel_s(0) * 1e3 << " [ms]\n";
                 }
             else
                 {
@@ -2328,7 +2366,7 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                                 }
                             else
                                 {
-                                    std::cout << "[CH " << std::to_string(n) << "] PRN " << std::to_string(gnss_synchro_vec.at(n).PRN) << " is the reference satellite" << std::endl;
+                                    std::cout << "[CH " << std::to_string(n) << "] PRN " << std::to_string(gnss_synchro_vec.at(n).PRN) << " is the reference satellite\n";
                                 }
                             if (FLAGS_compute_single_diffs)
                                 {
@@ -2349,5 +2387,5 @@ TEST_F(HybridObservablesTestFpga, ValidationOfResults)
                 }
         }
 
-    std::cout << "Test completed in " << elapsed_seconds.count() << " [s]" << std::endl;
+    std::cout << "Test completed in " << elapsed_seconds.count() << " [s]\n";
 }

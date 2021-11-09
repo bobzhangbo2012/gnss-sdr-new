@@ -121,7 +121,7 @@ asn_TYPE_descriptor_t asn_DEF_OCTET_STRING = {
  * necessity to demonstrate that acquired skill everywhere afterwards.
  * No, I am not going to explain what the following stuff is.
  */
-struct _stack_el
+struct stack_el
 {
     ber_tlv_len_t left; /* What's left to read (or -1) */
     ber_tlv_len_t got;  /* What was actually processed */
@@ -129,18 +129,18 @@ struct _stack_el
     int want_nulls;     /* Want null "end of content" octets? */
     int bits_chopped;   /* Flag in BIT STRING mode */
     ber_tlv_tag_t tag;  /* For debugging purposes */
-    struct _stack_el *prev;
-    struct _stack_el *next;
+    struct stack_el *prev;
+    struct stack_el *next;
 };
-struct _stack
+struct stack
 {
-    struct _stack_el *tail;
-    struct _stack_el *cur_ptr;
+    struct stack_el *tail;
+    struct stack_el *cur_ptr;
 };
 
-static struct _stack_el *OS__add_stack_el(struct _stack *st)
+static struct stack_el *OS__add_stack_el(struct stack *st)
 {
-    struct _stack_el *nel;
+    struct stack_el *nel;
 
     /*
      * Reuse the old stack frame or allocate a new one.
@@ -154,7 +154,7 @@ static struct _stack_el *OS__add_stack_el(struct _stack *st)
         }
     else
         {
-            nel = (struct _stack_el *)CALLOC(1, sizeof(struct _stack_el));
+            nel = (struct stack_el *)CALLOC(1, sizeof(struct stack_el));
             if (nel == NULL)
                 {
                     return NULL;
@@ -175,9 +175,9 @@ static struct _stack_el *OS__add_stack_el(struct _stack *st)
     return nel;
 }
 
-static struct _stack *_new_stack()
+static struct stack *new_stack()
 {
-    return (struct _stack *)CALLOC(1, sizeof(struct _stack));
+    return (struct stack *)CALLOC(1, sizeof(struct stack));
 }
 
 /*
@@ -195,8 +195,8 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
     asn_dec_rval_t rval;
     asn_struct_ctx_t *ctx;
     ssize_t consumed_myself = 0;
-    struct _stack *stck;       /* Expectations stack structure */
-    struct _stack_el *sel = 0; /* Stack element */
+    struct stack *stck;       /* Expectations stack structure */
+    struct stack_el *sel = 0; /* Stack element */
     int tlv_constr;
     enum asn_OS_Subvariant type_variant = specs->subvariant;
 
@@ -224,8 +224,8 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
         {
         case 0:
             /*
-                 * Check tags.
-                 */
+             * Check tags.
+             */
             rval = ber_check_tags(opt_codec_ctx, td, ctx, buf_ptr, size,
                 tag_mode, -1, &ctx->left, &tlv_constr);
             if (rval.code != RC_OK)
@@ -236,12 +236,12 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
             if (tlv_constr)
                 {
                     /*
-                         * Complex operation, requires stack of expectations.
-                         */
-                    ctx->ptr = _new_stack();
+                     * Complex operation, requires stack of expectations.
+                     */
+                    ctx->ptr = new_stack();
                     if (ctx->ptr)
                         {
-                            stck = (struct _stack *)ctx->ptr;
+                            stck = (struct stack *)ctx->ptr;
                         }
                     else
                         {
@@ -251,8 +251,8 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
             else
                 {
                     /*
-                         * Jump into stackless primitive decoding.
-                         */
+                     * Jump into stackless primitive decoding.
+                     */
                     _CH_PHASE(ctx, 3);
                     if (type_variant == ASN_OSUBV_ANY && tag_mode != 1)
                         {
@@ -267,9 +267,9 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
         case 1:
         phase1:
             /*
-                 * Fill the stack with expectations.
-                 */
-            stck = (struct _stack *)ctx->ptr;
+             * Fill the stack with expectations.
+             */
+            stck = (struct stack *)ctx->ptr;
             sel = stck->cur_ptr;
             do
                 {
@@ -292,7 +292,7 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                         {
                             if (sel->prev)
                                 {
-                                    struct _stack_el *prev = sel->prev;
+                                    struct stack_el *prev = sel->prev;
                                     if (prev->left != -1)
                                         {
                                             if (prev->left < sel->got)
@@ -383,9 +383,9 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                         }
 
                     /*
-                         * Set up expected tags,
-                         * depending on ASN.1 type being decoded.
-                         */
+                     * Set up expected tags,
+                     * depending on ASN.1 type being decoded.
+                     */
                     switch (type_variant)
                         {
                         case ASN_OSUBV_BIT:
@@ -444,8 +444,8 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                         }
 
                     /*
-                         * Append a new expectation.
-                         */
+                     * Append a new expectation.
+                     */
                     sel = OS__add_stack_el(stck);
                     if (!sel)
                         {
@@ -500,7 +500,7 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
             NEXT_PHASE(ctx);
             /* Fall through */
         case 2:
-            stck = (struct _stack *)ctx->ptr;
+            stck = (struct stack *)ctx->ptr;
             sel = stck->cur_ptr;
             ASN_DEBUG("Phase 2: Need %ld bytes, size=%ld, alrg=%ld, wn=%d",
                 (long)sel->left, (long)size, (long)sel->got,
@@ -548,8 +548,8 @@ asn_dec_rval_t OCTET_STRING_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
         case 3:
         phase3:
             /*
-                 * Primitive form, no stack required.
-                 */
+             * Primitive form, no stack required.
+             */
             assert(ctx->left >= 0);
 
             if (size < (size_t)ctx->left)
@@ -1513,8 +1513,8 @@ static int OCTET_STRING_per_get_characters(asn_per_data_t *po, uint8_t *buf,
                 {
                     return 1;
                 } /* FATAL: can't have constrained
-                           * UniversalString with more than
-                           * 16 million code points */
+                   * UniversalString with more than
+                   * 16 million code points */
             for (; buf < end; buf += bpc)
                 {
                     int value;
@@ -2207,7 +2207,7 @@ void OCTET_STRING_free(asn_TYPE_descriptor_t *td, void *sptr, int contents_only)
                       : &asn_DEF_OCTET_STRING_specs;
     asn_struct_ctx_t *ctx =
         (asn_struct_ctx_t *)((char *)st + specs->ctx_offset);
-    struct _stack *stck;
+    struct stack *stck;
 
     if (!td || !st)
         {
@@ -2225,12 +2225,12 @@ void OCTET_STRING_free(asn_TYPE_descriptor_t *td, void *sptr, int contents_only)
     /*
      * Remove decode-time stack.
      */
-    stck = (struct _stack *)ctx->ptr;
+    stck = (struct stack *)ctx->ptr;
     if (stck)
         {
             while (stck->tail)
                 {
-                    struct _stack_el *sel = stck->tail;
+                    struct stack_el *sel = stck->tail;
                     stck->tail = sel->prev;
                     FREEMEM(sel);
                 }

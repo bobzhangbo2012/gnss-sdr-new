@@ -7,24 +7,26 @@
  *
  * Class that implements a highly optimized vector multiTAP correlator class for CPUs
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_CPU_MULTICORRELATOR_16SC_H
 #define GNSS_SDR_CPU_MULTICORRELATOR_16SC_H
 
 #include <volk_gnsssdr/volk_gnsssdr.h>
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
 
 
 /*!
@@ -33,7 +35,7 @@
 class Cpu_Multicorrelator_16sc
 {
 public:
-    Cpu_Multicorrelator_16sc();
+    Cpu_Multicorrelator_16sc() = default;
     ~Cpu_Multicorrelator_16sc();
     bool init(int max_signal_length_samples, int n_correlators);
     bool set_local_code_and_taps(int code_length_chips, const lv_16sc_t *local_code_in, float *shifts_chips);
@@ -44,14 +46,16 @@ public:
 
 private:
     // Allocate the device input vectors
-    const lv_16sc_t *d_sig_in;
-    lv_16sc_t **d_local_codes_resampled;
-    const lv_16sc_t *d_local_code_in;
-    lv_16sc_t *d_corr_out;
-    float *d_shifts_chips;
-    int d_code_length_chips;
-    int d_n_correlators;
+    const lv_16sc_t *d_sig_in{nullptr};
+    const lv_16sc_t *d_local_code_in{nullptr};
+    lv_16sc_t **d_local_codes_resampled{nullptr};
+    lv_16sc_t *d_corr_out{nullptr};
+    float *d_shifts_chips{nullptr};
+    int d_code_length_chips{0};
+    int d_n_correlators{0};
 };
 
 
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_CPU_MULTICORRELATOR_H

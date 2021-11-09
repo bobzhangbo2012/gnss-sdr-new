@@ -11,18 +11,15 @@
  * in N 32 bits float complex outputs.
  * It is optimized to perform the N tap correlation process in GNSS receivers.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -63,7 +60,6 @@
 #include <volk_gnsssdr/volk_gnsssdr_complex.h>
 #include <volk_gnsssdr/volk_gnsssdr_malloc.h>
 #include <math.h>
-// #include <stdio.h>
 
 #ifdef LV_HAVE_GENERIC
 
@@ -74,7 +70,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_generic(lv_32f
     unsigned int n;
     for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
         {
-            result[n_vec] = lv_cmake(0, 0);
+            result[n_vec] = lv_cmake(0.0f, 0.0f);
         }
     for (n = 0; n < num_points; n++)
         {
@@ -115,7 +111,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_generic_reload
     unsigned int j;
     for (n_vec = 0; n_vec < num_a_vectors; n_vec++)
         {
-            result[n_vec] = lv_cmake(0, 0);
+            result[n_vec] = lv_cmake(0.0f, 0.0f);
         }
 
     for (n = 0; n < num_points / ROTATOR_RELOAD; n++)
@@ -158,6 +154,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_generic_reload
 #include <immintrin.h>
 static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_t* result, const lv_32fc_t* in_common, const lv_32fc_t phase_inc, lv_32fc_t* phase, const float** in_a, int num_a_vectors, unsigned int num_points)
 {
+#ifndef WIN32
     unsigned int number = 0;
     int vec_ind = 0;
     unsigned int i = 0;
@@ -287,7 +284,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_
 
             _mm256_store_ps((float*)dotProductVector, dotProdVal0[vec_ind]);  // Store the results back into the dot product vector
 
-            result[vec_ind] = lv_cmake(0, 0);
+            result[vec_ind] = lv_cmake(0.0f, 0.0f);
             for (i = 0; i < 4; ++i)
                 {
                     result[vec_ind] += dotProductVector[i];
@@ -297,7 +294,6 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_
     z0 = _mm256_complexnormalise_ps(z0);
     _mm256_store_ps((float*)phase_vec, z0);
     _phase = phase_vec[0];
-    _mm256_zeroupper();
 
     number = sixteenthPoints * 16;
     for (; number < num_points; number++)
@@ -312,6 +308,9 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_
         }
 
     *phase = _phase;
+#else
+    volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_generic_reload(result, in_common, phase_inc, phase, in_a, num_a_vectors, num_points);
+#endif
 }
 
 #endif /* LV_HAVE_AVX */
@@ -322,6 +321,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_u_avx(lv_32fc_
 #include <immintrin.h>
 static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_a_avx(lv_32fc_t* result, const lv_32fc_t* in_common, const lv_32fc_t phase_inc, lv_32fc_t* phase, const float** in_a, int num_a_vectors, unsigned int num_points)
 {
+#ifndef WIN32
     unsigned int number = 0;
     int vec_ind = 0;
     unsigned int i = 0;
@@ -451,7 +451,7 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_a_avx(lv_32fc_
 
             _mm256_store_ps((float*)dotProductVector, dotProdVal0[vec_ind]);  // Store the results back into the dot product vector
 
-            result[vec_ind] = lv_cmake(0, 0);
+            result[vec_ind] = lv_cmake(0.0f, 0.0f);
             for (i = 0; i < 4; ++i)
                 {
                     result[vec_ind] += dotProductVector[i];
@@ -461,7 +461,6 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_a_avx(lv_32fc_
     z0 = _mm256_complexnormalise_ps(z0);
     _mm256_store_ps((float*)phase_vec, z0);
     _phase = phase_vec[0];
-    _mm256_zeroupper();
 
     number = sixteenthPoints * 16;
     for (; number < num_points; number++)
@@ -476,6 +475,9 @@ static inline void volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_a_avx(lv_32fc_
         }
 
     *phase = _phase;
+#else
+    volk_gnsssdr_32fc_32f_rotator_dot_prod_32fc_xn_generic_reload(result, in_common, phase_inc, phase, in_a, num_a_vectors, num_points);
+#endif
 }
 
 

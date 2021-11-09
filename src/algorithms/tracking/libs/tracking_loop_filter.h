@@ -6,24 +6,26 @@
  * Class implementing a generic 1st, 2nd or 3rd order loop filter. Based
  * on the bilinear transform of the standard Wiener filter.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_TRACKING_LOOP_FILTER_H
 #define GNSS_SDR_TRACKING_LOOP_FILTER_H
 
 #include <vector>
+
+/** \addtogroup Tracking
+ * \{ */
+/** \addtogroup Tracking_libs
+ * \{ */
 
 
 /*!
@@ -57,6 +59,9 @@ public:
     float apply(float current_input);
 
 private:
+    // Compute the filter coefficients:
+    void update_coefficients();
+
     // Store the last inputs and outputs:
     std::vector<float> d_inputs;
     std::vector<float> d_outputs;
@@ -64,15 +69,6 @@ private:
     // Store the filter coefficients:
     std::vector<float> d_input_coefficients;
     std::vector<float> d_output_coefficients;
-
-    // The loop order:
-    int d_loop_order;
-
-    // The current index in the i/o arrays:
-    int d_current_index;
-
-    // Should the last integrator be included?
-    bool d_include_last_integrator;
 
     // The noise bandwidth (in Hz)
     // Note this is an approximation only valid when the product of this
@@ -82,8 +78,17 @@ private:
     // Loop update interval
     float d_update_interval;
 
-    // Compute the filter coefficients:
-    void update_coefficients();
+    // The loop order:
+    int d_loop_order;
+
+    // The current index in the i/o arrays:
+    int d_current_index;
+
+    // Should the last integrator be included?
+    bool d_include_last_integrator;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_TRACKING_LOOP_FILTER_H

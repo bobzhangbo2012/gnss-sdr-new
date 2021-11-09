@@ -3,18 +3,15 @@
  * \brief This file implements tests for Serdes_Gnss_Synchro
  * \author Carles Fernandez-Prades, 2019. cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -81,7 +78,8 @@ TEST(Protobuf, Works)
 
     // We can access like this:
     std::vector<Gnss_Synchro> vgs_read = serdes.readProtobuffer(obs);
-    Gnss_Synchro gs_read = vgs_read[0];
+    Gnss_Synchro gs_read{};
+    gs_read = vgs_read[0];
     uint32_t prn_read = gs_read.PRN;
     uint32_t prn_read2 = vgs_read[1].PRN;
     std::string system_read(1, gs_read.System);

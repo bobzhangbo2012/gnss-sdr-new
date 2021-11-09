@@ -3,18 +3,15 @@
  * \brief Interface of an adapter of a digital beamformer
  * \author Javier Arribas jarribas (at) cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -26,16 +23,22 @@
 #include <cstdint>
 #include <string>
 
+/** \addtogroup Input_Filter
+ * \{ */
+/** \addtogroup Input_filter_adapters
+ * \{ */
+
+
 class ConfigurationInterface;
 
 /*!
- * \brief Interface of an adapter of a direct resampler conditioner block
- * to a SignalConditionerInterface
+ * \brief Interface of an adapter of a digital beamformer block
+ * to a GNSSBlockInterface
  */
 class BeamformerFilter : public GNSSBlockInterface
 {
 public:
-    BeamformerFilter(ConfigurationInterface* configuration,
+    BeamformerFilter(const ConfigurationInterface* configuration,
         const std::string& role, unsigned int in_stream,
         unsigned int out_stream);
 
@@ -46,7 +49,7 @@ public:
         return role_;
     }
 
-    //! returns "Direct_Resampler"
+    //! returns "Beamformer_Filte"
     inline std::string implementation() override
     {
         return "Beamformer_Filter";
@@ -63,16 +66,18 @@ public:
     gr::basic_block_sptr get_right_block() override;
 
 private:
-    std::string role_;
-    unsigned int in_stream_;
-    unsigned int out_stream_;
-    std::string item_type_;
-    size_t item_size_;
-    uint64_t samples_;
-    bool dump_;
-    std::string dump_filename_;
     gr::block_sptr beamformer_;
     gr::block_sptr file_sink_;
+    std::string role_;
+    std::string item_type_;
+    std::string dump_filename_;
+    size_t item_size_;
+    unsigned int in_stream_;
+    unsigned int out_stream_;
+    bool dump_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_BEAMFORMER_FILTER_H

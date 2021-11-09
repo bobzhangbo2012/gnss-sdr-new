@@ -5,18 +5,15 @@
  * \author Carles Fernandez-Prades, 2014. cfernandez(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include <armadillo>
@@ -51,7 +48,7 @@ TEST(MagnitudeSquaredTest, StandardCComplexImplementation)
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The squared magnitude of a " << FLAGS_size_magnitude_test
               << "-length complex vector in standard C computed in " << elapsed_seconds.count() * 1e6
-              << " microseconds" << std::endl;
+              << " microseconds\n";
     delete[] input;
     delete[] output;
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
@@ -75,7 +72,7 @@ TEST(MagnitudeSquaredTest, C11ComplexImplementation)
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The squared magnitude of a " << FLAGS_size_magnitude_test
               << " complex<float> vector (C++11-style) finished in " << elapsed_seconds.count() * 1e6
-              << " microseconds" << std::endl;
+              << " microseconds\n";
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
 
     std::complex<float> expected(0, 0);
@@ -101,7 +98,7 @@ TEST(MagnitudeSquaredTest, ArmadilloComplexImplementation)
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The squared magnitude of a " << FLAGS_size_magnitude_test
               << "-length vector using Armadillo computed in " << elapsed_seconds.count() * 1e6
-              << " microseconds" << std::endl;
+              << " microseconds\n";
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
 }
 
@@ -120,7 +117,7 @@ TEST(MagnitudeSquaredTest, VolkComplexImplementation)
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The squared magnitude of a " << FLAGS_size_magnitude_test
               << "-length vector using VOLK computed in " << elapsed_seconds.count() * 1e6
-              << " microseconds" << std::endl;
+              << " microseconds\n";
     volk_gnsssdr_free(input);
     volk_gnsssdr_free(output);
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
@@ -142,7 +139,7 @@ TEST(MagnitudeSquaredTest, VolkComplexImplementationAlloc)
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The squared magnitude of a " << FLAGS_size_magnitude_test
               << "-length vector using VOLK ALLOC computed in " << elapsed_seconds.count() * 1e6
-              << " microseconds" << std::endl;
+              << " microseconds\n";
     ASSERT_LE(0, elapsed_seconds.count() * 1e6);
 }
 

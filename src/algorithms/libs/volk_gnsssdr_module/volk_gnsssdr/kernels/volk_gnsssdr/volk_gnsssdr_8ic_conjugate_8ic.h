@@ -8,18 +8,15 @@
  * VOLK_GNSSSDR kernel that calculates the conjugate of a
  * 16 bits vector (8 bits the real part and 8 bits the imaginary part)
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -337,7 +334,7 @@ static inline void volk_gnsssdr_8ic_conjugate_8ic_u_orc(lv_8sc_t* cVector, const
 #endif /* LV_HAVE_ORC */
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 
 static inline void volk_gnsssdr_8ic_conjugate_8ic_neon(lv_8sc_t* cVector, const lv_8sc_t* aVector, unsigned int num_points)
@@ -363,6 +360,6 @@ static inline void volk_gnsssdr_8ic_conjugate_8ic_neon(lv_8sc_t* cVector, const 
             *c++ = lv_conj(*a++);
         }
 }
-#endif /* LV_HAVE_NEONV7 */
+#endif /* LV_HAVE_NEON */
 
 #endif /* INCLUDED_volk_gnsssdr_8ic_conjugate_8ic_H */

@@ -6,18 +6,15 @@
  *          <li> Javier Arribas, 2015. jarribas(at)cttc.es
  *          </ul>
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gps_l2_m_pcps_acquisition.h"
@@ -25,22 +22,33 @@
 #include "acq_conf.h"
 #include "configuration_interface.h"
 #include "gnss_sdr_flags.h"
-#include "gps_l2c_signal.h"
+#include "gps_l2c_signal_replica.h"
 #include <glog/logging.h>
 #include <algorithm>
 
+#if HAS_STD_SPAN
+#include <span>
+namespace own = std;
+#else
+#include <gsl/gsl-lite.hpp>
+namespace own = gsl;
+#endif
 
 GpsL2MPcpsAcquisition::GpsL2MPcpsAcquisition(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
-    unsigned int out_streams) : role_(role),
+    unsigned int out_streams) : gnss_synchro_(nullptr),
+                                role_(role),
+                                threshold_(0),
+                                doppler_center_(0),
+                                channel_(0),
+                                doppler_step_(0),
                                 in_streams_(in_streams),
                                 out_streams_(out_streams)
 {
-    configuration_ = configuration;
     acq_parameters_.ms_per_code = 20;
-    acq_parameters_.SetFromConfiguration(configuration_, role, GPS_L2_M_CODE_RATE_CPS, GPS_L2C_OPT_ACQ_FS_SPS);
+    acq_parameters_.SetFromConfiguration(configuration, role, GPS_L2_M_CODE_RATE_CPS, GPS_L2C_OPT_ACQ_FS_SPS);
 
     DLOG(INFO) << "Role " << role;
 
@@ -49,14 +57,14 @@ GpsL2MPcpsAcquisition::GpsL2MPcpsAcquisition(
             acq_parameters_.doppler_max = FLAGS_doppler_max;
         }
     doppler_max_ = acq_parameters_.doppler_max;
-    doppler_step_ = acq_parameters_.doppler_step;
+    doppler_step_ = static_cast<unsigned int>(acq_parameters_.doppler_step);
     item_type_ = acq_parameters_.item_type;
     item_size_ = acq_parameters_.it_size;
     fs_in_ = acq_parameters_.fs_in;
 
     code_length_ = static_cast<unsigned int>(std::floor(static_cast<double>(acq_parameters_.resampled_fs) / (GPS_L2_M_CODE_RATE_CPS / GPS_L2_M_CODE_LENGTH_CHIPS)));
-    vector_length_ = std::floor(acq_parameters_.sampled_ms * acq_parameters_.samples_per_ms) * (acq_parameters_.bit_transition_flag ? 2 : 1);
-    code_ = std::vector<std::complex<float>>(vector_length_);
+    vector_length_ = static_cast<unsigned int>(std::floor(acq_parameters_.sampled_ms * acq_parameters_.samples_per_ms) * (acq_parameters_.bit_transition_flag ? 2.0 : 1.0));
+    code_ = volk_gnsssdr::vector<std::complex<float>>(vector_length_);
 
     acquisition_ = pcps_make_acquisition(acq_parameters_);
     DLOG(INFO) << "acquisition(" << acquisition_->unique_id() << ")";
@@ -66,11 +74,6 @@ GpsL2MPcpsAcquisition::GpsL2MPcpsAcquisition(
             cbyte_to_float_x2_ = make_complex_byte_to_float_x2();
             float_to_complex_ = gr::blocks::float_to_complex::make();
         }
-
-    channel_ = 0;
-    threshold_ = 0.0;
-    doppler_center_ = 0;
-    gnss_synchro_ = nullptr;
 
     num_codes_ = acq_parameters_.sampled_ms / acq_parameters_.ms_per_code;
     if (in_streams_ > 1)
@@ -86,6 +89,7 @@ GpsL2MPcpsAcquisition::GpsL2MPcpsAcquisition(
 
 void GpsL2MPcpsAcquisition::stop_acquisition()
 {
+    acquisition_->set_active(false);
 }
 
 
@@ -145,7 +149,7 @@ void GpsL2MPcpsAcquisition::init()
 
 void GpsL2MPcpsAcquisition::set_local_code()
 {
-    std::vector<std::complex<float>> code(code_length_);
+    volk_gnsssdr::vector<std::complex<float>> code(code_length_);
 
     if (acq_parameters_.use_automatic_resampler)
         {
@@ -156,7 +160,7 @@ void GpsL2MPcpsAcquisition::set_local_code()
             gps_l2c_m_code_gen_complex_sampled(code, gnss_synchro_->PRN, fs_in_);
         }
 
-    gsl::span<gr_complex> code_span(code_.data(), vector_length_);
+    own::span<gr_complex> code_span(code_.data(), vector_length_);
     for (unsigned int i = 0; i < num_codes_; i++)
         {
             std::copy_n(code.data(), code_length_, code_span.subspan(i * code_length_, code_length_).data());
@@ -180,11 +184,7 @@ void GpsL2MPcpsAcquisition::set_state(int state)
 
 void GpsL2MPcpsAcquisition::connect(gr::top_block_sptr top_block)
 {
-    if (item_type_ == "gr_complex")
-        {
-            // nothing to connect
-        }
-    else if (item_type_ == "cshort")
+    if (item_type_ == "gr_complex" || item_type_ == "cshort")
         {
             // nothing to connect
         }
@@ -205,11 +205,7 @@ void GpsL2MPcpsAcquisition::connect(gr::top_block_sptr top_block)
 
 void GpsL2MPcpsAcquisition::disconnect(gr::top_block_sptr top_block)
 {
-    if (item_type_ == "gr_complex")
-        {
-            // nothing to disconnect
-        }
-    else if (item_type_ == "cshort")
+    if (item_type_ == "gr_complex" || item_type_ == "cshort")
         {
             // nothing to disconnect
         }
@@ -228,11 +224,7 @@ void GpsL2MPcpsAcquisition::disconnect(gr::top_block_sptr top_block)
 
 gr::basic_block_sptr GpsL2MPcpsAcquisition::get_left_block()
 {
-    if (item_type_ == "gr_complex")
-        {
-            return acquisition_;
-        }
-    if (item_type_ == "cshort")
+    if (item_type_ == "gr_complex" || item_type_ == "cshort")
         {
             return acquisition_;
         }

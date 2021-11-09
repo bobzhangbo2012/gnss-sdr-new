@@ -1,17 +1,14 @@
-#
-# Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2021 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
+
 
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8.12...3.21)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -137,6 +134,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
                         set(CMAKE_CXX_STANDARD 17)
                     else()
                         set(CMAKE_CXX_STANDARD 20)
+                        if(CMAKE_VERSION VERSION_GREATER 3.20.99)
+                            if(((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0.0")) OR
+                                ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.0")))
+                                set(CMAKE_CXX_STANDARD 23)
+                            endif()
+                        endif()
                     endif()
                     set(CMAKE_CXX_STANDARD_REQUIRED ON)
                 else()
@@ -154,6 +157,10 @@ if(NOT ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND NOT WIN32) AND NOT (CMAKE_CXX
     endif()
 endif()
 
+########################################################################
+# Common compile flags
+########################################################################
+
 # Disable complex math NaN/INFO range checking for performance
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag(-fcx-limited-range HAVE_CX_LIMITED_RANGE)
@@ -170,7 +177,22 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MY_CXX_FLAGS} -Wall")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
-option(ENABLE_STRIP "Create a stripped volk_gnsssdr_profile binary (without shared libraries)" OFF)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+    # Abort compilation if kernel implementations have inconsistent function
+    # prototypes, i.e. if
+    #
+    #     kernel_foo_sse(uint32_t *dst, lv32fc_t *src)
+    #     kernel_foo_avx(uint16_t *dst, lv32fc_t *src)
+    #
+    # are defined. Note the different data type of the first argument). By
+    # default 'incompatible-pointer-types' is a warning only and 'pointer-sign'
+    # is a warning enabled by '-Wall'. These warnings are only applicable to C.
+    if(NOT (CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0"))
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=incompatible-pointer-types -Werror=pointer-sign")
+    endif()
+endif()
+
+option(ENABLE_STRIP "Create a stripped volk_gnsssdr_profile binary (without debugging symbols)" OFF)
 if(ENABLE_STRIP)
     set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
@@ -187,8 +209,8 @@ message(STATUS "Build type set to ${CMAKE_BUILD_TYPE}.")
 
 set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_MINOR_VERSION 0)
-set(VERSION_INFO_MAINT_VERSION 12)
-include(VolkVersion) # setup version info
+set(VERSION_INFO_MAINT_VERSION 15)
+include(VolkGnsssdrVersion) # setup version info
 
 
 
@@ -227,11 +249,52 @@ endif()
 # Dependencies setup
 ########################################################################
 
+# cpu_features
+option(ENABLE_OWN_CPUFEATURES "Force the building of the cpu_features library even if it is already installed" OFF)
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^cortex")
+    set(CMAKE_SYSTEM_PROCESSOR arm-${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+set(SUPPORTED_CPU_FEATURES_ARCH FALSE)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
+    set(SUPPORTED_CPU_FEATURES_ARCH TRUE)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(^aarch64)|(arm64)")
+    set(SUPPORTED_CPU_FEATURES_ARCH TRUE)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+    set(SUPPORTED_CPU_FEATURES_ARCH TRUE)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
+    set(SUPPORTED_CPU_FEATURES_ARCH TRUE)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)")
+    set(SUPPORTED_CPU_FEATURES_ARCH TRUE)
+endif()
+
+if(CMAKE_VERSION VERSION_GREATER 3.0 AND SUPPORTED_CPU_FEATURES_ARCH)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL
+        "Build cpu_features with Position Independent Code (PIC)."
+        FORCE
+    )
+    set(USE_CPU_FEATURES ON)
+    set(BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+    set(BUILD_SHARED_LIBS OFF)
+    if(NOT ENABLE_OWN_CPUFEATURES)
+        find_package(CPUFEATURES QUIET)
+    endif()
+    if(CPUFEATURES_FOUND)
+        message(STATUS "Found CpuFeatures: (found version ${CPUFEATURES_VERSION})")
+    else()
+        add_subdirectory(cpu_features)
+    endif()
+    set(BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS_SAVED}")
+endif()
+
 # Python
-include(VolkPython) # sets PYTHON_EXECUTABLE and PYTHON_DASH_B
+include(VolkPython) # sets PYTHON_EXECUTABLE
 volk_python_check_module("python >= 2.7" sys "sys.version.split()[0] >= '2.7'" PYTHON_MIN_VER_FOUND)
 volk_python_check_module("mako >= 0.4.2" mako "mako.__version__ >= '0.4.2'" MAKO_FOUND)
-volk_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+if(Python2_VERSION OR (PYTHON_VERSION_STRING VERSION_LESS "3.0"))
+    volk_python_check_module("six - python 2 and 3 compatibility library" six "True" SIX_FOUND)
+endif()
 
 if(NOT PYTHON_MIN_VER_FOUND)
     message(FATAL_ERROR "Python 2.7 or greater required to build VOLK_GNSSSDR")
@@ -241,9 +304,12 @@ endif()
 if(NOT MAKO_FOUND)
     message(FATAL_ERROR "Mako templates required to build VOLK_GNSSSDR")
 endif()
+
 # Six
-if(NOT SIX_FOUND)
-    message(FATAL_ERROR "six - python 2 and 3 compatibility library required to build VOLK")
+if(Python2_VERSION OR (PYTHON_VERSION_STRING VERSION_LESS "3.0"))
+    if(NOT SIX_FOUND)
+        message(FATAL_ERROR "six - python 2 and 3 compatibility library required to build VOLK_GNSSSDR")
+    endif()
 endif()
 
 
@@ -307,6 +373,14 @@ if(DOXYGEN_FOUND)
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         COMMENT "Generating documentation with Doxygen" VERBATIM
     )
+endif()
+
+
+########################################################################
+# Detect /lib versus /lib64
+########################################################################
+if(${CMAKE_INSTALL_LIBDIR} MATCHES lib64)
+    set(LIB_SUFFIX 64)
 endif()
 
 

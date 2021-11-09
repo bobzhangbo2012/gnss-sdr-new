@@ -8,21 +8,19 @@
  * \author Javier Arribas, 2012. jarribas(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "nmea_printer.h"
+#include "gnss_sdr_filesystem.h"
 #include "rtklib_solution.h"
 #include "rtklib_solver.h"
 #include <glog/logging.h>
@@ -34,30 +32,14 @@
 #include <termios.h>
 #include <utility>
 
-#if HAS_STD_FILESYSTEM
-#include <system_error>
-namespace errorlib = std;
-#if HAS_STD_FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
-#include <filesystem>
-namespace fs = std::filesystem;
-#endif
-#else
-#include <boost/filesystem/operations.hpp>   // for create_directories, exists
-#include <boost/filesystem/path.hpp>         // for path, operator<<
-#include <boost/filesystem/path_traits.hpp>  // for filesystem
-#include <boost/system/error_code.hpp>       // for error_code
-namespace fs = boost::filesystem;
-namespace errorlib = boost::system;
-#endif
 
-
-Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_file, bool flag_nmea_tty_port, std::string nmea_dump_devname, const std::string& base_path)
+Nmea_Printer::Nmea_Printer(const std::string& filename,
+    bool flag_nmea_output_file,
+    bool flag_nmea_tty_port,
+    std::string nmea_dump_devname,
+    const std::string& base_path) : nmea_base_path(base_path),
+                                    d_flag_nmea_output_file(flag_nmea_output_file)
 {
-    nmea_base_path = base_path;
-    d_flag_nmea_output_file = flag_nmea_output_file;
     if (d_flag_nmea_output_file == true)
         {
             fs::path full_path(fs::current_path());
@@ -65,7 +47,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
             if (!fs::exists(p))
                 {
                     std::string new_folder;
-                    for (auto& folder : fs::path(nmea_base_path))
+                    for (const auto& folder : fs::path(nmea_base_path))
                         {
                             new_folder += folder.string();
                             errorlib::error_code ec;
@@ -73,7 +55,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
                                 {
                                     if (!fs::create_directory(new_folder, ec))
                                         {
-                                            std::cout << "Could not create the " << new_folder << " folder." << std::endl;
+                                            std::cout << "Could not create the " << new_folder << " folder.\n";
                                             nmea_base_path = full_path.string();
                                         }
                                 }
@@ -87,7 +69,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
 
             if ((nmea_base_path != ".") and (d_flag_nmea_output_file == true))
                 {
-                    std::cout << "NMEA files will be stored at " << nmea_base_path << std::endl;
+                    std::cout << "NMEA files will be stored at " << nmea_base_path << '\n';
                 }
 
             nmea_base_path = nmea_base_path + fs::path::preferred_separator;
@@ -101,7 +83,7 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
                 }
             else
                 {
-                    std::cout << "File " << nmea_filename << " cannot be saved. Wrong permissions?" << std::endl;
+                    std::cout << "File " << nmea_filename << " cannot be saved. Wrong permissions?\n";
                 }
         }
 
@@ -119,12 +101,14 @@ Nmea_Printer::Nmea_Printer(const std::string& filename, bool flag_nmea_output_fi
             nmea_dev_descriptor = -1;
         }
     print_avg_pos = false;
+    d_PVT_data = nullptr;
 }
 
 
 Nmea_Printer::~Nmea_Printer()
 {
-    auto pos = nmea_file_descriptor.tellp();
+    DLOG(INFO) << "NMEA printer destructor called.";
+    const auto pos = nmea_file_descriptor.tellp();
     try
         {
             if (nmea_file_descriptor.is_open())
@@ -168,11 +152,11 @@ int Nmea_Printer::init_serial(const std::string& serial_device)
     // clang-format off
     struct termios options{};
     // clang-format on
-    int64_t BAUD;
-    int64_t DATABITS;
-    int64_t STOPBITS;
-    int64_t PARITYON;
-    int64_t PARITY;
+    const int64_t BAUD = B9600;  // BAUD  =  B38400;
+    const int64_t DATABITS = CS8;
+    const int64_t STOPBITS = 0;
+    const int64_t PARITYON = 0;
+    const int64_t PARITY = 0;
 
     fd = open(serial_device.c_str(), O_RDWR | O_NOCTTY | O_NDELAY | O_CLOEXEC);
     if (fd == -1)
@@ -186,13 +170,6 @@ int Nmea_Printer::init_serial(const std::string& serial_device)
         }
     tcgetattr(fd, &options);  // read serial port options
 
-    BAUD = B9600;
-    // BAUD  =  B38400;
-    DATABITS = CS8;
-    STOPBITS = 0;
-    PARITYON = 0;
-    PARITY = 0;
-
     options.c_cflag = BAUD | DATABITS | STOPBITS | PARITYON | PARITY | CLOCAL | CREAD;
     // enable receiver, set 8 bit data, ignore control lines
     // options.c_cflag |= (CLOCAL | CREAD | CS8);
@@ -204,7 +181,7 @@ int Nmea_Printer::init_serial(const std::string& serial_device)
 }
 
 
-void Nmea_Printer::close_serial()
+void Nmea_Printer::close_serial() const
 {
     if (nmea_dev_descriptor != -1)
         {
@@ -213,13 +190,8 @@ void Nmea_Printer::close_serial()
 }
 
 
-bool Nmea_Printer::Print_Nmea_Line(const std::shared_ptr<Rtklib_Solver>& pvt_data, bool print_average_values)
+bool Nmea_Printer::Print_Nmea_Line(const Rtklib_Solver* const pvt_data, bool print_average_values)
 {
-    std::string GPRMC;
-    std::string GPGGA;
-    std::string GPGSA;
-    std::string GPGSV;
-
     // set the new PVT data
     d_PVT_data = pvt_data;
     print_avg_pos = print_average_values;
@@ -227,13 +199,13 @@ bool Nmea_Printer::Print_Nmea_Line(const std::shared_ptr<Rtklib_Solver>& pvt_dat
     // generate the NMEA sentences
 
     // GPRMC
-    GPRMC = get_GPRMC();
+    const std::string GPRMC = get_GPRMC();
     // GPGGA (Global Positioning System Fixed Data)
-    GPGGA = get_GPGGA();
+    const std::string GPGGA = get_GPGGA();
     // GPGSA
-    GPGSA = get_GPGSA();
+    const std::string GPGSA = get_GPGSA();
     // GPGSV
-    GPGSV = get_GPGSV();
+    const std::string GPGSV = get_GPGSV();
 
     // write to log file
     if (d_flag_nmea_output_file)
@@ -283,7 +255,7 @@ bool Nmea_Printer::Print_Nmea_Line(const std::shared_ptr<Rtklib_Solver>& pvt_dat
 }
 
 
-char Nmea_Printer::checkSum(const std::string& sentence)
+char Nmea_Printer::checkSum(const std::string& sentence) const
 {
     char check = 0;
     // iterate over the string, XOR each byte with the total sum:
@@ -296,7 +268,7 @@ char Nmea_Printer::checkSum(const std::string& sentence)
 }
 
 
-std::string Nmea_Printer::latitude_to_hm(double lat)
+std::string Nmea_Printer::latitude_to_hm(double lat) const
 {
     bool north;
     if (lat < 0.0)
@@ -309,7 +281,7 @@ std::string Nmea_Printer::latitude_to_hm(double lat)
             north = true;
         }
 
-    int deg = static_cast<int>(lat);
+    const int deg = static_cast<int>(lat);
     double mins = lat - static_cast<double>(deg);
     mins *= 60.0;
     std::ostringstream out_string;
@@ -334,7 +306,7 @@ std::string Nmea_Printer::latitude_to_hm(double lat)
 }
 
 
-std::string Nmea_Printer::longitude_to_hm(double longitude)
+std::string Nmea_Printer::longitude_to_hm(double longitude) const
 {
     bool east;
     if (longitude < 0.0)
@@ -346,7 +318,7 @@ std::string Nmea_Printer::longitude_to_hm(double longitude)
         {
             east = true;
         }
-    int deg = static_cast<int>(longitude);
+    const int deg = static_cast<int>(longitude);
     double mins = longitude - static_cast<double>(deg);
     mins *= 60.0;
     std::ostringstream out_string;
@@ -371,21 +343,16 @@ std::string Nmea_Printer::longitude_to_hm(double longitude)
 }
 
 
-std::string Nmea_Printer::get_UTC_NMEA_time(boost::posix_time::ptime d_position_UTC_time)
+std::string Nmea_Printer::get_UTC_NMEA_time(const boost::posix_time::ptime d_position_UTC_time) const
 {
     // UTC Time: hhmmss.sss
     std::stringstream sentence_str;
 
-    boost::posix_time::time_duration td = d_position_UTC_time.time_of_day();
-    int utc_hours;
-    int utc_mins;
-    int utc_seconds;
-    int utc_milliseconds;
-
-    utc_hours = td.hours();
-    utc_mins = td.minutes();
-    utc_seconds = td.seconds();
-    utc_milliseconds = td.total_milliseconds() - td.total_seconds() * 1000;
+    const boost::posix_time::time_duration td = d_position_UTC_time.time_of_day();
+    const int utc_hours = td.hours();
+    const int utc_mins = td.minutes();
+    const int utc_seconds = td.seconds();
+    const auto utc_milliseconds = static_cast<int>(td.total_milliseconds() - td.total_seconds() * 1000);
 
     if (utc_hours < 10)
         {
@@ -424,7 +391,7 @@ std::string Nmea_Printer::get_UTC_NMEA_time(boost::posix_time::ptime d_position_
 }
 
 
-std::string Nmea_Printer::get_GPRMC()
+std::string Nmea_Printer::get_GPRMC() const
 {
     // Sample -> $GPRMC,161229.487,A,3723.2475,N,12158.3416,W,0.13,309.62,120598,*10
     std::stringstream sentence_str;
@@ -435,7 +402,7 @@ std::string Nmea_Printer::get_GPRMC()
 }
 
 
-std::string Nmea_Printer::get_GPGSA()
+std::string Nmea_Printer::get_GPGSA() const
 {
     // $GPGSA,A,3,07,02,26,27,09,04,15, , , , , ,1.8,1.0,1.5*33
     // GSA-GNSS DOP and Active Satellites
@@ -447,7 +414,7 @@ std::string Nmea_Printer::get_GPGSA()
 }
 
 
-std::string Nmea_Printer::get_GPGSV()
+std::string Nmea_Printer::get_GPGSV() const
 {
     // GSV-GNSS Satellites in View
     // $GPGSV,2,1,07,07,79,048,42,02,51,062,43,26,36,256,42,27,27,138,42*71
@@ -460,7 +427,7 @@ std::string Nmea_Printer::get_GPGSV()
 }
 
 
-std::string Nmea_Printer::get_GPGGA()
+std::string Nmea_Printer::get_GPGGA() const
 {
     std::stringstream sentence_str;
     std::array<unsigned char, 1024> buff{};

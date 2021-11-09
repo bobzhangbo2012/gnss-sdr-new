@@ -1,11 +1,8 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 set(OPT_TRACKING_ADAPTERS_SOURCES "")
 set(OPT_TRACKING_ADAPTERS_HEADERS "")
@@ -43,6 +40,8 @@ set(TRACKING_ADAPTER_SOURCES
     gps_l1_ca_dll_pll_tracking.cc
     gps_l1_ca_tcp_connector_tracking.cc
     galileo_e5a_dll_pll_tracking.cc
+    galileo_e5b_dll_pll_tracking.cc
+    galileo_e6_dll_pll_tracking.cc
     gps_l2_m_dll_pll_tracking.cc
     glonass_l1_ca_dll_pll_tracking.cc
     glonass_l1_ca_dll_pll_c_aid_tracking.cc
@@ -61,6 +60,8 @@ set(TRACKING_ADAPTER_HEADERS
     gps_l1_ca_dll_pll_tracking.h
     gps_l1_ca_tcp_connector_tracking.h
     galileo_e5a_dll_pll_tracking.h
+    galileo_e5b_dll_pll_tracking.h
+    galileo_e6_dll_pll_tracking.h
     gps_l2_m_dll_pll_tracking.h
     glonass_l1_ca_dll_pll_tracking.h
     glonass_l1_ca_dll_pll_c_aid_tracking.h
@@ -76,22 +77,28 @@ set(TRACKING_ADAPTER_HEADERS
 list(SORT TRACKING_ADAPTER_HEADERS)
 list(SORT TRACKING_ADAPTER_SOURCES)
 
-source_group(Headers FILES ${TRACKING_ADAPTER_HEADERS})
-
-add_library(tracking_adapters
-    ${TRACKING_ADAPTER_SOURCES}
-    ${TRACKING_ADAPTER_HEADERS}
-)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(tracking_adapters STATIC)
+    target_sources(tracking_adapters
+        PRIVATE
+            ${TRACKING_ADAPTER_SOURCES}
+        PUBLIC
+            ${TRACKING_ADAPTER_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${TRACKING_ADAPTER_HEADERS})
+    add_library(tracking_adapters
+        ${TRACKING_ADAPTER_SOURCES}
+        ${TRACKING_ADAPTER_HEADERS}
+    )
+endif()
 
 target_link_libraries(tracking_adapters
     PUBLIC
         tracking_gr_blocks
-        algorithms_libs
-        Gnuradio::runtime
     PRIVATE
         gnss_sdr_flags
         Glog::glog
-        Volkgnsssdr::volkgnsssdr
 )
 
 target_include_directories(tracking_adapters
@@ -99,14 +106,29 @@ target_include_directories(tracking_adapters
         ${CMAKE_SOURCE_DIR}/src/core/interfaces
 )
 
-if(ENABLE_CUDA AND NOT CMAKE_VERSION VERSION_GREATER 3.11)
+if(ENABLE_FPGA)
     target_link_libraries(tracking_adapters
-        PUBLIC
-            ${CUDA_LIBRARIES}
+        PRIVATE
+            core_libs
     )
-    target_include_directories(tracking_adapters
-        PUBLIC
-            ${CUDA_INCLUDE_DIRS}
+endif()
+
+if(ENABLE_CUDA)
+    if(CMAKE_VERSION VERSION_GREATER 3.11)
+        target_include_directories(tracking_adapters
+            PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        )
+    else()
+        target_link_libraries(tracking_adapters
+            PUBLIC ${CUDA_LIBRARIES}
+        )
+        target_include_directories(tracking_adapters
+            PUBLIC ${CUDA_INCLUDE_DIRS}
+        )
+    endif()
+    set_target_properties(tracking_adapters PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
     )
 endif()
 

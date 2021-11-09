@@ -4,18 +4,15 @@
  * and converts it into different types.
  * \author Carlos Aviles, 2010. carlos.avilesr(at)googlemail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
@@ -24,6 +21,12 @@
 
 #include <cstdint>
 #include <string>
+
+/** \addtogroup Core
+ * \{ */
+/** \addtogroup Core_Receiver_Library
+ * \{ */
+
 
 /*!
  * \brief Class that interprets the contents of a string
@@ -46,4 +49,7 @@ public:
     double convert(const std::string& value, double default_value);
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_STRING_CONVERTER_H

@@ -11,18 +11,15 @@
  * in N 16 bits short complex outputs.
  * It is optimized to perform the N tap correlation process in GNSS receivers.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -614,7 +611,6 @@ static inline void volk_gnsssdr_16ic_16i_rotator_dot_prod_16ic_xn_a_avx2(lv_16sc
         }
 
     volk_gnsssdr_free(cacc);
-    _mm256_zeroupper();
 
     _mm256_store_ps((float*)four_phase_acc, four_phase_acc_reg);
     (*phase) = four_phase_acc[0];
@@ -766,7 +762,6 @@ static inline void volk_gnsssdr_16ic_16i_rotator_dot_prod_16ic_xn_u_avx2(lv_16sc
         }
 
     volk_gnsssdr_free(cacc);
-    _mm256_zeroupper();
 
     _mm256_store_ps((float*)four_phase_acc, four_phase_acc_reg);
     (*phase) = four_phase_acc[0];

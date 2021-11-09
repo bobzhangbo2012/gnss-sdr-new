@@ -1,27 +1,20 @@
-# Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
-#
-# GNSS-SDR is a software-defined Global Navigation Satellite Systems receiver
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
-add_executable(gnss-sdr ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
-
-if(${FILESYSTEM_FOUND})
-    target_compile_definitions(gnss-sdr PRIVATE -DHAS_STD_FILESYSTEM=1)
-    if(${find_experimental})
-        target_compile_definitions(gnss-sdr PRIVATE -DHAS_STD_FILESYSTEM_EXPERIMENTAL=1)
-    endif()
-    target_link_libraries(gnss-sdr PRIVATE std::filesystem)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_executable(gnss-sdr)
+    target_sources(gnss-sdr PRIVATE main.cc)
 else()
-    target_link_libraries(gnss-sdr PRIVATE Boost::filesystem Boost::system)
+    add_executable(gnss-sdr main.cc)
 endif()
 
 target_link_libraries(gnss-sdr
-    PUBLIC
+    PRIVATE
+        algorithms_libs
         core_receiver
         Boost::headers
         Boost::thread
@@ -32,29 +25,30 @@ target_link_libraries(gnss-sdr
 
 target_compile_definitions(gnss-sdr PRIVATE -DGNSS_SDR_VERSION="${VERSION}")
 
-# Disable internal logging
-if(NOT ENABLE_LOG)
-    target_compile_definitions(gnss-sdr PUBLIC -DGOOGLE_STRIP_LOG=1)
-endif()
-
 if(ENABLE_CUDA)
-    if(NOT CMAKE_VERSION VERSION_GREATER 3.11)
+    if(CMAKE_VERSION VERSION_GREATER 3.11)
+        target_include_directories(gnss-sdr
+            PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        )
+    else()
         target_link_libraries(gnss-sdr
-            PUBLIC
-                ${CUDA_LIBRARIES}
+            PUBLIC ${CUDA_LIBRARIES}
         )
         target_include_directories(gnss-sdr
-            PUBLIC
-                ${CUDA_INCLUDE_DIRS}
+            PUBLIC ${CUDA_INCLUDE_DIRS}
         )
     endif()
+    set_target_properties(gnss-sdr PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+    )
     target_compile_definitions(gnss-sdr PRIVATE -DCUDA_GPU_ACCEL=1)
 endif()
 
 if(ENABLE_GPERFTOOLS)
     if(GPERFTOOLS_FOUND)
         target_link_libraries(gnss-sdr
-            PUBLIC
+            PRIVATE
                 Gperftools::profiler
                 Gperftools::tcmalloc
         )
@@ -63,11 +57,12 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_link_libraries(gnss-sdr
-            PUBLIC
-                "-lc++"
-        )
+        target_link_libraries(gnss-sdr PRIVATE "-lc++")
     endif()
+endif()
+
+if(ENABLE_STRIP)
+    set_target_properties(gnss-sdr PROPERTIES LINK_FLAGS "-s")
 endif()
 
 if(ENABLE_CLANG_TIDY)
@@ -81,7 +76,7 @@ endif()
 
 add_custom_command(TARGET gnss-sdr
     POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gnss-sdr>
-        ${CMAKE_SOURCE_DIR}/install/$<TARGET_FILE_NAME:gnss-sdr>
+        ${LOCAL_INSTALL_BASE_DIR}/install/$<TARGET_FILE_NAME:gnss-sdr>
 )
 
 install(TARGETS gnss-sdr
@@ -130,7 +125,7 @@ if(NOT GZIP_NOTFOUND)
         DESTINATION share/man/man1
     )
 
-    execute_process(COMMAND gzip -9 -c ${CMAKE_SOURCE_DIR}/docs/changelog.md
+    execute_process(COMMAND gzip -9 -c ${CMAKE_SOURCE_DIR}/docs/CHANGELOG.md
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         OUTPUT_FILE "${CMAKE_BINARY_DIR}/changelog.gz"
     )

@@ -4,31 +4,28 @@
  *  Galileo E1 Signals
  * \author Marc Molina, 2013. marc.molina.pena(at)gmail.com
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "galileo_e1_pcps_cccwsr_ambiguous_acquisition.h"
 #include "Galileo_E1.h"
 #include "configuration_interface.h"
-#include "galileo_e1_signal_processing.h"
+#include "galileo_e1_signal_replica.h"
 #include "gnss_sdr_flags.h"
 #include <boost/math/distributions/exponential.hpp>
 #include <glog/logging.h>
 
 
 GalileoE1PcpsCccwsrAmbiguousAcquisition::GalileoE1PcpsCccwsrAmbiguousAcquisition(
-    ConfigurationInterface* configuration,
+    const ConfigurationInterface* configuration,
     const std::string& role,
     unsigned int in_streams,
     unsigned int out_streams) : role_(role),
@@ -36,8 +33,8 @@ GalileoE1PcpsCccwsrAmbiguousAcquisition::GalileoE1PcpsCccwsrAmbiguousAcquisition
                                 out_streams_(out_streams)
 {
     configuration_ = configuration;
-    std::string default_item_type = "gr_complex";
-    std::string default_dump_filename = "../data/acquisition.dat";
+    const std::string default_item_type("gr_complex");
+    const std::string default_dump_filename("../data/acquisition.dat");
 
     DLOG(INFO) << "role " << role;
 
@@ -68,22 +65,24 @@ GalileoE1PcpsCccwsrAmbiguousAcquisition::GalileoE1PcpsCccwsrAmbiguousAcquisition
 
     // -- Find number of samples per spreading code (4 ms)  -----------------
 
-    code_length_ = round(
-        fs_in_ / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS));
+    code_length_ = static_cast<unsigned int>(round(
+        fs_in_ / (GALILEO_E1_CODE_CHIP_RATE_CPS / GALILEO_E1_B_CODE_LENGTH_CHIPS)));
 
     vector_length_ = code_length_ * static_cast<int>(sampled_ms_ / 4);
 
-    int samples_per_ms = code_length_ / 4;
+    auto samples_per_ms = static_cast<int>(code_length_) / 4;
 
     code_data_ = std::vector<std::complex<float>>(vector_length_);
     code_pilot_ = std::vector<std::complex<float>>(vector_length_);
+
+    bool enable_monitor_output = configuration_->property("AcquisitionMonitor.enable_monitor", false);
 
     if (item_type_ == "gr_complex")
         {
             item_size_ = sizeof(gr_complex);
             acquisition_cc_ = pcps_cccwsr_make_acquisition_cc(sampled_ms_, max_dwells_,
                 doppler_max_, fs_in_, samples_per_ms, code_length_,
-                dump_, dump_filename_);
+                dump_, dump_filename_, enable_monitor_output);
             stream_to_vector_ = gr::blocks::stream_to_vector::make(item_size_, vector_length_);
             DLOG(INFO) << "stream_to_vector("
                        << stream_to_vector_->unique_id() << ")";
@@ -114,6 +113,8 @@ GalileoE1PcpsCccwsrAmbiguousAcquisition::GalileoE1PcpsCccwsrAmbiguousAcquisition
 
 void GalileoE1PcpsCccwsrAmbiguousAcquisition::stop_acquisition()
 {
+    acquisition_cc_->set_state(0);
+    acquisition_cc_->set_active(false);
 }
 
 
@@ -217,7 +218,7 @@ void GalileoE1PcpsCccwsrAmbiguousAcquisition::set_state(int state)
 
 float GalileoE1PcpsCccwsrAmbiguousAcquisition::calculate_threshold(float pfa)
 {
-    if (pfa)
+    if (pfa > 0.0)
         { /* Not implemented*/
         };
     return 0.0;

@@ -9,18 +9,15 @@
  * It resamples a single GNSS local code signal replica into N vectors fractional-resampled and fractional-delayed
  * (i.e. it creates the Early, Prompt, and Late code replicas)
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -419,7 +416,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_a_avx(int16_t** result, 
                     indexn = _mm256_add_ps(indexn, eights);
                 }
         }
-    _mm256_zeroupper();
+
     for (current_correlator_tap = 0; current_correlator_tap < num_out_vectors; current_correlator_tap++)
         {
             for (n = avx_iters * 8; n < num_points; n++)
@@ -497,7 +494,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_u_avx(int16_t** result, 
                     indexn = _mm256_add_ps(indexn, eights);
                 }
         }
-    _mm256_zeroupper();
+
     for (current_correlator_tap = 0; current_correlator_tap < num_out_vectors; current_correlator_tap++)
         {
             for (n = avx_iters * 8; n < num_points; n++)
@@ -515,7 +512,7 @@ static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_u_avx(int16_t** result, 
 #endif
 
 
-#ifdef LV_HAVE_NEONV7
+#ifdef LV_HAVE_NEON
 #include <arm_neon.h>
 static inline void volk_gnsssdr_16i_xn_resampler_16i_xn_neon(int16_t** result, const int16_t* local_code, float rem_code_phase_chips, float code_phase_step_chips, float* shifts_chips, unsigned int code_length_chips, int num_out_vectors, unsigned int num_points)
 {

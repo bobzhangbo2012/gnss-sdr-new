@@ -3,28 +3,20 @@
  * \brief  Implementation of the Gnss_Satellite class
  * \author Carles Fernandez-Prades, 2012. cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "gnss_satellite.h"
 #include <glog/logging.h>
-
-
-Gnss_Satellite::Gnss_Satellite()
-{
-    Gnss_Satellite::reset();
-}
+#include <utility>
 
 
 Gnss_Satellite::Gnss_Satellite(const std::string& system_, uint32_t PRN_)
@@ -80,7 +72,7 @@ bool operator==(const Gnss_Satellite& sat1, const Gnss_Satellite& sat2)
 
 
 // Copy constructor
-Gnss_Satellite::Gnss_Satellite(Gnss_Satellite&& other) noexcept
+Gnss_Satellite::Gnss_Satellite(const Gnss_Satellite& other) noexcept
 {
     *this = other;
 }
@@ -102,9 +94,9 @@ Gnss_Satellite& Gnss_Satellite::operator=(const Gnss_Satellite& rhs)
 
 
 // Move constructor
-Gnss_Satellite::Gnss_Satellite(const Gnss_Satellite& other) noexcept
+Gnss_Satellite::Gnss_Satellite(Gnss_Satellite&& other) noexcept
 {
-    *this = other;
+    *this = std::move(other);
 }
 
 
@@ -196,30 +188,15 @@ void Gnss_Satellite::set_PRN(uint32_t PRN_)
         }
     else if (system == "SBAS")
         {
-            if (PRN_ == 120)
+            if ((PRN_ == 120)      // EGNOS Test Platform.Inmarsat 3-F2 (Atlantic Ocean Region-East)
+                || (PRN_ == 123)   // EGNOS Operational Platform. Astra 5B
+                || (PRN_ == 131)   // WAAS Eutelsat 117 West B
+                || (PRN_ == 135)   // WAAS Galaxy 15
+                || (PRN_ == 136)   // EGNOS Operational Platform. SES-5 (a.k.a. Sirius 5 or Astra 4B)
+                || (PRN_ == 138))  // WAAS Anik F1R
                 {
                     PRN = PRN_;
-                }  // EGNOS Test Platform.Inmarsat 3-F2 (Atlantic Ocean Region-East)
-            else if (PRN_ == 123)
-                {
-                    PRN = PRN_;
-                }  // EGNOS Operational Platform. Astra 5B
-            else if (PRN_ == 131)
-                {
-                    PRN = PRN_;
-                }  // WAAS Eutelsat 117 West B
-            else if (PRN_ == 135)
-                {
-                    PRN = PRN_;
-                }  // WAAS Galaxy 15
-            else if (PRN_ == 136)
-                {
-                    PRN = PRN_;
-                }  // EGNOS Operational Platform. SES-5 (a.k.a. Sirius 5 or Astra 4B)
-            else if (PRN_ == 138)
-                {
-                    PRN = PRN_;
-                }  // WAAS Anik F1R
+                }
             else
                 {
                     DLOG(INFO) << "This PRN is not defined";
@@ -262,8 +239,7 @@ void Gnss_Satellite::set_PRN(uint32_t PRN_)
 int32_t Gnss_Satellite::get_rf_link() const
 {
     // Get satellite's rf link. Identifies the GLONASS Frequency Channel
-    int32_t rf_link_;
-    rf_link_ = rf_link;
+    int32_t rf_link_ = rf_link;
     return rf_link_;
 }
 
@@ -278,8 +254,7 @@ void Gnss_Satellite::set_rf_link(int32_t rf_link_)
 uint32_t Gnss_Satellite::get_PRN() const
 {
     // Get satellite's PRN
-    uint32_t PRN_;
-    PRN_ = PRN;
+    uint32_t PRN_ = PRN;
     return PRN_;
 }
 
@@ -287,8 +262,7 @@ uint32_t Gnss_Satellite::get_PRN() const
 std::string Gnss_Satellite::get_system() const
 {
     // Get the satellite system {"GPS", "Glonass", "SBAS", "Galileo", "Beidou"}
-    std::string system_;
-    system_ = system;
+    std::string system_ = system;
     return system_;
 }
 
@@ -303,8 +277,7 @@ std::string Gnss_Satellite::get_system_short() const
 std::string Gnss_Satellite::get_block() const
 {
     // Get the satellite block
-    std::string block_;
-    block_ = block;
+    std::string block_ = block;
     return block_;
 }
 
@@ -327,7 +300,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("IIF");  // Plane E
                     break;
                 case 4:
-                    block_ = std::string("Unknown");
+                    block_ = std::string("III");  // Plane A
                     break;
                 case 5:
                     block_ = std::string("IIR-M");  // Plane E
@@ -338,7 +311,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                 case 7:
                     block_ = std::string("IIR-M");  // Plane A
                     break;
-                case 8:
+                case 8:                           // NOLINT(bugprone-branch-clone)
                     block_ = std::string("IIF");  // Plane C
                     break;
                 case 9:
@@ -348,7 +321,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("IIF");  // Plane E
                     break;
                 case 11:
-                    block_ = std::string("IIR");  // Plane D
+                    block_ = std::string("III");  // Plane D
                     break;
                 case 12:
                     block_ = std::string("IIR-M");  // Plane B
@@ -357,7 +330,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("IIR");  // Plane F
                     break;
                 case 14:
-                    block_ = std::string("IIR");  // Plane F
+                    block_ = std::string("III");  // Plane B
                     break;
                 case 15:
                     block_ = std::string("IIR-M");  // Plane F
@@ -369,9 +342,9 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("IIR-M");  // Plane C
                     break;
                 case 18:
-                    block_ = std::string("IIR");  // Plane E
+                    block_ = std::string("III");  // Plane D
                     break;
-                case 19:
+                case 19:                          // NOLINT(bugprone-branch-clone)
                     block_ = std::string("IIR");  // Plane D
                     break;
                 case 20:
@@ -384,9 +357,9 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("IIR");  // Plane E
                     break;
                 case 23:
-                    block_ = std::string("IIR");  // Plane F
+                    block_ = std::string("III");  // Plane E
                     break;
-                case 24:
+                case 24:                          // NOLINT(bugprone-branch-clone)
                     block_ = std::string("IIF");  // Plane A
                     break;
                 case 25:
@@ -534,7 +507,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                 case 123:
                     block_ = std::string("EGNOS");  // EGNOS Operational Platform. Astra 5B
                     break;
-                case 131:
+                case 131:                          // NOLINT(bugprone-branch-clone)
                     block_ = std::string("WAAS");  // WAAS Eutelsat 117 West B
                     break;
                 case 135:
@@ -643,7 +616,7 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
             switch (PRN_)
                 {
                 case 1:
-                    block_ = std::string("BeiDou-2 GEO01");  // GEO 140.0°E; launched 2010/01/16
+                    block_ = std::string("BeiDou-2 GEO01*");  // GEO 140.0°E; launched 2010/01/16 (Retired)
                     break;
                 case 2:
                     block_ = std::string("BeiDou-2 GEO06");  // GEO 80°E; launched 2012/10/25
@@ -673,76 +646,112 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                     block_ = std::string("BeiDou-2 IGSO05");  // 55° inclination IGSO 118°E; launched 2011/12/01
                     break;
                 case 11:
-                    block_ = std::string("BeiDou-2 MEO03");  // Slot A07; launched 2012/04/29
+                    block_ = std::string("BeiDou-2 MEO03*");  // Slot A07; launched 2012/04/29 (Retired)
                     break;
                 case 12:
-                    block_ = std::string("BeiDou-2 MEO04");  // Slot A08; launched 2012/04/29
+                    block_ = std::string("BeiDou-2 MEO04*");  // Slot A08; launched 2012/04/29 (Retired)
                     break;
                 case 13:
                     block_ = std::string("BeiDou-2 IGSO06");  // launched 2016/03/30
                     break;
                 case 14:
-                    block_ = std::string("BeiDou-2 MEO06");  // launched 2012/09/19
+                    block_ = std::string("BeiDou-2 MEO06*");  // launched 2012/09/19 (Retired)
                     break;
                 case 16:
                     block_ = std::string("BeiDou-2 IGSO07");  // launched 2018/07/10
                     break;
+                case 18:
+                    block_ = std::string("BeiDou-3 GEOG8");  // launched 2019/05/17
+                    break;
                 case 19:
-                    block_ = std::string("BeiDou-3 MEO01");  // Slot B-7; launched 2017/11/05
+                    block_ = std::string("BeiDou-3 MEO01");  // Slot B07; launched 2017/11/05
                     break;
                 case 20:
-                    block_ = std::string("BeiDou-3 MEO02");  // Slot B-5; launched 2017/11/05
+                    block_ = std::string("BeiDou-3 MEO02");  // Slot B05; launched 2017/11/05
                     break;
                 case 21:
-                    block_ = std::string("BeiDou-3 MEO03");  // Slot B-?; launched 2018/02/12
+                    block_ = std::string("BeiDou-3 MEO03");  // Slot B0?; launched 2018/02/12
                     break;
                 case 22:
-                    block_ = std::string("BeiDou-3 MEO04");  // Slot B-6; launched 2018/02/12
+                    block_ = std::string("BeiDou-3 MEO04");  // Slot B06; launched 2018/02/12
                     break;
                 case 23:
-                    block_ = std::string("BeiDou-3 MEO05");  // Slot C-7; launched 2018/07/29
+                    block_ = std::string("BeiDou-3 MEO05");  // Slot C07; launched 2018/07/29
                     break;
                 case 24:
-                    block_ = std::string("BeiDou-3 MEO06");  // Slot C-1; launched 2018/07/29
+                    block_ = std::string("BeiDou-3 MEO06");  // Slot C01; launched 2018/07/29
                     break;
                 case 25:
-                    block_ = std::string("BeiDou-3 MEO11");  // Slot C-8; launched 2018/08/24
+                    block_ = std::string("BeiDou-3 MEO11");  // Slot C08; launched 2018/08/24
                     break;
                 case 26:
-                    block_ = std::string("BeiDou-3 MEO12");  // Slot C-2; launched 2018/08/24
+                    block_ = std::string("BeiDou-3 MEO12");  // Slot C02; launched 2018/08/24
                     break;
                 case 27:
-                    block_ = std::string("BeiDou-3 3M3");  // Slot A-?; launched 2018/01/11
+                    block_ = std::string("BeiDou-3 3M3");  // Slot A04; launched 2018/01/11
                     break;
                 case 28:
-                    block_ = std::string("BeiDou-3 3M4");  // Slot A-?; launched 2018/01/11
+                    block_ = std::string("BeiDou-3 3M4");  // Slot A05; launched 2018/01/11
                     break;
                 case 29:
-                    block_ = std::string("BeiDou-3 3M7");  // Slot A-?; launched 2018/03/29
+                    block_ = std::string("BeiDou-3 3M7");  // Slot A02; launched 2018/03/29
                     break;
                 case 30:
-                    block_ = std::string("BeiDou-3 3M8");  // Slot A-?; launched 2018/03/29
+                    block_ = std::string("BeiDou-3 3M8");  // Slot A03; launched 2018/03/29
                     break;
                 case 32:
-                    block_ = std::string("BeiDou-3 MEO13");  // Slot B-1?; launched 2018/09/19
+                    block_ = std::string("BeiDou-3 MEO13");  // Slot B01; launched 2018/09/19
                     break;
                 case 33:
-                    block_ = std::string("BeiDou-3 MEO14");  // Slot B-3; launched 2018/09/19
+                    block_ = std::string("BeiDou-3 MEO14");  // Slot B03; launched 2018/09/19
                     break;
                 case 34:
-                    block_ = std::string("BeiDou-3 MEO15");  // Slot B-3; launched 2018/10/15
+                    block_ = std::string("BeiDou-3 MEO15");  // Slot B03; launched 2018/10/15
                     break;
                 case 35:
-                    block_ = std::string("BeiDou-3 MEO16");  // Slot B-3; launched 2018/10/15
+                    block_ = std::string("BeiDou-3 MEO16");  // Slot B03; launched 2018/10/15
                     break;
                 case 36:
-                    block_ = std::string("BeiDou-3 MEO17");  // Slot B-3; launched 2018/11/18
+                    block_ = std::string("BeiDou-3 MEO17");  // Slot B03; launched 2018/11/18
                     break;
                 case 37:
-                    block_ = std::string("BeiDou-3 MEO18");  // Slot B-3; launched 2018/11/18
+                    block_ = std::string("BeiDou-3 MEO18");  // Slot B03; launched 2018/11/18
                     break;
                 case 38:
-                    block_ = std::string("BeiDou-3 IGSO01");  // Slot B-3; launched 2019/04/20
+                    block_ = std::string("BeiDou-3 IGSOI1");  // launched 2019/04/20
+                    break;
+                case 39:
+                    block_ = std::string("BeiDou-3 IGSOI2");  // launched 2019/04/20
+                    break;
+                case 40:
+                    block_ = std::string("BeiDou-3 IGSOI3");  // launched 2019/11/04
+                    break;
+                case 41:
+                    block_ = std::string("BeiDou-3 MEO19");  // Slot B02, launched 2019/12/16
+                    break;
+                case 42:
+                    block_ = std::string("BeiDou-3 MEO20");  // Slot B04, launched 2019/12/16
+                    break;
+                case 43:
+                    block_ = std::string("BeiDou-3 MEO21");  // Slot A06, launched 2019/11/23
+                    break;
+                case 44:
+                    block_ = std::string("BeiDou-3 MEO22");  // Slot A08, launched 2019/11/23
+                    break;
+                case 45:
+                    block_ = std::string("BeiDou-3 MEO23");  // Slot C03, launched 2019/09/22
+                    break;
+                case 46:
+                    block_ = std::string("BeiDou-3 MEO24");  // Slot C05, launched 2019/09/22
+                    break;
+                case 59:
+                    block_ = std::string("BeiDou-3 GEOG1");  // launched 2018/11/01
+                    break;
+                case 60:
+                    block_ = std::string("BeiDou-3 GEOG2");  // launched 2020/03/20
+                    break;
+                case 61:
+                    block_ = std::string("BeiDou-3 GEOG3");  // launched 2020/06/2023
                     break;
                 default:
                     block_ = std::string("Unknown(Simulated)");

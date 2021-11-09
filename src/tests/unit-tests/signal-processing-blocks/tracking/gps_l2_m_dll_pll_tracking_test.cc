@@ -5,23 +5,19 @@
  * \author Javier Arribas, 2015. jarribas(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
 #include "concurrent_queue.h"
-#include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
 #include "gnss_sdr_valve.h"
 #include "gnss_synchro.h"
@@ -34,27 +30,28 @@
 #include <gnuradio/blocks/skiphead.h>
 #include <gnuradio/top_block.h>
 #include <gtest/gtest.h>
+#include <pmt/pmt.h>
 #include <chrono>
 #include <utility>
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
 #endif
-#if GNURADIO_USES_STD_POINTERS
-#include <memory>
+#if PMT_USES_BOOST_ANY
+namespace wht = boost;
 #else
-#include <boost/shared_ptr.hpp>
+namespace wht = std;
 #endif
 
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GpsL2MDllPllTrackingTest_msg_rx;
 
-#if GNURADIO_USES_STD_POINTERS
-using GpsL2MDllPllTrackingTest_msg_rx_sptr = std::shared_ptr<GpsL2MDllPllTrackingTest_msg_rx>;
-#else
-using GpsL2MDllPllTrackingTest_msg_rx_sptr = boost::shared_ptr<GpsL2MDllPllTrackingTest_msg_rx>;
-#endif
+using GpsL2MDllPllTrackingTest_msg_rx_sptr = gnss_shared_ptr<GpsL2MDllPllTrackingTest_msg_rx>;
 
 GpsL2MDllPllTrackingTest_msg_rx_sptr GpsL2MDllPllTrackingTest_msg_rx_make();
 
@@ -62,7 +59,7 @@ class GpsL2MDllPllTrackingTest_msg_rx : public gr::block
 {
 private:
     friend GpsL2MDllPllTrackingTest_msg_rx_sptr GpsL2MDllPllTrackingTest_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     GpsL2MDllPllTrackingTest_msg_rx();
 
 public:
@@ -77,16 +74,16 @@ GpsL2MDllPllTrackingTest_msg_rx_sptr GpsL2MDllPllTrackingTest_msg_rx_make()
 }
 
 
-void GpsL2MDllPllTrackingTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL2MDllPllTrackingTest_msg_rx::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
@@ -95,7 +92,16 @@ void GpsL2MDllPllTrackingTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
 GpsL2MDllPllTrackingTest_msg_rx::GpsL2MDllPllTrackingTest_msg_rx() : gr::block("GpsL2MDllPllTrackingTest_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&GpsL2MDllPllTrackingTest_msg_rx::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&GpsL2MDllPllTrackingTest_msg_rx::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&GpsL2MDllPllTrackingTest_msg_rx::msg_handler_channel_events, this, _1));
+#endif
+#endif
     rx_message = 0;
 }
 
@@ -110,7 +116,6 @@ class GpsL2MDllPllTrackingTest : public ::testing::Test
 protected:
     GpsL2MDllPllTrackingTest()
     {
-        factory = std::make_shared<GNSSBlockFactory>();
         config = std::make_shared<InMemoryConfiguration>();
         item_size = sizeof(gr_complex);
         gnss_synchro = Gnss_Synchro();
@@ -122,7 +127,6 @@ protected:
 
     std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue;
     gr::top_block_sptr top_block;
-    std::shared_ptr<GNSSBlockFactory> factory;
     std::shared_ptr<InMemoryConfiguration> config;
     Gnss_Synchro gnss_synchro;
     size_t item_size;
@@ -184,7 +188,7 @@ TEST_F(GpsL2MDllPllTrackingTest, ValidationOfResults)
         std::string file = path + "signal_samples/gps_l2c_m_prn7_5msps.dat";
         const char* file_name = file.c_str();
         gr::blocks::file_source::sptr file_source = gr::blocks::file_source::make(sizeof(gr_complex), file_name, false);
-        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue);
+        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue.get());
         gr::blocks::null_sink::sptr sink = gr::blocks::null_sink::make(sizeof(Gnss_Synchro));
         top_block->connect(file_source, 0, valve, 0);
         top_block->connect(valve, 0, tracking->get_left_block(), 0);
@@ -202,5 +206,5 @@ TEST_F(GpsL2MDllPllTrackingTest, ValidationOfResults)
     }) << "Failure running the top_block.";
 
     // TODO: Verify tracking results
-    std::cout << "Tracked " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Tracked " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }

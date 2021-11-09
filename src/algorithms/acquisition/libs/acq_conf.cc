@@ -4,62 +4,24 @@
  * acquisition block based on the PCPS algorithm.
  * \author Carles Fernandez, 2018. cfernandez(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "acq_conf.h"
 #include "item_type_helpers.h"
 #include <glog/logging.h>
-#include <gnuradio/gr_complex.h>
 #include <cmath>
 
-Acq_Conf::Acq_Conf()
-{
-    /* PCPS acquisition configuration */
-    sampled_ms = 1U;
-    ms_per_code = 1U;
-    max_dwells = 1U;
-    samples_per_chip = 2U;
-    chips_per_second = 1023000;
-    doppler_max = 5000;
-    doppler_min = -5000;
-    doppler_step = 250.0;
-    num_doppler_bins_step2 = 4U;
-    doppler_step2 = 125.0;
-    pfa = 0.0;
-    pfa2 = 0.0;
-    fs_in = 4000000;
-    samples_per_ms = 0.0;
-    samples_per_code = 0.0;
-    bit_transition_flag = false;
-    use_CFAR_algorithm_flag = true;
-    dump = false;
-    blocking = true;
-    make_2_steps = false;
-    dump_filename = "";
-    dump_channel = 0U;
-    it_size = sizeof(gr_complex);
-    item_type = "gr_complex";
-    blocking_on_standby = false;
-    use_automatic_resampler = false;
-    resampler_ratio = 1.0;
-    resampled_fs = 0LL;
-    resampler_latency_samples = 0U;
-}
 
-
-void Acq_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
+void Acq_Conf::SetFromConfiguration(const ConfigurationInterface *configuration,
     const std::string &role, double chip_rate, double opt_freq)
 {
     item_type = configuration->property(role + ".item_type", item_type);
@@ -70,7 +32,7 @@ void Acq_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
 
     chips_per_second = chip_rate;
 
-    int64_t fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", fs_in);
+    const int64_t fs_in_deprecated = configuration->property("GNSS-SDR.internal_fs_hz", fs_in);
     fs_in = configuration->property("GNSS-SDR.internal_fs_sps", fs_in_deprecated);
     doppler_max = configuration->property(role + ".doppler_max", doppler_max);
     sampled_ms = configuration->property(role + ".coherent_integration_time_ms", sampled_ms);
@@ -121,6 +83,8 @@ void Acq_Conf::SetFromConfiguration(ConfigurationInterface *configuration,
             use_CFAR_algorithm_flag = false;
         }
 
+    enable_monitor_output = configuration->property("AcquisitionMonitor.enable_monitor", false);
+
     SetDerivedParams();
 }
 
@@ -148,7 +112,7 @@ void Acq_Conf::ConfigureAutomaticResampler(double opt_freq)
 
 void Acq_Conf::SetDerivedParams()
 {
-    samples_per_ms = static_cast<float>(resampled_fs) * 0.001;
+    samples_per_ms = static_cast<float>(resampled_fs) * 0.001F;
     samples_per_chip = static_cast<unsigned int>(std::ceil(static_cast<float>(resampled_fs) / chips_per_second));
     samples_per_code = samples_per_ms * ms_per_code;
 }

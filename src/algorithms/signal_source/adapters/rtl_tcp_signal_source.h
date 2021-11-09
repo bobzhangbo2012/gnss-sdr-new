@@ -4,37 +4,35 @@
  * (see https://osmocom.org/projects/rtl-sdr/wiki for more information)
  * \author Anthony Arnold, 2015. anthony.arnold(at)uqconnect.edu.au
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_RTL_TCP_SIGNAL_SOURCE_H
 #define GNSS_SDR_RTL_TCP_SIGNAL_SOURCE_H
 
 #include "concurrent_queue.h"
-#include "gnss_block_interface.h"
 #include "rtl_tcp_signal_source_c.h"
+#include "signal_source_base.h"
 #include <gnuradio/blocks/deinterleave.h>
 #include <gnuradio/blocks/file_sink.h>
 #include <gnuradio/blocks/float_to_complex.h>
 #include <pmt/pmt.h>
-#include <memory>
 #include <stdexcept>
 #include <string>
-#if GNURADIO_USES_STD_POINTERS
-#else
-#include <boost/shared_ptr.hpp>
-#endif
+
+
+/** \addtogroup Signal_Source
+ * \{ */
+/** \addtogroup Signal_Source_adapters
+ * \{ */
 
 
 class ConfigurationInterface;
@@ -44,29 +42,16 @@ class ConfigurationInterface;
  * I/Q samples over TCP.
  * (see https://osmocom.org/projects/rtl-sdr/wiki)
  */
-class RtlTcpSignalSource : public GNSSBlockInterface
+class RtlTcpSignalSource : public SignalSourceBase
 {
 public:
-    RtlTcpSignalSource(ConfigurationInterface* configuration,
+    RtlTcpSignalSource(const ConfigurationInterface* configuration,
         const std::string& role,
         unsigned int in_stream,
         unsigned int out_stream,
-        std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue);
+        Concurrent_Queue<pmt::pmt_t>* queue);
 
     ~RtlTcpSignalSource() = default;
-
-    inline std::string role() override
-    {
-        return role_;
-    }
-
-    /*!
-     * \brief Returns "RtlTcp_Signal_Source"
-     */
-    inline std::string implementation() override
-    {
-        return "RtlTcp_Signal_Source";
-    }
 
     inline size_t item_size() override
     {
@@ -80,38 +65,33 @@ public:
 
 private:
     void MakeBlock();
-    std::string role_;
-
-    // rtl_tcp settings
-    std::string address_;
-    int16_t port_;
-    bool AGC_enabled_;
-    double sample_rate_;
-    bool flip_iq_;
-
-    unsigned int in_stream_;
-    unsigned int out_stream_;
-
-    double freq_;
-    double gain_;
-    double if_gain_;
-    double rf_gain_;
-
-    std::string item_type_;
-    size_t item_size_;
-    uint64_t samples_;
-    bool dump_;
-    std::string dump_filename_;
 
     rtl_tcp_signal_source_c_sptr signal_source_;
 
-#if GNURADIO_USES_STD_POINTERS
-    std::shared_ptr<gr::block> valve_;
-#else
-    boost::shared_ptr<gr::block> valve_;
-#endif
+    gnss_shared_ptr<gr::block> valve_;
     gr::blocks::file_sink::sptr file_sink_;
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue_;
+
+    std::string item_type_;
+    std::string dump_filename_;
+
+    // rtl_tcp settings
+    std::string address_;
+    size_t item_size_;
+    uint64_t samples_;
+    int sample_rate_;
+    int freq_;
+    int gain_;
+    int if_gain_;
+    double rf_gain_;
+    unsigned int in_stream_;
+    unsigned int out_stream_;
+    int16_t port_;
+    bool AGC_enabled_;
+    bool flip_iq_;
+    bool dump_;
 };
 
+
+/** \} */
+/** \} */
 #endif  // GNSS_SDR_RTL_TCP_SIGNAL_SOURCE_H

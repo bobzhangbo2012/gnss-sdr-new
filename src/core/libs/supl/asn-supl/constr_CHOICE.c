@@ -70,14 +70,14 @@
 /*
  * See the definitions.
  */
-static int _fetch_present_idx(const void *struct_ptr, int pres_offset,
+static int fetch_present_idx(const void *struct_ptr, int pres_offset,
     int size);
-static void _set_present_idx(void *struct_ptr, int offset, int size, int pres);
+static void set_present_idx(void *struct_ptr, int offset, int size, int pres);
 
 /*
  * Tags are canonically sorted in the tag to member table.
  */
-static int _search4tag(const void *ap, const void *bp)
+static int search4tag(const void *ap, const void *bp)
 {
     const asn_TYPE_tag2member_t *a = (const asn_TYPE_tag2member_t *)ap;
     const asn_TYPE_tag2member_t *b = (const asn_TYPE_tag2member_t *)bp;
@@ -164,10 +164,10 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
         {
         case 0:
             /*
-                 * PHASE 0.
-                 * Check that the set of tags associated with given structure
-                 * perfectly fits our expectations.
-                 */
+             * PHASE 0.
+             * Check that the set of tags associated with given structure
+             * perfectly fits our expectations.
+             */
 
             if (tag_mode || td->tags_count)
                 {
@@ -200,8 +200,8 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
             /* Fall through */
         case 1:
             /*
-                 * Fetch the T from TLV.
-                 */
+             * Fetch the T from TLV.
+             */
             tag_len = ber_fetch_tag(ptr, LEFT, &tlv_tag);
             ASN_DEBUG("In %s CHOICE tag length %d", td->name, (int)tag_len);
             switch (tag_len)
@@ -224,12 +224,12 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                     key.el_tag = tlv_tag;
                     t2m = (asn_TYPE_tag2member_t *)bsearch(
                         &key, specs->tag2el, specs->tag2el_count,
-                        sizeof(specs->tag2el[0]), _search4tag);
+                        sizeof(specs->tag2el[0]), search4tag);
                     if (t2m)
                         {
                             /*
-                                 * Found the element corresponding to the tag.
-                                 */
+                             * Found the element corresponding to the tag.
+                             */
                             NEXT_PHASE(ctx);
                             ctx->step = t2m->el_no;
                             break;
@@ -275,9 +275,9 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
 
         case 2:
             /*
-                 * PHASE 2.
-                 * Read in the element.
-                 */
+             * PHASE 2.
+             * Read in the element.
+             */
             do
                 {
                     asn_TYPE_member_t *elm; /* CHOICE's element */
@@ -287,10 +287,10 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                     elm = &elements[ctx->step];
 
                     /*
-                         * Compute the position of the member inside a
-                         * structure, and also a type of containment (it may be
-                         * contained as pointer or using inline inclusion).
-                         */
+                     * Compute the position of the member inside a
+                     * structure, and also a type of containment (it may be
+                     * contained as pointer or using inline inclusion).
+                     */
                     if (elm->flags & ATF_POINTER)
                         {
                             /* Member is a pointer to another structure */
@@ -300,20 +300,20 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                     else
                         {
                             /*
-                                 * A pointer to a pointer
-                                 * holding the start of the structure
-                                 */
+                             * A pointer to a pointer
+                             * holding the start of the structure
+                             */
                             memb_ptr = (char *)st + elm->memb_offset;
                             memb_ptr2 = &memb_ptr;
                         }
                     /* Set presence to be able to free it properly at any
-                         * time */
-                    _set_present_idx(st, specs->pres_offset,
+                     * time */
+                    set_present_idx(st, specs->pres_offset,
                         specs->pres_size, ctx->step + 1);
                     /*
-                         * Invoke the member fetch routine according to member's
-                         * type
-                         */
+                     * Invoke the member fetch routine according to member's
+                     * type
+                     */
                     rval = elm->type->ber_decoder(opt_codec_ctx, elm->type,
                         memb_ptr2, ptr, LEFT,
                         elm->tag_mode);
@@ -347,27 +347,27 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
             if (ctx->left > 0)
                 {
                     /*
-                         * The type must be fully decoded
-                         * by the CHOICE member-specific decoder.
-                         */
+                     * The type must be fully decoded
+                     * by the CHOICE member-specific decoder.
+                     */
                     RETURN(RC_FAIL);
                 }
 
             if (ctx->left == -1 && !(tag_mode || td->tags_count))
                 {
                     /*
-                         * This is an untagged CHOICE.
-                         * It doesn't contain nothing
-                         * except for the member itself, including all its tags.
-                         * The decoding is completed.
-                         */
+                     * This is an untagged CHOICE.
+                     * It doesn't contain nothing
+                     * except for the member itself, including all its tags.
+                     * The decoding is completed.
+                     */
                     NEXT_PHASE(ctx);
                     break;
                 }
 
             /*
-                 * Read in the "end of data chunks"'s.
-                 */
+             * Read in the "end of data chunks"'s.
+             */
             while (ctx->left < 0)
                 {
                     ssize_t tl;
@@ -386,8 +386,8 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                         }
 
                     /*
-                         * Expected <0><0>...
-                         */
+                     * Expected <0><0>...
+                     */
                     if (((const uint8_t *)ptr)[0] == 0)
                         {
                             if (LEFT < 2)
@@ -404,8 +404,8 @@ asn_dec_rval_t CHOICE_decode_ber(asn_codec_ctx_t *opt_codec_ctx,
                             else if (((const uint8_t *)ptr)[1] == 0)
                                 {
                                     /*
-                                         * Correctly finished with <0><0>.
-                                         */
+                                     * Correctly finished with <0><0>.
+                                     */
                                     ADVANCE(2);
                                     ctx->left++;
                                     continue;
@@ -448,7 +448,7 @@ asn_enc_rval_t CHOICE_encode_der(asn_TYPE_descriptor_t *td, void *sptr,
 
     ASN_DEBUG("%s %s as CHOICE", cb ? "Encoding" : "Estimating", td->name);
 
-    present = _fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
 
     /*
      * If the structure was not initialized, it cannot be encoded:
@@ -550,7 +550,7 @@ ber_tlv_tag_t CHOICE_outmost_tag(asn_TYPE_descriptor_t *td, const void *ptr,
     /*
      * Figure out which CHOICE element is encoded.
      */
-    present = _fetch_present_idx(ptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(ptr, specs->pres_offset, specs->pres_size);
 
     if (present > 0 || present <= td->elements_count)
         {
@@ -593,7 +593,7 @@ int CHOICE_constraint(asn_TYPE_descriptor_t *td, const void *sptr,
     /*
      * Figure out which CHOICE element is encoded.
      */
-    present = _fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
     if (present > 0 && present <= td->elements_count)
         {
             asn_TYPE_member_t *elm = &td->elements[present - 1];
@@ -755,10 +755,10 @@ asn_dec_rval_t CHOICE_decode_xer(asn_codec_ctx_t *opt_codec_ctx,
                         {
                             RETURN(tmprval.code);
                         }
-                    assert(_fetch_present_idx(st, specs->pres_offset,
+                    assert(fetch_present_idx(st, specs->pres_offset,
                                specs->pres_size) == 0);
                     /* Record what we've got */
-                    _set_present_idx(st, specs->pres_offset, specs->pres_size,
+                    set_present_idx(st, specs->pres_offset, specs->pres_size,
                         edx + 1);
                     ctx->phase = 3;
                     /* Fall through */
@@ -852,8 +852,8 @@ asn_dec_rval_t CHOICE_decode_xer(asn_codec_ctx_t *opt_codec_ctx,
                         }
 
                     /*
-                         * Search which inner member corresponds to this tag.
-                         */
+                     * Search which inner member corresponds to this tag.
+                     */
                     for (edx = 0; edx < td->elements_count; edx++)
                         {
                             elm = &td->elements[edx];
@@ -864,8 +864,8 @@ asn_dec_rval_t CHOICE_decode_xer(asn_codec_ctx_t *opt_codec_ctx,
                                 case XCT_BOTH:
                                 case XCT_OPENING:
                                     /*
-                                             * Process this member.
-                                             */
+                                     * Process this member.
+                                     */
                                     ctx->step = edx;
                                     ctx->phase = 2;
                                     break;
@@ -888,10 +888,10 @@ asn_dec_rval_t CHOICE_decode_xer(asn_codec_ctx_t *opt_codec_ctx,
                         {
                             ASN_DEBUG("Got anticipated extension");
                             /*
-                                 * Check for (XCT_BOTH or XCT_UNKNOWN_BO)
-                                 * By using a mask. Only record a pure
-                                 * <opening> tags.
-                                 */
+                             * Check for (XCT_BOTH or XCT_UNKNOWN_BO)
+                             * By using a mask. Only record a pure
+                             * <opening> tags.
+                             */
                             if (tcv & XCT_CLOSING)
                                 {
                                     /* Found </extension> without body */
@@ -942,7 +942,7 @@ asn_enc_rval_t CHOICE_encode_xer(asn_TYPE_descriptor_t *td, void *sptr,
     /*
      * Figure out which CHOICE element is encoded.
      */
-    present = _fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
 
     if (present <= 0 || present > td->elements_count)
         {
@@ -1095,7 +1095,7 @@ asn_dec_rval_t CHOICE_decode_uper(asn_codec_ctx_t *opt_codec_ctx,
         }
 
     /* Set presence to be able to free it later */
-    _set_present_idx(st, specs->pres_offset, specs->pres_size, value + 1);
+    set_present_idx(st, specs->pres_offset, specs->pres_size, value + 1);
 
     elm = &td->elements[value];
     if (elm->flags & ATF_POINTER)
@@ -1159,7 +1159,7 @@ asn_enc_rval_t CHOICE_encode_uper(asn_TYPE_descriptor_t *td,
             ct = 0;
         }
 
-    present = _fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
 
     /*
      * If the structure was not initialized properly, it cannot be encoded:
@@ -1268,7 +1268,7 @@ int CHOICE_print(asn_TYPE_descriptor_t *td, const void *sptr, int ilevel,
     /*
      * Figure out which CHOICE element is encoded.
      */
-    present = _fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(sptr, specs->pres_offset, specs->pres_size);
 
     /*
      * Print that element.
@@ -1327,7 +1327,7 @@ void CHOICE_free(asn_TYPE_descriptor_t *td, void *ptr, int contents_only)
     /*
      * Figure out which CHOICE element is encoded.
      */
-    present = _fetch_present_idx(ptr, specs->pres_offset, specs->pres_size);
+    present = fetch_present_idx(ptr, specs->pres_offset, specs->pres_size);
 
     /*
      * Free that element.
@@ -1367,7 +1367,7 @@ void CHOICE_free(asn_TYPE_descriptor_t *td, void *ptr, int contents_only)
  * is guaranteed to be aligned properly. ASN.1 compiler itself does not
  * produce packed code.
  */
-static int _fetch_present_idx(const void *struct_ptr, int pres_offset,
+static int fetch_present_idx(const void *struct_ptr, int pres_offset,
     int pres_size)
 {
     const void *present_ptr;
@@ -1395,7 +1395,7 @@ static int _fetch_present_idx(const void *struct_ptr, int pres_offset,
     return present;
 }
 
-static void _set_present_idx(void *struct_ptr, int pres_offset, int pres_size,
+static void set_present_idx(void *struct_ptr, int pres_offset, int pres_size,
     int present)
 {
     void *present_ptr;

@@ -5,24 +5,20 @@
  * \author Luis Esteve, 2017. luis(at)epsilon-formacion.com
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "concurrent_queue.h"
 #include "freq_xlating_fir_filter.h"
 #include "glonass_l1_ca_pcps_acquisition.h"
-#include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
 #include "gnss_sdr_valve.h"
 #include "gnss_synchro.h"
@@ -37,21 +33,25 @@
 #include <chrono>
 #include <cstdlib>
 #include <utility>
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
 #ifdef GR_GREATER_38
 #include <gnuradio/analog/sig_source.h>
 #else
 #include <gnuradio/analog/sig_source_c.h>
 #endif
-
+#if PMT_USES_BOOST_ANY
+namespace wht = boost;
+#else
+namespace wht = std;
+#endif
 
 // ######## GNURADIO BLOCK MESSAGE RECEVER #########
 class GlonassL1CaPcpsAcquisitionTest_msg_rx;
 
-#if GNURADIO_USES_STD_POINTERS
-using GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr = std::shared_ptr<GlonassL1CaPcpsAcquisitionTest_msg_rx>;
-#else
-using GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr = boost::shared_ptr<GlonassL1CaPcpsAcquisitionTest_msg_rx>;
-#endif
+using GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr = gnss_shared_ptr<GlonassL1CaPcpsAcquisitionTest_msg_rx>;
 
 GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr GlonassL1CaPcpsAcquisitionTest_msg_rx_make();
 
@@ -59,7 +59,7 @@ class GlonassL1CaPcpsAcquisitionTest_msg_rx : public gr::block
 {
 private:
     friend GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr GlonassL1CaPcpsAcquisitionTest_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     GlonassL1CaPcpsAcquisitionTest_msg_rx();
 
 public:
@@ -74,16 +74,16 @@ GlonassL1CaPcpsAcquisitionTest_msg_rx_sptr GlonassL1CaPcpsAcquisitionTest_msg_rx
 }
 
 
-void GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            std::cout << "msg_handler_telemetry Bad any cast!" << std::endl;
+            std::cout << "msg_handler_telemetry Bad any cast!\n";
             rx_message = 0;
         }
 }
@@ -92,7 +92,16 @@ void GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
 GlonassL1CaPcpsAcquisitionTest_msg_rx::GlonassL1CaPcpsAcquisitionTest_msg_rx() : gr::block("GlonassL1CaPcpsAcquisitionTest_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&GlonassL1CaPcpsAcquisitionTest_msg_rx::msg_handler_channel_events, this, _1));
+#endif
+#endif
     rx_message = 0;
 }
 
@@ -107,7 +116,6 @@ class GlonassL1CaPcpsAcquisitionTest : public ::testing::Test
 protected:
     GlonassL1CaPcpsAcquisitionTest()
     {
-        factory = std::make_shared<GNSSBlockFactory>();
         config = std::make_shared<InMemoryConfiguration>();
         item_size = sizeof(gr_complex);
         gnss_synchro = Gnss_Synchro();
@@ -118,7 +126,6 @@ protected:
     void init();
 
     gr::top_block_sptr top_block;
-    std::shared_ptr<GNSSBlockFactory> factory;
     std::shared_ptr<InMemoryConfiguration> config;
     Gnss_Synchro gnss_synchro;
     size_t item_size;
@@ -168,11 +175,7 @@ void GlonassL1CaPcpsAcquisitionTest::init()
 TEST_F(GlonassL1CaPcpsAcquisitionTest, Instantiate)
 {
     init();
-#if GNURADIO_USES_STD_POINTERS
-    std::shared_ptr<GlonassL1CaPcpsAcquisition> acquisition = std::make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
-#else
-    boost::shared_ptr<GlonassL1CaPcpsAcquisition> acquisition = boost::make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
-#endif
+    auto acquisition = gnss_make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
 }
 
 
@@ -186,18 +189,14 @@ TEST_F(GlonassL1CaPcpsAcquisitionTest, ConnectAndRun)
 
     top_block = gr::make_top_block("Acquisition test");
     init();
-#if GNURADIO_USES_STD_POINTERS
-    std::shared_ptr<GlonassL1CaPcpsAcquisition> acquisition = std::make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
-#else
-    boost::shared_ptr<GlonassL1CaPcpsAcquisition> acquisition = boost::make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
-#endif
+    auto acquisition = gnss_make_shared<GlonassL1CaPcpsAcquisition>(config.get(), "Acquisition_1G", 1, 0);
 
     auto msg_rx = GlonassL1CaPcpsAcquisitionTest_msg_rx_make();
 
     ASSERT_NO_THROW({
         acquisition->connect(top_block);
         auto source = gr::analog::sig_source_c::make(fs_in, gr::analog::GR_SIN_WAVE, 1000, 1, gr_complex(0));
-        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue);
+        auto valve = gnss_sdr_make_valve(sizeof(gr_complex), nsamples, queue.get());
         top_block->connect(source, 0, valve, 0);
         top_block->connect(valve, 0, acquisition->get_left_block(), 0);
         top_block->msg_connect(acquisition->get_right_block(), pmt::mp("events"), msg_rx, pmt::mp("events"));
@@ -210,7 +209,7 @@ TEST_F(GlonassL1CaPcpsAcquisitionTest, ConnectAndRun)
         elapsed_seconds = end - begin;
     }) << "Failure running the top_block.";
 
-    std::cout << "Processed " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Processed " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }
 
 
@@ -273,7 +272,7 @@ TEST_F(GlonassL1CaPcpsAcquisitionTest, ValidationOfResults)
     }) << "Failure running the top_block.";
 
     uint64_t nsamples = gnss_synchro.Acq_samplestamp_samples;
-    std::cout << "Acquired " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Acquired " << nsamples << " samples in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 
     ASSERT_EQ(1, msg_rx->rx_message) << "Acquisition failure. Expected message: 1=ACQ SUCCESS.";
 

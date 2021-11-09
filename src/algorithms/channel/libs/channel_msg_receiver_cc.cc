@@ -1,32 +1,40 @@
 /*!
  * \file channel_msg_receiver_cc.cc
- * \brief GNU Radio block that receives asynchronous channel messages from acquisition and tracking blocks
+ * \brief GNU Radio block that receives asynchronous channel messages from
+ * acquisition and tracking blocks
  * \author Javier Arribas, 2016. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
 #include "channel_msg_receiver_cc.h"
-#include <boost/any.hpp>
-#include <boost/bind.hpp>
 #include <glog/logging.h>
 #include <gnuradio/gr_complex.h>
 #include <gnuradio/io_signature.h>
 #include <cstdint>
 #include <utility>
 
+#if PMT_USES_BOOST_ANY
+#include <boost/any.hpp>
+namespace wht = boost;
+#else
+#include <any>
+namespace wht = std;
+#endif
+
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
 
 channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat)
 {
@@ -34,22 +42,31 @@ channel_msg_receiver_cc_sptr channel_msg_receiver_make_cc(std::shared_ptr<Channe
 }
 
 
-channel_msg_receiver_cc::channel_msg_receiver_cc(std::shared_ptr<ChannelFsm> channel_fsm, bool repeat) : gr::block("channel_msg_receiver_cc", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
+channel_msg_receiver_cc::channel_msg_receiver_cc(std::shared_ptr<ChannelFsm> channel_fsm,
+    bool repeat) : gr::block("channel_msg_receiver_cc", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0)),
+                   d_channel_fsm(std::move(channel_fsm)),
+                   d_repeat(repeat)
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&channel_msg_receiver_cc::msg_handler_events, this, _1));
-
-    d_channel_fsm = std::move(channel_fsm);
-    d_repeat = repeat;
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&channel_msg_receiver_cc::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&channel_msg_receiver_cc::msg_handler_channel_events, this, _1));
+#endif
+#endif
 }
 
 
-void channel_msg_receiver_cc::msg_handler_events(pmt::pmt_t msg)
+void channel_msg_receiver_cc::msg_handler_channel_events(const pmt::pmt_t& msg)
 {
     bool result = false;
     try
         {
-            int64_t message = pmt::to_long(std::move(msg));
+            const int64_t message = pmt::to_long(msg);
             switch (message)
                 {
                 case 1:  // positive acquisition
@@ -75,12 +92,12 @@ void channel_msg_receiver_cc::msg_handler_events(pmt::pmt_t msg)
                     break;
                 }
         }
-    catch (boost::bad_any_cast& e)
+    catch (const wht::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any cast: " << e.what();
         }
     if (!result)
         {
-            LOG(WARNING) << "msg_handler_telemetry invalid event";
+            LOG(WARNING) << "msg_handler_channel_events invalid event";
         }
 }

@@ -3,20 +3,16 @@
  * \brief Adapts a gnuradio gr_fir_filter designed with pm_remez
  * \author Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *
- * Detailed description of the file here if needed.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #ifndef GNSS_SDR_FIR_FILTER_H
@@ -42,6 +38,14 @@
 #include <string>
 #include <vector>
 
+/** \addtogroup Input_Filter Input Filter
+ * Classes for input signal filtering
+ * \{ */
+/** \addtogroup Input_filter_adapters input_filter_adapters
+ * Classes that wrap GNU Radio input filters with a GNSSBlockInterface
+ * \{ */
+
+
 class ConfigurationInterface;
 
 /*!
@@ -56,7 +60,7 @@ class FirFilter : public GNSSBlockInterface
 {
 public:
     //! Constructor
-    FirFilter(ConfigurationInterface* configuration,
+    FirFilter(const ConfigurationInterface* configuration,
         std::string role,
         unsigned int in_streams,
         unsigned int out_streams);
@@ -77,7 +81,7 @@ public:
 
     inline size_t item_size() override
     {
-        return 0;
+        return item_size_;
     }
 
     void connect(gr::top_block_sptr top_block) override;
@@ -86,30 +90,35 @@ public:
     gr::basic_block_sptr get_right_block() override;
 
 private:
+    void init();
+
     gr::filter::fir_filter_ccf::sptr fir_filter_ccf_;
-    ConfigurationInterface* config_;
-    bool dump_;
+    gr::filter::fir_filter_fff::sptr fir_filter_fff_1_;
+    gr::filter::fir_filter_fff::sptr fir_filter_fff_2_;
+    gr::blocks::float_to_complex::sptr float_to_complex_;
+    gr::blocks::float_to_short::sptr float_to_short_1_;
+    gr::blocks::float_to_short::sptr float_to_short_2_;
+    short_x2_to_cshort_sptr short_x2_to_cshort_;
+    complex_byte_to_float_x2_sptr cbyte_to_float_x2_;
+    byte_x2_to_complex_byte_sptr char_x2_cbyte_;
+    cshort_to_float_x2_sptr cshort_to_float_x2_;
+    gr::blocks::float_to_char::sptr float_to_char_1_;
+    gr::blocks::float_to_char::sptr float_to_char_2_;
+    gr::blocks::file_sink::sptr file_sink_;
+    const ConfigurationInterface* config_;
+    std::vector<float> taps_;
     std::string dump_filename_;
     std::string input_item_type_;
     std::string output_item_type_;
     std::string taps_item_type_;
-    std::vector<float> taps_;
     std::string role_;
+    size_t item_size_;
     unsigned int in_streams_;
     unsigned int out_streams_;
-    gr::blocks::file_sink::sptr file_sink_;
-    void init();
-    complex_byte_to_float_x2_sptr cbyte_to_float_x2_;
-    gr::filter::fir_filter_fff::sptr fir_filter_fff_1_;
-    gr::filter::fir_filter_fff::sptr fir_filter_fff_2_;
-    gr::blocks::float_to_char::sptr float_to_char_1_;
-    gr::blocks::float_to_char::sptr float_to_char_2_;
-    byte_x2_to_complex_byte_sptr char_x2_cbyte_;
-    gr::blocks::float_to_complex::sptr float_to_complex_;
-    cshort_to_float_x2_sptr cshort_to_float_x2_;
-    gr::blocks::float_to_short::sptr float_to_short_1_;
-    gr::blocks::float_to_short::sptr float_to_short_2_;
-    short_x2_to_cshort_sptr short_x2_to_cshort_;
+    bool dump_;
 };
 
-#endif
+
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_FIR_FILTER_H

@@ -4,18 +4,15 @@
  * \author Luis Esteve, 2012. luis(at)epsilon-formacion.com
  *         Antonio Ramos, 2017. antonio.ramos(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "freq_xlating_fir_filter.h"
@@ -28,41 +25,44 @@
 #include <utility>
 
 
-FreqXlatingFirFilter::FreqXlatingFirFilter(ConfigurationInterface* configuration, std::string role,
-    unsigned int in_streams, unsigned int out_streams) : config_(configuration), role_(std::move(role)), in_streams_(in_streams), out_streams_(out_streams)
+FreqXlatingFirFilter::FreqXlatingFirFilter(const ConfigurationInterface* configuration,
+    std::string role,
+    unsigned int in_streams,
+    unsigned int out_streams)
+    : role_(std::move(role)),
+      in_streams_(in_streams),
+      out_streams_(out_streams)
 {
-    std::string default_input_item_type = "gr_complex";
-    std::string default_output_item_type = "gr_complex";
-    std::string default_taps_item_type = "float";
-    std::string default_dump_filename = "../data/input_filter.dat";
-    double default_intermediate_freq = 0.0;
-    double default_sampling_freq = 4000000.0;
-    int default_number_of_taps = 6;
-    unsigned int default_number_of_bands = 2;
-    std::vector<double> default_bands = {0.0, 0.4, 0.6, 1.0};
-    std::vector<double> default_ampl = {1.0, 1.0, 0.0, 0.0};
-    std::vector<double> default_error_w = {1.0, 1.0};
-    std::string default_filter_type = "bandpass";
-    int default_grid_density = 16;
-    int default_decimation_factor = 1;
+    const std::string default_input_item_type("gr_complex");
+    const std::string default_output_item_type("gr_complex");
+    const std::string default_taps_item_type("float");
+    const std::string default_dump_filename("../data/input_filter.dat");
+    const double default_intermediate_freq = 0.0;
+    const double default_sampling_freq = 4000000.0;
+    const int default_number_of_taps = 6;
+    const unsigned int default_number_of_bands = 2;
+    const std::vector<double> default_bands = {0.0, 0.4, 0.6, 1.0};
+    const std::vector<double> default_ampl = {1.0, 1.0, 0.0, 0.0};
+    const std::vector<double> default_error_w = {1.0, 1.0};
+    const std::string default_filter_type("bandpass");
+    const int default_grid_density = 16;
+    const int default_decimation_factor = 1;
 
-    DLOG(INFO) << "role " << role_;
+    const int number_of_taps = configuration->property(role_ + ".number_of_taps", default_number_of_taps);
+    const unsigned int number_of_bands = configuration->property(role_ + ".number_of_bands", default_number_of_bands);
+    const std::string filter_type = configuration->property(role_ + ".filter_type", default_filter_type);
 
-    input_item_type_ = config_->property(role_ + ".input_item_type", default_input_item_type);
-    output_item_type_ = config_->property(role_ + ".output_item_type", default_output_item_type);
-    taps_item_type_ = config_->property(role_ + ".taps_item_type", default_taps_item_type);
-    dump_ = config_->property(role_ + ".dump", false);
-    dump_filename_ = config_->property(role_ + ".dump_filename", default_dump_filename);
-    intermediate_freq_ = config_->property(role_ + ".IF", default_intermediate_freq);
-    sampling_freq_ = config_->property(role_ + ".sampling_frequency", default_sampling_freq);
-    int number_of_taps = config_->property(role_ + ".number_of_taps", default_number_of_taps);
-    unsigned int number_of_bands = config_->property(role_ + ".number_of_bands", default_number_of_bands);
-    std::string filter_type = config_->property(role_ + ".filter_type", default_filter_type);
-    decimation_factor_ = config_->property(role_ + ".decimation_factor", default_decimation_factor);
+    dump_filename_ = configuration->property(role_ + ".dump_filename", default_dump_filename);
+    input_item_type_ = configuration->property(role_ + ".input_item_type", default_input_item_type);
+    output_item_type_ = configuration->property(role_ + ".output_item_type", default_output_item_type);
+    taps_item_type_ = configuration->property(role_ + ".taps_item_type", default_taps_item_type);
+    intermediate_freq_ = configuration->property(role_ + ".IF", default_intermediate_freq);
+    sampling_freq_ = configuration->property(role_ + ".sampling_frequency", default_sampling_freq);
+    decimation_factor_ = configuration->property(role_ + ".decimation_factor", default_decimation_factor);
+    dump_ = configuration->property(role_ + ".dump", false);
 
     if (filter_type != "lowpass")
         {
-            std::vector<double> taps_d;
             std::vector<double> bands;
             std::vector<double> ampl;
             std::vector<double> error_w;
@@ -72,44 +72,41 @@ FreqXlatingFirFilter::FreqXlatingFirFilter(ConfigurationInterface* configuration
             for (unsigned int i = 0; i < number_of_bands; i++)
                 {
                     option = ".band" + std::to_string(i + 1) + "_begin";
-                    option_value = config_->property(role_ + option, default_bands[i]);
+                    option_value = configuration->property(role_ + option, default_bands[i]);
                     bands.push_back(option_value);
 
                     option = ".band" + std::to_string(i + 1) + "_end";
-                    option_value = config_->property(role_ + option, default_bands[i]);
+                    option_value = configuration->property(role_ + option, default_bands[i]);
                     bands.push_back(option_value);
 
                     option = ".ampl" + std::to_string(i + 1) + "_begin";
-                    option_value = config_->property(role_ + option, default_bands[i]);
+                    option_value = configuration->property(role_ + option, default_bands[i]);
                     ampl.push_back(option_value);
 
                     option = ".ampl" + std::to_string(i + 1) + "_end";
-                    option_value = config_->property(role_ + option, default_bands[i]);
+                    option_value = configuration->property(role_ + option, default_bands[i]);
                     ampl.push_back(option_value);
 
                     option = ".band" + std::to_string(i + 1) + "_error";
-                    option_value = config_->property(role_ + option, default_bands[i]);
+                    option_value = configuration->property(role_ + option, default_bands[i]);
                     error_w.push_back(option_value);
                 }
 
-            int grid_density = config_->property(role_ + ".grid_density", default_grid_density);
-            taps_d = gr::filter::pm_remez(number_of_taps - 1, bands, ampl, error_w, filter_type, grid_density);
-            taps_.reserve(taps_d.size());
-            for (double& it : taps_d)
-                {
-                    taps_.push_back(static_cast<float>(it));
-                }
+            const int grid_density = configuration->property(role_ + ".grid_density", default_grid_density);
+            const std::vector<double> taps_d = gr::filter::pm_remez(number_of_taps - 1, bands, ampl, error_w, filter_type, grid_density);
+            taps_ = std::vector<float>(taps_d.begin(), taps_d.end());
         }
     else
         {
-            double default_bw = (sampling_freq_ / decimation_factor_) / 2;
-            double bw_ = config_->property(role_ + ".bw", default_bw);
-            double default_tw = bw_ / 10.0;
-            double tw_ = config_->property(role_ + ".tw", default_tw);
+            const double default_bw = (sampling_freq_ / decimation_factor_) / 2;
+            const double bw_ = configuration->property(role_ + ".bw", default_bw);
+            const double default_tw = bw_ / 10.0;
+            const double tw_ = configuration->property(role_ + ".tw", default_tw);
             taps_ = gr::filter::firdes::low_pass(1.0, sampling_freq_, bw_, tw_);
         }
 
     size_t item_size;
+    DLOG(INFO) << "role " << role_;
     LOG(INFO) << "Created freq_xlating_fir_filter with " << taps_.size() << " taps";
     if ((taps_item_type_ == "float") && (input_item_type_ == "gr_complex") && (output_item_type_ == "gr_complex"))
         {
@@ -163,14 +160,14 @@ FreqXlatingFirFilter::FreqXlatingFirFilter(ConfigurationInterface* configuration
     else
         {
             LOG(ERROR) << " Unknown input filter input/output item type conversion";
-            item_size = sizeof(gr_complex);    // avoids uninitialization
-            input_size_ = sizeof(gr_complex);  // avoids uninitialization
+            item_size = sizeof(gr_complex);  // avoids uninitialization
+            input_size_ = 0;                 // notifies wrong configuration
         }
 
     if (dump_)
         {
             DLOG(INFO) << "Dumping output into file " << dump_filename_;
-            std::cout << "Dumping output into file " << dump_filename_ << std::endl;
+            std::cout << "Dumping output into file " << dump_filename_ << '\n';
             file_sink_ = gr::blocks::file_sink::make(item_size, dump_filename_.c_str());
         }
     if (in_streams_ > 1)
