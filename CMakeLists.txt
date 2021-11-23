@@ -609,13 +609,12 @@ endif()
 ################################################################################
 # Log4cpp - http://log4cpp.sourceforge.net/
 ################################################################################
-find_package(LOG4CPP)
-set_package_properties(LOG4CPP PROPERTIES
-    PURPOSE "Required by GNU Radio."
-    TYPE REQUIRED
-)
-if(NOT LOG4CPP_FOUND)
-    message(FATAL_ERROR "*** Log4cpp is required to build gnss-sdr")
+if(GNURADIO_USES_LOG4CPP)
+    find_package(LOG4CPP)
+    set_package_properties(LOG4CPP PROPERTIES
+        PURPOSE "Required by GNU Radio."
+        TYPE OPTIONAL
+    )
 endif()
 
 
@@ -683,7 +682,9 @@ set(Boost_ADDITIONAL_VERSIONS
     "1.70.0" "1.70" "1.71.0" "1.71"
 )
 set(Boost_USE_MULTITHREAD ON)
-set(Boost_USE_STATIC_LIBS OFF)
+#set(Boost_USE_STATIC_LIBS OFF)
+option(Boost_USE_STATIC_LIBS "Use Boost static libs" OFF)
+
 set(BOOST_COMPONENTS atomic chrono date_time serialization system thread)
 if(NOT ${FILESYSTEM_FOUND})
     set(BOOST_COMPONENTS ${BOOST_COMPONENTS} filesystem)
