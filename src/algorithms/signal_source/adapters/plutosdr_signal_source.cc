@@ -22,7 +22,6 @@
 #include "gnss_sdr_valve.h"
 #include <glog/logging.h>
 #include <iostream>
-#include <utility>
 
 
 using namespace std::string_literals;
@@ -31,23 +30,30 @@ using namespace std::string_literals;
 PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_stream, unsigned int out_stream,
     Concurrent_Queue<pmt::pmt_t>* queue)
-    : SignalSourceBase(configuration, role, "Plutosdr_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream)
+    : SignalSourceBase(configuration, role, "Plutosdr_Signal_Source"s),
+      dump_filename_(configuration->property(role + ".dump_filename", std::string("./data/signal_source.dat"))),
+      uri_(configuration->property(role + ".device_address", std::string("192.168.2.1"))),
+      gain_mode_(configuration->property(role + ".gain_mode", default_gain_mode)),
+      filter_file_(configuration->property(role + ".filter_file", std::string(""))),
+      filter_filename_(configuration->property(role + ".filter_filename", filter_file_)),
+      item_type_(configuration->property(role + ".item_type", std::string("gr_complex"))),
+      rf_gain_(configuration->property(role + ".gain", 50.0)),
+      samples_(configuration->property(role + ".samples", static_cast<int64_t>(0))),
+      freq_(configuration->property(role + ".freq", static_cast<uint64_t>(GPS_L1_FREQ_HZ))),
+      sample_rate_(configuration->property(role + ".sampling_frequency", static_cast<uint64_t>(3000000))),
+      bandwidth_(configuration->property(role + ".bandwidth", static_cast<uint64_t>(2000000))),
+      buffer_size_(configuration->property(role + ".buffer_size", 0xA0000)),
+      item_size_(sizeof(gr_complex)),
+      Fpass_(configuration->property(role + ".Fpass", 0.0)),
+      Fstop_(configuration->property(role + ".Fstop", 0.0)),
+      in_stream_(in_stream),
+      out_stream_(out_stream),
+      quadrature_(configuration->property(role + ".quadrature", true)),
+      rf_dc_(configuration->property(role + ".rf_dc", true)),
+      bb_dc_(configuration->property(role + ".bb_dc", true)),
+      filter_auto_(configuration->property(role + ".filter_auto", false)),
+      dump_(configuration->property(role + ".dump", false))
 {
-    const std::string default_item_type("gr_complex");
-    const std::string default_dump_file("./data/signal_source.dat");
-    const std::string default_gain_mode("slow_attack");
-    uri_ = configuration->property(role + ".device_address", std::string("192.168.2.1"));
-    freq_ = configuration->property(role + ".freq", static_cast<uint64_t>(GPS_L1_FREQ_HZ));
-    sample_rate_ = configuration->property(role + ".sampling_frequency", static_cast<uint64_t>(3000000));
-    bandwidth_ = configuration->property(role + ".bandwidth", static_cast<uint64_t>(2000000));
-    buffer_size_ = configuration->property(role + ".buffer_size", 0xA0000);
-    quadrature_ = configuration->property(role + ".quadrature", true);
-    rf_dc_ = configuration->property(role + ".rf_dc", true);
-    bb_dc_ = configuration->property(role + ".bb_dc", true);
-    gain_mode_ = configuration->property(role + ".gain_mode", default_gain_mode);
-    rf_gain_ = configuration->property(role + ".gain", 50.0);
-    filter_file_ = configuration->property(role + ".filter_file", std::string(""));
-    filter_auto_ = configuration->property(role + ".filter_auto", false);
     if (filter_auto_)
         {
             filter_source_ = configuration->property(role + ".filter_source", std::string("Auto"));
@@ -56,13 +62,6 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
         {
             filter_source_ = configuration->property(role + ".filter_source", std::string("Off"));
         }
-    filter_filename_ = configuration->property(role + ".filter_filename", filter_file_);
-    Fpass_ = configuration->property(role + ".Fpass", 0.0);
-    Fstop_ = configuration->property(role + ".Fstop", 0.0);
-    item_type_ = configuration->property(role + ".item_type", default_item_type);
-    samples_ = configuration->property(role + ".samples", static_cast<int64_t>(0));
-    dump_ = configuration->property(role + ".dump", false);
-    dump_filename_ = configuration->property(role + ".dump_filename", default_dump_file);
 
     if (item_type_ != "gr_complex")
         {
@@ -71,7 +70,7 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
         }
 
     // basic check
-    if ((gain_mode_ != "manual") and (gain_mode_ != "slow_attack") and (gain_mode_ != "fast_attack") and (gain_mode_ != "hybrid"))
+    if ((gain_mode_ != "manual") && (gain_mode_ != "slow_attack") && (gain_mode_ != "fast_attack") && (gain_mode_ != "hybrid"))
         {
             std::cout << "Configuration parameter gain_mode should take one of these values:\n";
             std::cout << " manual, slow_attack, fast_attack, hybrid\n";
@@ -83,7 +82,7 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
 
     if (gain_mode_ == "manual")
         {
-            if (rf_gain_ > 73.0 or rf_gain_ < -1.0)
+            if (rf_gain_ > 73.0 || rf_gain_ < -1.0)
                 {
                     std::cout << "Configuration parameter rf_gain should take values between -1.0 and 73 dB\n";
                     std::cout << "Error: provided value rf_gain=" << rf_gain_ << " is not among valid values\n";
@@ -93,7 +92,7 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
                 }
         }
 
-    if ((filter_source_ != "Off") and (filter_source_ != "Auto") and (filter_source_ != "File") and (filter_source_ != "Design"))
+    if ((filter_source_ != "Off") && (filter_source_ != "Auto") && (filter_source_ != "File") && (filter_source_ != "Design"))
         {
             std::cout << "Configuration parameter filter_source should take one of these values:\n";
             std::cout << "  Off: Disable filter\n";
@@ -108,7 +107,7 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
             LOG(WARNING) << "Invalid configuration value for filter_source parameter. Set to filter_source=Off";
         }
 
-    if (bandwidth_ < 200000 or bandwidth_ > 56000000)
+    if (bandwidth_ < 200000 || bandwidth_ > 56000000)
         {
             std::cout << "Configuration parameter bandwidth should take values between 200000 and 56000000 Hz\n";
             std::cout << "Error: provided value bandwidth=" << bandwidth_ << " is not among valid values\n";
@@ -116,8 +115,6 @@ PlutosdrSignalSource::PlutosdrSignalSource(const ConfigurationInterface* configu
             bandwidth_ = 2000000;
             LOG(WARNING) << "Invalid configuration value for bandwidth parameter. Set to bandwidth=2000000";
         }
-
-    item_size_ = sizeof(gr_complex);
 
     std::cout << "device address: " << uri_ << '\n';
     std::cout << "frequency : " << freq_ << " Hz\n";
@@ -216,7 +213,7 @@ void PlutosdrSignalSource::disconnect(gr::top_block_sptr top_block)
 gr::basic_block_sptr PlutosdrSignalSource::get_left_block()
 {
     LOG(WARNING) << "Trying to get signal source left block.";
-    return gr::basic_block_sptr();
+    return {};
 }
 
 

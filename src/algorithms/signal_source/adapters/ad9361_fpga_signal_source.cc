@@ -1,8 +1,11 @@
 /*!
  * \file ad9361_fpga_signal_source.cc
- * \brief signal source for Analog Devices front-end AD9361 connected directly to FPGA accelerators.
- * This source implements only the AD9361 control. It is NOT compatible with conventional SDR acquisition and tracking blocks.
- * Please use the fmcomms2 source if conventional SDR acquisition and tracking is selected in the configuration file.
+ * \brief signal source for Analog Devices front-end AD9361 connected directly
+ * to FPGA accelerators.
+ * This source implements only the AD9361 control. It is NOT compatible with
+ * conventional SDR acquisition and tracking blocks.
+ * Please use the fmcomms2 source if conventional SDR acquisition and tracking
+ * is selected in the configuration file.
  * \authors <ul>
  *          <li> Javier Arribas, jarribas(at)cttc.es
  *          <li> Marc Majoral, mmajoral(at)cttc.es
@@ -30,19 +33,16 @@
 #include "uio_fpga.h"
 #include <glog/logging.h>
 #include <iio.h>
-#include <algorithm>  // for max
-#include <chrono>     // for std::this_thread
-#include <cmath>      // for abs
-#include <exception>  // for exceptions
+#include <algorithm>  // for std::max
+#include <chrono>     // for std::chrono
+#include <cmath>      // for std::floor
+#include <exception>  // for std::exception
 #include <fcntl.h>    // for open, O_WRONLY
 #include <fstream>    // for std::ifstream
 #include <iomanip>    // for std::setprecision
-#include <iostream>   // for cout
-#include <string>     // for string manipulation
-#include <thread>     // for std::chrono
+#include <iostream>   // for std::cout
 #include <unistd.h>   // for write
-#include <utility>
-#include <vector>
+#include <vector>     // fr std::vector
 
 
 using namespace std::string_literals;
@@ -50,32 +50,53 @@ using namespace std::string_literals;
 Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *configuration,
     const std::string &role, unsigned int in_stream, unsigned int out_stream,
     Concurrent_Queue<pmt::pmt_t> *queue __attribute__((unused)))
-    : SignalSourceBase(configuration, role, "Ad9361_Fpga_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream), queue_(queue)
+    : SignalSourceBase(configuration, role, "Ad9361_Fpga_Signal_Source"s),
+      queue_(queue),
+      gain_mode_rx1_(configuration->property(role + ".gain_mode_rx1", default_gain_mode)),
+      gain_mode_rx2_(configuration->property(role + ".gain_mode_rx2", default_gain_mode)),
+      rf_port_select_(configuration->property(role + ".rf_port_select", default_rf_port_select)),
+      filter_filename_(configuration->property(role + ".filter_filename", filter_file_)),
+      rf_gain_rx1_(configuration->property(role + ".gain_rx1", default_manual_gain_rx1)),
+      rf_gain_rx2_(configuration->property(role + ".gain_rx1", default_manual_gain_rx2)),
+      freq_(configuration->property(role + ".freq", static_cast<uint64_t>(GPS_L1_FREQ_HZ))),
+      sample_rate_(configuration->property(role + ".sampling_frequency", default_bandwidth)),
+      bandwidth_(configuration->property(role + ".bandwidth", default_bandwidth)),
+      samples_to_skip_(0),
+      samples_(configuration->property(role + ".samples", static_cast<int64_t>(0))),
+      Fpass_(configuration->property(role + ".Fpass", static_cast<float>(0.0))),
+      Fstop_(configuration->property(role + ".Fstop", static_cast<float>(0.0))),
+      num_freq_bands_(2),
+      dma_buff_offset_pos_(0),
+      scale_dds_dbfs_(configuration->property(role + ".scale_dds_dbfs", -3.0)),
+      phase_dds_deg_(configuration->property(role + ".phase_dds_deg", 0.0)),
+      tx_attenuation_db_(configuration->property(role + ".tx_attenuation_db", default_tx_attenuation_db)),
+      freq_dds_tx_hz_(configuration->property(role + ".freq_dds_tx_hz", uint64_t(10000))),
+      freq_rf_tx_hz_(configuration->property(role + ".freq_rf_tx_hz", static_cast<uint64_t>(GPS_L1_FREQ_HZ - GPS_L5_FREQ_HZ - freq_dds_tx_hz_))),
+      tx_bandwidth_(configuration->property(role + ".tx_bandwidth", static_cast<uint64_t>(500000))),
+      item_size_(sizeof(int8_t)),
+      in_stream_(in_stream),
+      out_stream_(out_stream),
+      switch_position_(configuration->property(role + ".switch_position", 0)),
+      enable_dds_lo_(configuration->property(role + ".enable_dds_lo", false)),
+      filter_auto_(configuration->property(role + ".filter_auto", false)),
+      quadrature_(configuration->property(role + ".quadrature", true)),
+      rf_dc_(configuration->property(role + ".rf_dc", true)),
+      bb_dc_(configuration->property(role + ".bb_dc", true)),
+      rx1_enable_(configuration->property(role + ".rx1_enable", true)),
+      rx2_enable_(configuration->property(role + ".rx2_enable", true)),
+      enable_DMA_(false),
+      enable_dynamic_bit_selection_(configuration->property(role + ".enable_dynamic_bit_selection", true)),
+      enable_ovf_check_buffer_monitor_active_(false),
+      dump_(configuration->property(role + ".dump", false)),
+      rf_shutdown_(configuration->property(role + ".rf_shutdown", FLAGS_rf_shutdown)),
+      repeat_(configuration->property(role + ".repeat", false))
 {
-    // initialize the variables that are used in real-time mode
+    const int l1_band = configuration->property("Channels_1C.count", 0) +
+                        configuration->property("Channels_1B.count", 0);
 
-    const std::string default_gain_mode("slow_attack");
-    const double default_tx_attenuation_db = -10.0;
-    const double default_manual_gain_rx1 = 64.0;
-    const double default_manual_gain_rx2 = 64.0;
-    const uint64_t default_bandwidth = 12500000;
-    const std::string default_rf_port_select("A_BALANCED");
-    freq_ = configuration->property(role + ".freq", static_cast<uint64_t>(GPS_L1_FREQ_HZ));
-    sample_rate_ = configuration->property(role + ".sampling_frequency", static_cast<uint64_t>(12500000));
-    bandwidth_ = configuration->property(role + ".bandwidth", default_bandwidth);
-    quadrature_ = configuration->property(role + ".quadrature", true);
-    rf_dc_ = configuration->property(role + ".rf_dc", true);
-    bb_dc_ = configuration->property(role + ".bb_dc", true);
-    rx1_enable_ = configuration->property(role + ".rx1_enable", true);
-    rx2_enable_ = configuration->property(role + ".rx2_enable", true);
-    gain_mode_rx1_ = configuration->property(role + ".gain_mode_rx1", default_gain_mode);
-    gain_mode_rx2_ = configuration->property(role + ".gain_mode_rx2", default_gain_mode);
-    rf_gain_rx1_ = configuration->property(role + ".gain_rx1", default_manual_gain_rx1);
-    rf_gain_rx2_ = configuration->property(role + ".gain_rx2", default_manual_gain_rx2);
-    rf_port_select_ = configuration->property(role + ".rf_port_select", default_rf_port_select);
-    filter_file_ = configuration->property(role + ".filter_file", std::string(""));
-    filter_filename_ = configuration->property(role + ".filter_filename", filter_file_);
-    filter_auto_ = configuration->property(role + ".filter_auto", false);
+    const double seconds_to_skip = configuration->property(role + ".seconds_to_skip", 0.0);
+    const size_t header_size = configuration->property(role + ".header_size", 0);
+
     if (filter_auto_)
         {
             filter_source_ = configuration->property(role + ".filter_source", std::string("Auto"));
@@ -84,29 +105,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
         {
             filter_source_ = configuration->property(role + ".filter_source", std::string("Off"));
         }
-    Fpass_ = configuration->property(role + ".Fpass", static_cast<float>(0.0));
-    Fstop_ = configuration->property(role + ".Fstop", static_cast<float>(0.0));
-    enable_dds_lo_ = configuration->property(role + ".enable_dds_lo", false);
-    freq_dds_tx_hz_ = configuration->property(role + ".freq_dds_tx_hz", static_cast<uint64_t>(10000));
-    freq_rf_tx_hz_ = configuration->property(role + ".freq_rf_tx_hz", static_cast<uint64_t>(GPS_L1_FREQ_HZ - GPS_L5_FREQ_HZ - freq_dds_tx_hz_));
-    scale_dds_dbfs_ = configuration->property(role + ".scale_dds_dbfs", -3.0);
-    tx_attenuation_db_ = configuration->property(role + ".tx_attenuation_db", default_tx_attenuation_db);
-    tx_bandwidth_ = configuration->property(role + ".tx_bandwidth", static_cast<uint64_t>(500000));
-    phase_dds_deg_ = configuration->property(role + ".phase_dds_deg", 0.0);
-
-    rf_shutdown_ = configuration->property(role + ".rf_shutdown", FLAGS_rf_shutdown);
-
-    // initialize the variables that are used in post-processing mode
-
-    enable_DMA_ = false;
-
-    const int l1_band = configuration->property("Channels_1C.count", 0) +
-                        configuration->property("Channels_1B.count", 0);
-
-    const double default_seconds_to_skip = 0.0;
-
-    const std::string empty_string;
-    filename0 = configuration->property(role + ".filename", empty_string);
 
     // override value with commandline flag, if present
     if (FLAGS_signal_source != "-")
@@ -117,16 +115,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
         {
             filename0 = FLAGS_s;
         }
-
-    if (filename0.empty())
-        {
-            filename0 = configuration->property(role + ".filename0", empty_string);
-            filename1 = configuration->property(role + ".filename1", empty_string);
-        }
-
-    // by default the DMA transfers samples corresponding to two frequency bands to the FPGA
-    num_freq_bands_ = 2;
-    dma_buff_offset_pos_ = 0;
 
     // if only one input file is specified in the configuration file then:
     // if there is at least one channel assigned to frequency band 1 then the DMA transfers the samples to the L1 frequency band channels
@@ -145,15 +133,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
             dma_buff_offset_pos_ = 2;
         }
 
-    samples_ = configuration->property(role + ".samples", static_cast<int64_t>(0));
-
-    const double seconds_to_skip = configuration->property(role + ".seconds_to_skip", default_seconds_to_skip);
-    const size_t header_size = configuration->property(role + ".header_size", 0);
-    std::string item_type = "ibyte";  // for now only the ibyte format is supported
-    item_size_ = sizeof(int8_t);
-    repeat_ = configuration->property(role + ".repeat", false);
-
-    samples_to_skip_ = 0;
     if (seconds_to_skip > 0)
         {
             samples_to_skip_ = static_cast<uint64_t>(seconds_to_skip * sample_rate_) * 2;
@@ -163,10 +142,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
             samples_to_skip_ += header_size;
         }
 
-    // check the switch status (determines real-time mode or post-processing mode)
-
     std::string device_io_name;  // Switch UIO device file
-
     // find the uio device file corresponding to the switch.
     if (find_uio_dev_file_name(device_io_name, switch_device_name, 0) < 0)
         {
@@ -175,7 +151,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
             return;
         }
 
-    switch_position_ = configuration->property(role + ".switch_position", 0);
     if (switch_position_ != 0 && switch_position_ != 2)
         {
             std::cout << "SignalSource.switch_position configuration parameter must be either 0: read from file(s) via DMA, or 2: read from AD9361\n";
@@ -272,7 +247,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                 }
             DLOG(INFO) << "Samples " << samples_;
             DLOG(INFO) << "Sampling frequency " << sample_rate_;
-            DLOG(INFO) << "Item type " << item_type;
+            DLOG(INFO) << "Item type " << std::string("ibyte");
             DLOG(INFO) << "Item size " << item_size_;
             DLOG(INFO) << "Repeat " << repeat_;
         }
@@ -283,7 +258,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
             enable_ovf_check_buffer_monitor_active_ = false;  // check buffer overflow and buffer monitor disabled by default
 
             // some basic checks
-            if ((rf_port_select_ != "A_BALANCED") and (rf_port_select_ != "B_BALANCED") and (rf_port_select_ != "A_N") and (rf_port_select_ != "B_N") and (rf_port_select_ != "B_P") and (rf_port_select_ != "C_N") and (rf_port_select_ != "C_P") and (rf_port_select_ != "TX_MONITOR1") and (rf_port_select_ != "TX_MONITOR2") and (rf_port_select_ != "TX_MONITOR1_2"))
+            if ((rf_port_select_ != "A_BALANCED") && (rf_port_select_ != "B_BALANCED") && (rf_port_select_ != "A_N") && (rf_port_select_ != "B_N") && (rf_port_select_ != "B_P") && (rf_port_select_ != "C_N") && (rf_port_select_ != "C_P") && (rf_port_select_ != "TX_MONITOR1") && (rf_port_select_ != "TX_MONITOR2") && (rf_port_select_ != "TX_MONITOR1_2"))
                 {
                     std::cout << "Configuration parameter rf_port_select should take one of these values:\n";
                     std::cout << " A_BALANCED, B_BALANCED, A_N, B_N, B_P, C_N, C_P, TX_MONITOR1, TX_MONITOR2, TX_MONITOR1_2\n";
@@ -293,7 +268,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                     LOG(WARNING) << "Invalid configuration value for rf_port_select parameter. Set to rf_port_select=" << default_rf_port_select;
                 }
 
-            if ((gain_mode_rx1_ != "manual") and (gain_mode_rx1_ != "slow_attack") and (gain_mode_rx1_ != "fast_attack") and (gain_mode_rx1_ != "hybrid"))
+            if ((gain_mode_rx1_ != "manual") && (gain_mode_rx1_ != "slow_attack") && (gain_mode_rx1_ != "fast_attack") && (gain_mode_rx1_ != "hybrid"))
                 {
                     std::cout << "Configuration parameter gain_mode_rx1 should take one of these values:\n";
                     std::cout << " manual, slow_attack, fast_attack, hybrid\n";
@@ -303,7 +278,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                     LOG(WARNING) << "Invalid configuration value for gain_mode_rx1 parameter. Set to gain_mode_rx1=" << default_gain_mode;
                 }
 
-            if ((gain_mode_rx2_ != "manual") and (gain_mode_rx2_ != "slow_attack") and (gain_mode_rx2_ != "fast_attack") and (gain_mode_rx2_ != "hybrid"))
+            if ((gain_mode_rx2_ != "manual") && (gain_mode_rx2_ != "slow_attack") && (gain_mode_rx2_ != "fast_attack") && (gain_mode_rx2_ != "hybrid"))
                 {
                     std::cout << "Configuration parameter gain_mode_rx2 should take one of these values:\n";
                     std::cout << " manual, slow_attack, fast_attack, hybrid\n";
@@ -315,7 +290,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
 
             if (gain_mode_rx1_ == "manual")
                 {
-                    if (rf_gain_rx1_ > 73.0 or rf_gain_rx1_ < -1.0)
+                    if (rf_gain_rx1_ > 73.0 || rf_gain_rx1_ < -1.0)
                         {
                             std::cout << "Configuration parameter rf_gain_rx1 should take values between -1.0 and 73 dB\n";
                             std::cout << "Error: provided value rf_gain_rx1=" << rf_gain_rx1_ << " is not among valid values\n";
@@ -327,7 +302,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
 
             if (gain_mode_rx2_ == "manual")
                 {
-                    if (rf_gain_rx2_ > 73.0 or rf_gain_rx2_ < -1.0)
+                    if (rf_gain_rx2_ > 73.0 || rf_gain_rx2_ < -1.0)
                         {
                             std::cout << "Configuration parameter rf_gain_rx2 should take values between -1.0 and 73 dB\n";
                             std::cout << "Error: provided value rf_gain_rx2=" << rf_gain_rx2_ << " is not among valid values\n";
@@ -337,7 +312,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                         }
                 }
 
-            if ((filter_source_ != "Off") and (filter_source_ != "Auto") and (filter_source_ != "File") and (filter_source_ != "Design"))
+            if ((filter_source_ != "Off") && (filter_source_ != "Auto") && (filter_source_ != "File") && (filter_source_ != "Design"))
                 {
                     std::cout << "Configuration parameter filter_source should take one of these values:\n";
                     std::cout << "  Off: Disable filter\n";
@@ -350,7 +325,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                     LOG(WARNING) << "Invalid configuration value for filter_source parameter. Set to filter_source=Off";
                 }
 
-            if (bandwidth_ < 200000 or bandwidth_ > 56000000)
+            if (bandwidth_ < 200000 || bandwidth_ > 56000000)
                 {
                     std::cout << "Configuration parameter bandwidth should take values between 200000 and 56000000 Hz\n";
                     std::cout << "Error: provided value bandwidth=" << bandwidth_ << " is not among valid values\n";
@@ -389,7 +364,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
             // LOCAL OSCILLATOR DDS GENERATOR FOR DUAL FREQUENCY OPERATION
             if (enable_dds_lo_ == true)
                 {
-                    if (tx_bandwidth_ < static_cast<uint64_t>(std::floor(static_cast<float>(freq_dds_tx_hz_) * 1.1)) or (tx_bandwidth_ < 200000) or (tx_bandwidth_ > 1000000))
+                    if (tx_bandwidth_ < static_cast<uint64_t>(std::floor(static_cast<float>(freq_dds_tx_hz_) * 1.1)) || (tx_bandwidth_ < 200000) || (tx_bandwidth_ > 1000000))
                         {
                             std::cout << "Configuration parameter tx_bandwidth value should be between " << std::max(static_cast<float>(freq_dds_tx_hz_) * 1.1, 200000.0) << " and 1000000 Hz\n";
                             std::cout << "Error: provided value tx_bandwidth=" << tx_bandwidth_ << " is not among valid values\n";
@@ -397,7 +372,7 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
                             tx_bandwidth_ = 500000;
                             LOG(WARNING) << "Invalid configuration value for tx_bandwidth parameter. Set to tx_bandwidth=500000";
                         }
-                    if (tx_attenuation_db_ > 0.0 or tx_attenuation_db_ < -89.75)
+                    if (tx_attenuation_db_ > 0.0 || tx_attenuation_db_ < -89.75)
                         {
                             std::cout << "Configuration parameter tx_attenuation_db should take values between 0.0 and -89.95 in 0.25 dB steps\n";
                             std::cout << "Error: provided value tx_attenuation_db=" << tx_attenuation_db_ << " is not among valid values\n";
@@ -429,7 +404,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
 
             std::string device_io_name_buffer_monitor;
 
-            dump_ = configuration->property(role + ".dump", false);
             std::string dump_filename = configuration->property(role + ".dump_filename", default_dump_filename);
 
             // find the uio device file corresponding to the buffer monitor
@@ -445,7 +419,6 @@ Ad9361FpgaSignalSource::Ad9361FpgaSignalSource(const ConfigurationInterface *con
         }
 
     // dynamic bits selection
-    enable_dynamic_bit_selection_ = configuration->property(role + ".enable_dynamic_bit_selection", true);
     if (enable_dynamic_bit_selection_)
         {
             std::string device_io_name_dyn_bit_sel_0;
@@ -615,7 +588,6 @@ void Ad9361FpgaSignalSource::run_DMA_process(const std::string &filename0, const
                     return;
                 }
         }
-
 
     // rx signal vectors
     std::vector<int8_t> input_samples(sample_block_size * 2);      // complex samples
@@ -908,11 +880,11 @@ void Ad9361FpgaSignalSource::disconnect(gr::top_block_sptr top_block)
 gr::basic_block_sptr Ad9361FpgaSignalSource::get_left_block()
 {
     LOG(WARNING) << "Trying to get signal source left block.";
-    return gr::basic_block_sptr();
+    return {};
 }
 
 
 gr::basic_block_sptr Ad9361FpgaSignalSource::get_right_block()
 {
-    return gr::basic_block_sptr();
+    return {};
 }

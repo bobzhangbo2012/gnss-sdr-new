@@ -60,9 +60,11 @@ set(GNSS_SPLIBS_HEADERS
     gnss_circular_deque.h
     geofunctions.h
     item_type_helpers.h
+    trackingcmd.h
     pass_through.h
     short_x2_to_cshort.h
     gnss_sdr_string_literals.h
+    gnss_time.h
 )
 
 if(ENABLE_OPENCL)
