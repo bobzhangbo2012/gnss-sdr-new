@@ -239,7 +239,7 @@ int32_t hybrid_observables_gs::save_matfile() const
     // READ DUMP FILE
     const std::string dump_filename = d_dump_filename;
     std::ifstream::pos_type size;
-    const int32_t number_of_double_vars = 7;
+    const int32_t number_of_double_vars = 8;
     const int32_t epoch_size_bytes = sizeof(double) * number_of_double_vars * d_nchannels_out;
     std::ifstream dump_file;
     std::cout << "Generating .mat file for " << dump_filename << '\n';
@@ -273,6 +273,7 @@ int32_t hybrid_observables_gs::save_matfile() const
     auto Pseudorange_m = std::vector<std::vector<double>>(d_nchannels_out, std::vector<double>(num_epoch));
     auto PRN = std::vector<std::vector<double>>(d_nchannels_out, std::vector<double>(num_epoch));
     auto Flag_valid_pseudorange = std::vector<std::vector<double>>(d_nchannels_out, std::vector<double>(num_epoch));
+    auto dump_time = std::vector<std::vector<double>>(d_nchannels_out, std::vector<double>(num_epoch));
 
     try
         {
@@ -289,6 +290,7 @@ int32_t hybrid_observables_gs::save_matfile() const
                                     dump_file.read(reinterpret_cast<char *>(&Pseudorange_m[chan][i]), sizeof(double));
                                     dump_file.read(reinterpret_cast<char *>(&PRN[chan][i]), sizeof(double));
                                     dump_file.read(reinterpret_cast<char *>(&Flag_valid_pseudorange[chan][i]), sizeof(double));
+                                    dump_file.read(reinterpret_cast<char *>(&dump_time[chan][i]), sizeof(double));
                                 }
                         }
                 }
@@ -307,6 +309,7 @@ int32_t hybrid_observables_gs::save_matfile() const
     auto Pseudorange_m_aux = std::vector<double>(d_nchannels_out * num_epoch);
     auto PRN_aux = std::vector<double>(d_nchannels_out * num_epoch);
     auto Flag_valid_pseudorange_aux = std::vector<double>(d_nchannels_out * num_epoch);
+    auto dump_time_aux = std::vector<double>(d_nchannels_out * num_epoch);
 
     uint32_t k = 0U;
     for (int64_t j = 0; j < num_epoch; j++)
@@ -320,6 +323,7 @@ int32_t hybrid_observables_gs::save_matfile() const
                     Pseudorange_m_aux[k] = Pseudorange_m[i][j];
                     PRN_aux[k] = PRN[i][j];
                     Flag_valid_pseudorange_aux[k] = Flag_valid_pseudorange[i][j];
+                    dump_time_aux[k] = dump_time[i][j];
                     k++;
                 }
         }
@@ -362,6 +366,10 @@ int32_t hybrid_observables_gs::save_matfile() const
             Mat_VarFree(matvar);
 
             matvar = Mat_VarCreate("Flag_valid_pseudorange", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), Flag_valid_pseudorange_aux.data(), MAT_F_DONT_COPY_DATA);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("dump_time", MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims.data(), dump_time_aux.data(), MAT_F_DONT_COPY_DATA);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
         }
@@ -831,6 +839,10 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
 
             if (d_dump)
                 {
+                    std::time_t dump_time = std::time(NULL);
+                    // std::cout << "Observables dump Time: "
+                    //           << std::asctime(std::localtime(&dump_time))
+                    //           << dump_time << " seconds since the Epoch\n";
                     // MULTIPLEXED FILE RECORDING - Record results to file
                     try
                         {
@@ -850,6 +862,8 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
                                     tmp_double = static_cast<double>(out[i][0].PRN);
                                     d_dump_file.write(reinterpret_cast<char *>(&tmp_double), sizeof(double));
                                     tmp_double = static_cast<double>(out[i][0].Flag_valid_pseudorange);
+                                    d_dump_file.write(reinterpret_cast<char *>(&tmp_double), sizeof(double));
+                                    tmp_double = dump_time;
                                     d_dump_file.write(reinterpret_cast<char *>(&tmp_double), sizeof(double));
                                 }
                         }

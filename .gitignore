@@ -20,3 +20,5 @@ cmake-build-debug/
 .vscode/
 .vs/
 Testing/
+build*/
+work_log/

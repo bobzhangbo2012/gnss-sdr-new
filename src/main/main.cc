@@ -121,6 +121,14 @@ int main(int argc, char** argv)
     std::chrono::time_point<std::chrono::system_clock> start;
     std::chrono::time_point<std::chrono::system_clock> end;
     start = std::chrono::system_clock::now();
+
+    std::time_t result = std::time(NULL);
+    std::cout << "Start Time: "
+              << std::asctime(std::localtime(&result))
+              << result << " seconds since the Epoch\n";
+    // std::time_t t = std::time(0);  // t is an integer type
+    // std::cout << "Start time: " << t << " seconds since 01-Jan-1970\n";
+
     int return_code = 0;
     try
         {
