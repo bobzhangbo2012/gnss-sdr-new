@@ -1449,6 +1449,11 @@ void dll_pll_veml_tracking::log_data()
                     // PRN
                     uint32_t prn_ = d_acquisition_gnss_synchro->PRN;
                     d_dump_file.write(reinterpret_cast<char *>(&prn_), sizeof(uint32_t));
+                    // acq_code_phase_samples & acq_carrier_doppler_hz
+                    tmp_float = static_cast<float>(d_acq_code_phase_samples);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
+                    tmp_float = static_cast<float>(d_acq_carrier_doppler_hz);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                 }
             catch (const std::ifstream::failure &e)
                 {
@@ -1463,7 +1468,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     // READ DUMP FILE
     std::ifstream::pos_type size;
     const int32_t number_of_double_vars = 1;
-    const int32_t number_of_float_vars = 19;
+    const int32_t number_of_float_vars = 21;
     const int32_t epoch_size_bytes = sizeof(uint64_t) + sizeof(double) * number_of_double_vars +
                                      sizeof(float) * number_of_float_vars + sizeof(uint32_t);
     std::ifstream dump_file;
@@ -1517,6 +1522,8 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     auto aux1 = std::vector<float>(num_epoch);
     auto aux2 = std::vector<double>(num_epoch);
     auto PRN = std::vector<uint32_t>(num_epoch);
+    auto acq_code_phase_samples = std::vector<float>(num_epoch);
+    auto acq_carrier_doppler_hz = std::vector<float>(num_epoch);
     try
         {
             if (dump_file.is_open())
@@ -1545,6 +1552,8 @@ int32_t dll_pll_veml_tracking::save_matfile() const
                             dump_file.read(reinterpret_cast<char *>(&aux1[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&aux2[i]), sizeof(double));
                             dump_file.read(reinterpret_cast<char *>(&PRN[i]), sizeof(uint32_t));
+                            dump_file.read(reinterpret_cast<char *>(&acq_code_phase_samples[i]), sizeof(float));
+                            dump_file.read(reinterpret_cast<char *>(&acq_carrier_doppler_hz[i]), sizeof(float));
                         }
                 }
             dump_file.close();
@@ -1554,6 +1563,44 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             std::cerr << "Problem reading dump file:" << e.what() << '\n';
             return 1;
         }
+
+    // calculate indicators
+    // EVM
+    auto Prompt_I_normalized = std::vector<float>(num_epoch);
+    auto Prompt_Q_normalized = std::vector<float>(num_epoch);
+    auto EVM = std::vector<float>(num_epoch);
+    const float sampleStep = 10;
+    const float Prompt_I_ref = 1;
+    const float Prompt_Q_ref = 0;
+    float d;
+    float tmp_sum = 0;
+    for (int64_t i = 0; i < num_epoch; i++)
+    {
+    	tmp_sum = tmp_sum + Prompt_I[i] * Prompt_I[i];
+    }
+    d = tmp_sum / num_epoch;
+    d = sqrt(d);
+    for (int64_t i = 0; i < num_epoch; i++)
+    {
+    	Prompt_I_normalized[i] = Prompt_I[i] / d;
+    	Prompt_Q_normalized[i] = Prompt_Q[i] / d;
+    	if (i >= sampleStep-1)
+    	{
+    		tmp_sum = 0;
+    		for (int64_t j = i-sampleStep+1; j <= i; j++)
+    		{
+    			tmp_sum = tmp_sum
+    					+ (abs(Prompt_I_normalized[j])-Prompt_I_ref) * (abs(Prompt_I_normalized[j])-Prompt_I_ref)
+						+ (abs(Prompt_Q_normalized[j])-Prompt_Q_ref) * (abs(Prompt_Q_normalized[j])-Prompt_Q_ref);
+    		}
+    		EVM[i] = tmp_sum / sampleStep / (Prompt_I_ref*Prompt_I_ref+Prompt_Q_ref*Prompt_Q_ref);
+    		EVM[i] = sqrt(EVM[i]);
+    	}
+    	else
+    	{
+    		EVM[i] = 0;
+    	}
+    }
 
     // WRITE MAT FILE
     mat_t *matfp;
@@ -1650,6 +1697,26 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             Mat_VarFree(matvar);
 
             matvar = Mat_VarCreate("PRN", MAT_C_UINT32, MAT_T_UINT32, 2, dims.data(), PRN.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("acq_code_phase_samples", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), acq_code_phase_samples.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("acq_carrier_doppler_hz", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), acq_carrier_doppler_hz.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("Prompt_I_normalized", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), Prompt_I_normalized.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("Prompt_Q_normalized", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), Prompt_Q_normalized.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("EVM", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), EVM.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
         }
