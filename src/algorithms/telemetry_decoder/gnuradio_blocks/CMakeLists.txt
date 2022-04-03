@@ -52,6 +52,7 @@ target_link_libraries(telemetry_decoder_gr_blocks
     PUBLIC
         telemetry_decoder_libswiftcnav
         telemetry_decoder_libs
+        algorithms_libs
         core_libs
         core_system_parameters
         Gnuradio::runtime
@@ -64,6 +65,14 @@ target_link_libraries(telemetry_decoder_gr_blocks
 if(GNURADIO_USES_STD_POINTERS)
     target_compile_definitions(telemetry_decoder_gr_blocks
         PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+    )
+endif()
+
+if(GNURADIO_USES_SPDLOG)
+    target_link_libraries(telemetry_decoder_gr_blocks
+        PUBLIC
+            fmt::fmt
+            spdlog::spdlog
     )
 endif()
 

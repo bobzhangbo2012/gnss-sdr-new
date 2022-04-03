@@ -25,6 +25,7 @@ set(SIGNAL_SOURCE_LIB_SOURCES
     rtl_tcp_commands.cc
     rtl_tcp_dongle_info.cc
     gnss_sdr_valve.cc
+    gnss_sdr_timestamp.cc
     ${OPT_SIGNAL_SOURCE_LIB_SOURCES}
 )
 
@@ -68,11 +69,20 @@ target_include_directories(signal_source_libs
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/core/receiver
         ${CMAKE_SOURCE_DIR}/src/core/interfaces
+        ${CMAKE_SOURCE_DIR}/src/algorithms/libs
 )
 
 if(GNURADIO_USES_STD_POINTERS)
     target_compile_definitions(signal_source_libs
         PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+    )
+endif()
+
+if(GNURADIO_USES_SPDLOG)
+    target_link_libraries(signal_source_libs
+        PUBLIC
+            fmt::fmt
+            spdlog::spdlog
     )
 endif()
 

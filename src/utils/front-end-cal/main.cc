@@ -117,7 +117,7 @@ private:
     FrontEndCal_msg_rx();
 
 public:
-    int rx_message;
+    int rx_message{0};
 };
 
 
@@ -143,7 +143,8 @@ void FrontEndCal_msg_rx::msg_handler_channel_events(const pmt::pmt_t& msg)
 }
 
 
-FrontEndCal_msg_rx::FrontEndCal_msg_rx() : gr::block("FrontEndCal_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
+FrontEndCal_msg_rx::FrontEndCal_msg_rx()
+    : gr::block("FrontEndCal_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
     this->set_msg_handler(pmt::mp("events"),
@@ -156,7 +157,6 @@ FrontEndCal_msg_rx::FrontEndCal_msg_rx() : gr::block("FrontEndCal_msg_rx", gr::i
         boost::bind(&FrontEndCal_msg_rx::msg_handler_channel_events, this, _1));
 #endif
 #endif
-    rx_message = 0;
 }
 
 
@@ -344,9 +344,9 @@ int main(int argc, char** argv)
         {
             std::cout << "Exception caught while capturing samples (bad lexical cast)\n";
         }
-    catch (const boost::io::too_few_args& e)
+    catch (const std::exception& e)
         {
-            std::cout << "Exception caught while capturing samples (too few args)\n";
+            std::cout << "Exception caught while capturing samples: " << e.what() << '\n';
         }
     catch (...)
         {

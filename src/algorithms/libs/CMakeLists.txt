@@ -60,9 +60,11 @@ set(GNSS_SPLIBS_HEADERS
     gnss_circular_deque.h
     geofunctions.h
     item_type_helpers.h
+    trackingcmd.h
     pass_through.h
     short_x2_to_cshort.h
     gnss_sdr_string_literals.h
+    gnss_time.h
 )
 
 if(ENABLE_OPENCL)
@@ -114,6 +116,14 @@ target_link_libraries(algorithms_libs
 if(GNURADIO_USES_STD_POINTERS)
     target_compile_definitions(algorithms_libs
         PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+    )
+endif()
+
+if(GNURADIO_USES_SPDLOG)
+    target_link_libraries(algorithms_libs
+        PUBLIC
+            fmt::fmt
+            spdlog::spdlog
     )
 endif()
 

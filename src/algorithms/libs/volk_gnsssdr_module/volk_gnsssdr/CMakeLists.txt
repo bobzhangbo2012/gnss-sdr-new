@@ -8,7 +8,7 @@
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.8.12...3.21)
+cmake_minimum_required(VERSION 2.8.12...3.22)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -209,7 +209,7 @@ message(STATUS "Build type set to ${CMAKE_BUILD_TYPE}.")
 
 set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_MINOR_VERSION 0)
-set(VERSION_INFO_MAINT_VERSION 15)
+set(VERSION_INFO_MAINT_VERSION 16)
 include(VolkGnsssdrVersion) # setup version info
 
 
@@ -270,6 +270,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)")
 endif()
 
 if(CMAKE_VERSION VERSION_GREATER 3.0 AND SUPPORTED_CPU_FEATURES_ARCH)
+    set(BUILD_TESTING OFF CACHE BOOL "Build cpu_features without tests." FORCE)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL
         "Build cpu_features with Position Independent Code (PIC)."
         FORCE

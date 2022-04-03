@@ -11,13 +11,13 @@ set(TRACKING_LIB_SOURCES
     cpu_multicorrelator_16sc.cc
     lock_detectors.cc
     tcp_communication.cc
-    tcp_packet_data.cc
     tracking_2nd_DLL_filter.cc
     tracking_2nd_PLL_filter.cc
     tracking_discriminators.cc
     tracking_FLL_PLL_filter.cc
     tracking_loop_filter.cc
     dll_pll_conf.cc
+    kf_conf.cc
     bayesian_estimation.cc
     exponential_smoother.cc
 )
@@ -35,6 +35,7 @@ set(TRACKING_LIB_HEADERS
     tracking_FLL_PLL_filter.h
     tracking_loop_filter.h
     dll_pll_conf.h
+    kf_conf.h
     bayesian_estimation.h
     exponential_smoother.h
 )
@@ -88,6 +89,7 @@ target_link_libraries(tracking_libs
     PRIVATE
         gnss_sdr_flags
         Glog::glog
+        Gnuradio::runtime
 )
 
 if(ENABLE_CUDA)

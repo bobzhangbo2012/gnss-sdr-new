@@ -129,15 +129,15 @@ ControlThread::ControlThread()
 
 
 ControlThread::ControlThread(std::shared_ptr<ConfigurationInterface> configuration)
+    : configuration_(std::move(configuration)),
+      well_formatted_configuration_(true),
+      conf_file_has_section_(true),
+      conf_file_has_mandatory_globals_(true),
+      conf_has_signal_sources_(true),
+      conf_has_observables_(true),
+      conf_has_pvt_(true),
+      restart_(false)
 {
-    configuration_ = std::move(configuration);
-    conf_file_has_section_ = true;
-    conf_file_has_mandatory_globals_ = true;
-    conf_has_signal_sources_ = true;
-    conf_has_observables_ = true;
-    conf_has_pvt_ = true;
-    well_formatted_configuration_ = true;
-    restart_ = false;
     init();
 }
 
@@ -1207,6 +1207,7 @@ void ControlThread::keyboard_listener()
                 {
                     std::cout << "Quit keystroke order received, stopping GNSS-SDR !!\n";
                     control_queue_->push(pmt::make_any(command_event_make(200, 0)));
+                    stop_ = true;
                     read_keys = false;
                 }
             else
