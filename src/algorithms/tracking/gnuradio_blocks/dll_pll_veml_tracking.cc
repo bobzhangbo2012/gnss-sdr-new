@@ -123,7 +123,8 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
       d_dump(d_trk_parameters.dump),
       d_dump_mat(d_trk_parameters.dump_mat && d_dump),
       d_acc_carrier_phase_initialized(false),
-      d_Flag_PLL_180_deg_phase_locked(false)
+      d_Flag_PLL_180_deg_phase_locked(false),
+	  d_EVM(0.0)
 {
     // prevent telemetry symbols accumulation in output buffers
     this->set_max_noutput_items(1);
@@ -831,6 +832,7 @@ void dll_pll_veml_tracking::start_tracking()
     d_cn0_estimation_counter = 0;
     d_carrier_lock_test = 1.0;
     d_CN0_SNV_dB_Hz = 0.0;
+    d_EVM = 0.0;
 
     if (d_veml)
         {
@@ -1011,6 +1013,35 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
             d_code_lock_fail_counter = 0;
             return false;
         }
+    
+    // indicators calculate
+    // EVM
+	// using cn0_samples as sample num
+	// using d_Prompt_buffer as P buffer
+	const float Prompt_I_ref = 1;
+	const float Prompt_Q_ref = 0;
+	float d;
+	gr_complex *tmp_Prompt;
+	float tmp_sum = 0;
+	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++) {
+		tmp_Prompt = &d_Prompt_buffer[i];
+		tmp_sum = tmp_sum + tmp_Prompt->real() * tmp_Prompt->real();
+	}
+	d = tmp_sum / d_trk_parameters.cn0_samples;
+	d = sqrt(d);
+	tmp_sum = 0;
+	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++) {
+		tmp_Prompt = &d_Prompt_buffer[i];
+		tmp_sum = tmp_sum
+				+ (abs(tmp_Prompt->real() / d) - Prompt_I_ref)
+						* (abs(tmp_Prompt->real() / d) - Prompt_I_ref)
+				+ (abs(tmp_Prompt->imag() / d) - Prompt_Q_ref)
+						* (abs(tmp_Prompt->imag() / d) - Prompt_Q_ref);
+	}
+	d_EVM = tmp_sum / d_trk_parameters.cn0_samples
+			/ (Prompt_I_ref * Prompt_I_ref + Prompt_Q_ref * Prompt_Q_ref);
+	d_EVM = sqrt(d_EVM);
+    
     return true;
 }
 
@@ -1397,42 +1428,7 @@ void dll_pll_veml_tracking::log_data()
             tmp_E = std::abs<float>(d_E_accu);
             tmp_P = std::abs<float>(d_P_accu);
             tmp_L = std::abs<float>(d_L_accu);
-
-            // calculate indicators
-            // EVM
-            // using cn0_samples as sample num
-            // using d_Prompt_buffer as P buffer
-            float tmp_EVM;
-            if (d_cn0_estimation_counter > d_trk_parameters.cn0_samples) // if buffer is full
-            {
-            	const float Prompt_I_ref = 1;
-            	const float Prompt_Q_ref = 0;
-            	float d;
-            	gr_complex *tmp_Prompt;
-            	float tmp_sum = 0;
-            	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++)
-            	{
-            		tmp_Prompt = &d_Prompt_buffer[i];
-            		tmp_sum = tmp_sum + tmp_Prompt->real() * tmp_Prompt->real();
-            	}
-            	d = tmp_sum / d_trk_parameters.cn0_samples;
-            	d = sqrt(d);
-            	tmp_sum = 0;
-            	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++)
-            	{
-            		tmp_Prompt = &d_Prompt_buffer[i];
-            		tmp_sum = tmp_sum
-            				+ (abs(tmp_Prompt->real()/d)-Prompt_I_ref) * (abs(tmp_Prompt->real()/d)-Prompt_I_ref)
-							+ (abs(tmp_Prompt->imag()/d)-Prompt_Q_ref) * (abs(tmp_Prompt->imag()/d)-Prompt_Q_ref);
-            	}
-            	tmp_EVM = tmp_sum / d_trk_parameters.cn0_samples / (Prompt_I_ref*Prompt_I_ref+Prompt_Q_ref*Prompt_Q_ref);
-            	tmp_EVM = sqrt(tmp_EVM);
-            }
-            else // buffer isn't full: EVM=0
-            {
-            	tmp_EVM = 0;
-            }
-
+            
             try
                 {
                     // Dump correlators output
@@ -1491,7 +1487,8 @@ void dll_pll_veml_tracking::log_data()
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     // indicators
                     // EVM
-                    d_dump_file.write(reinterpret_cast<char *>(&tmp_EVM), sizeof(float));
+                    tmp_float = static_cast<float>(d_EVM);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                 }
             catch (const std::ifstream::failure &e)
                 {
@@ -2007,6 +2004,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.CN0_dB_hz = d_CN0_SNV_dB_Hz;
                         current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                         current_synchro_data.Flag_valid_symbol_output = true;
+                        current_synchro_data.EVM = d_EVM;
                         d_P_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
@@ -2059,6 +2057,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 current_synchro_data.CN0_dB_hz = d_CN0_SNV_dB_Hz;
                                 current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                                 current_synchro_data.Flag_valid_symbol_output = true;
+                                current_synchro_data.EVM = d_EVM;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
                             }
 
