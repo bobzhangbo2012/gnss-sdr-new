@@ -123,7 +123,8 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
       d_dump(d_trk_parameters.dump),
       d_dump_mat(d_trk_parameters.dump_mat && d_dump),
       d_acc_carrier_phase_initialized(false),
-      d_Flag_PLL_180_deg_phase_locked(false)
+      d_Flag_PLL_180_deg_phase_locked(false),
+	  d_EVM(0.0)
 {
     // prevent telemetry symbols accumulation in output buffers
     this->set_max_noutput_items(1);
@@ -831,6 +832,7 @@ void dll_pll_veml_tracking::start_tracking()
     d_cn0_estimation_counter = 0;
     d_carrier_lock_test = 1.0;
     d_CN0_SNV_dB_Hz = 0.0;
+    d_EVM = 0.0;
 
     if (d_veml)
         {
@@ -1011,6 +1013,35 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
             d_code_lock_fail_counter = 0;
             return false;
         }
+    
+    // indicators calculate
+    // EVM
+	// using cn0_samples as sample num
+	// using d_Prompt_buffer as P buffer
+	const float Prompt_I_ref = 1;
+	const float Prompt_Q_ref = 0;
+	float d;
+	gr_complex *tmp_Prompt;
+	float tmp_sum = 0;
+	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++) {
+		tmp_Prompt = &d_Prompt_buffer[i];
+		tmp_sum = tmp_sum + tmp_Prompt->real() * tmp_Prompt->real();
+	}
+	d = tmp_sum / d_trk_parameters.cn0_samples;
+	d = sqrt(d);
+	tmp_sum = 0;
+	for (int64_t i = 0; i < d_trk_parameters.cn0_samples; i++) {
+		tmp_Prompt = &d_Prompt_buffer[i];
+		tmp_sum = tmp_sum
+				+ (abs(tmp_Prompt->real() / d) - Prompt_I_ref)
+						* (abs(tmp_Prompt->real() / d) - Prompt_I_ref)
+				+ (abs(tmp_Prompt->imag() / d) - Prompt_Q_ref)
+						* (abs(tmp_Prompt->imag() / d) - Prompt_Q_ref);
+	}
+	d_EVM = tmp_sum / d_trk_parameters.cn0_samples
+			/ (Prompt_I_ref * Prompt_I_ref + Prompt_Q_ref * Prompt_Q_ref);
+	d_EVM = sqrt(d_EVM);
+    
     return true;
 }
 
@@ -1397,7 +1428,7 @@ void dll_pll_veml_tracking::log_data()
             tmp_E = std::abs<float>(d_E_accu);
             tmp_P = std::abs<float>(d_P_accu);
             tmp_L = std::abs<float>(d_L_accu);
-
+            
             try
                 {
                     // Dump correlators output
@@ -1449,6 +1480,15 @@ void dll_pll_veml_tracking::log_data()
                     // PRN
                     uint32_t prn_ = d_acquisition_gnss_synchro->PRN;
                     d_dump_file.write(reinterpret_cast<char *>(&prn_), sizeof(uint32_t));
+                    // acq_code_phase_samples & acq_carrier_doppler_hz
+                    tmp_float = static_cast<float>(d_acq_code_phase_samples);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
+                    tmp_float = static_cast<float>(d_acq_carrier_doppler_hz);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
+                    // indicators
+                    // EVM
+                    tmp_float = static_cast<float>(d_EVM);
+                    d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                 }
             catch (const std::ifstream::failure &e)
                 {
@@ -1463,7 +1503,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     // READ DUMP FILE
     std::ifstream::pos_type size;
     const int32_t number_of_double_vars = 1;
-    const int32_t number_of_float_vars = 19;
+    const int32_t number_of_float_vars = 22;
     const int32_t epoch_size_bytes = sizeof(uint64_t) + sizeof(double) * number_of_double_vars +
                                      sizeof(float) * number_of_float_vars + sizeof(uint32_t);
     std::ifstream dump_file;
@@ -1517,6 +1557,9 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     auto aux1 = std::vector<float>(num_epoch);
     auto aux2 = std::vector<double>(num_epoch);
     auto PRN = std::vector<uint32_t>(num_epoch);
+    auto acq_code_phase_samples = std::vector<float>(num_epoch);
+    auto acq_carrier_doppler_hz = std::vector<float>(num_epoch);
+    auto EVM = std::vector<float>(num_epoch);
     try
         {
             if (dump_file.is_open())
@@ -1545,6 +1588,9 @@ int32_t dll_pll_veml_tracking::save_matfile() const
                             dump_file.read(reinterpret_cast<char *>(&aux1[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&aux2[i]), sizeof(double));
                             dump_file.read(reinterpret_cast<char *>(&PRN[i]), sizeof(uint32_t));
+                            dump_file.read(reinterpret_cast<char *>(&acq_code_phase_samples[i]), sizeof(float));
+                            dump_file.read(reinterpret_cast<char *>(&acq_carrier_doppler_hz[i]), sizeof(float));
+                            dump_file.read(reinterpret_cast<char *>(&EVM[i]), sizeof(float));
                         }
                 }
             dump_file.close();
@@ -1650,6 +1696,20 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             Mat_VarFree(matvar);
 
             matvar = Mat_VarCreate("PRN", MAT_C_UINT32, MAT_T_UINT32, 2, dims.data(), PRN.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("acq_code_phase_samples", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), acq_code_phase_samples.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            matvar = Mat_VarCreate("acq_carrier_doppler_hz", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), acq_carrier_doppler_hz.data(), 0);
+            Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+            Mat_VarFree(matvar);
+
+            // indicators
+            // EVM
+            matvar = Mat_VarCreate("EVM", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), EVM.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
         }
@@ -1944,6 +2004,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.CN0_dB_hz = d_CN0_SNV_dB_Hz;
                         current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                         current_synchro_data.Flag_valid_symbol_output = true;
+                        current_synchro_data.EVM = d_EVM;
                         d_P_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
@@ -1996,6 +2057,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 current_synchro_data.CN0_dB_hz = d_CN0_SNV_dB_Hz;
                                 current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                                 current_synchro_data.Flag_valid_symbol_output = true;
+                                current_synchro_data.EVM = d_EVM;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
                             }
 

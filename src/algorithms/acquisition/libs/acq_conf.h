@@ -71,9 +71,10 @@ public:
     bool blocking{true};
     bool blocking_on_standby{false};  // enable it only for unit testing to avoid sample consume on idle status
     bool make_2_steps{false};
+    bool make_repeat_steps{false};
     bool use_automatic_resampler{false};
     bool enable_monitor_output{false};
-
+    
 private:
     void SetDerivedParams();
 

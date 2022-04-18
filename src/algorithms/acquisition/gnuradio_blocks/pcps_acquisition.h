@@ -280,6 +280,7 @@ private:
     bool d_worker_active;
     bool d_cshort;
     bool d_step_two;
+    bool d_step_repeat;
     bool d_use_CFAR_algorithm_flag;
     bool d_dump;
 };

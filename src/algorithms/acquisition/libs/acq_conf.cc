@@ -75,6 +75,7 @@ void Acq_Conf::SetFromConfiguration(const ConfigurationInterface *configuration,
             pfa2 = pfa;
         }
     make_2_steps = configuration->property(role + ".make_two_steps", make_2_steps);
+    make_repeat_steps = configuration->property(role + ".make_repeat_steps", make_repeat_steps);
     blocking_on_standby = configuration->property(role + ".blocking_on_standby", blocking_on_standby);
 
     if (pfa <= 0.0)
@@ -84,7 +85,7 @@ void Acq_Conf::SetFromConfiguration(const ConfigurationInterface *configuration,
         }
 
     enable_monitor_output = configuration->property("AcquisitionMonitor.enable_monitor", false);
-
+    
     SetDerivedParams();
 }
 
