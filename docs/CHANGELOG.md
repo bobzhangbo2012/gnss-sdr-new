@@ -21,8 +21,10 @@ All notable changes to GNSS-SDR will be documented in this file.
 
 ### Improvements in Portability:
 
-- Updated `cpu_features` library to v0.7.0.
-- Fixed building against GNU Radio > v3.10.1.1.
+- Updated `cpu_features` library to v0.7.0. The building option
+  `ENABLE_OWN_CPUFEATURES` has been replaced by `ENABLE_CPUFEATURES`, defaulting
+  to `ON`.
+- Fixed building against GNU Radio v3.10.2
 
 ### Improvements in Reliability:
 
@@ -927,8 +929,7 @@ features and bug fixes:
 - Improvements in the RTCM server stability.
 - Improvements in the correctness of generated RINEX files.
 - The receiver can read and make use of Galileo almanac XML files published by
-  the European GNSS Service Centre at
-  https://www.gsc-europa.eu/system-status/almanac-data
+  the European GNSS Service Centre at https://www.gsc-europa.eu/product-almanacs
 - Own-defined XML schemas for navigation data published at
   https://github.com/gnss-sdr/gnss-sdr/tree/next/docs/xml-schemas
 - Added program `rinex2assist` to convert RINEX navigation files into XML files
