@@ -116,6 +116,7 @@ public:
                 obs->set_interp_tow_ms(gs.interp_TOW_ms);
                 
                 obs->set_evm(gs.EVM);
+                obs->set_scb(gs.SCB);
             }
         observables.SerializeToString(&data);
         return data;
@@ -163,6 +164,7 @@ public:
                 gs.interp_TOW_ms = gs_read.interp_tow_ms();
                 
                 gs.EVM = gs_read.evm();
+                gs.SCB = gs_read.scb();
 
                 vgs.push_back(gs);
             }

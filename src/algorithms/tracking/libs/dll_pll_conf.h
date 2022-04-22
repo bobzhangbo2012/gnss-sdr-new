@@ -80,6 +80,10 @@ public:
     bool high_dyn{false};
     bool dump{false};
     bool dump_mat{true};
+    // MEDLL
+    bool medll_open{false};
+    int32_t medll_taps{2};
+    int32_t medll_el_taps{1};
 };
 
 

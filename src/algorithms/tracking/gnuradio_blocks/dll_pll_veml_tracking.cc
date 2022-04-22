@@ -124,7 +124,8 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
       d_dump_mat(d_trk_parameters.dump_mat && d_dump),
       d_acc_carrier_phase_initialized(false),
       d_Flag_PLL_180_deg_phase_locked(false),
-	  d_EVM(0.0)
+	  d_EVM(0.0),
+	  d_SCB(0.0)
 {
     // prevent telemetry symbols accumulation in output buffers
     this->set_max_noutput_items(1);
@@ -453,6 +454,13 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
             d_code_samples_per_chip = 0U;
             d_symbols_per_bit = 0;
         }
+    
+    if(d_veml && d_trk_parameters.medll_open)
+    {
+    	LOG(WARNING) << "veml open, so medll close\n";
+		std::cout << "veml open, so medll close\n";
+		d_trk_parameters.medll_open = false;
+    }
 
     // Initial code frequency basis of NCO
     d_code_freq_chips = d_code_chip_rate;
@@ -472,11 +480,19 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
         }
     else
         {
-            // Early, Prompt, Late
-            d_n_correlator_taps = 3;
+			if (!d_trk_parameters.medll_open)
+			{
+				// Early, Prompt, Late
+				d_n_correlator_taps = 3;
+			}
+			else
+			{
+				d_n_correlator_taps = 2 * d_trk_parameters.medll_taps + 1;
+			}
         }
 
     d_correlator_outs = volk_gnsssdr::vector<gr_complex>(d_n_correlator_taps);
+    d_correlator_outs_accu = volk_gnsssdr::vector<gr_complex>(d_n_correlator_taps);
     d_local_code_shift_chips = volk_gnsssdr::vector<float>(d_n_correlator_taps);
     // map memory pointers of correlator outputs
     if (d_veml)
@@ -495,15 +511,32 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
         }
     else
         {
-            d_Very_Early = nullptr;
-            d_Early = &d_correlator_outs[0];
-            d_Prompt = &d_correlator_outs[1];
-            d_Late = &d_correlator_outs[2];
-            d_Very_Late = nullptr;
-            d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
-            d_local_code_shift_chips[1] = 0.0;
-            d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
-            d_prompt_data_shift = &d_local_code_shift_chips[1];
+			if (!d_trk_parameters.medll_open)
+			{
+				d_Very_Early = nullptr;
+				d_Early = &d_correlator_outs[0];
+				d_Prompt = &d_correlator_outs[1];
+				d_Late = &d_correlator_outs[2];
+				d_Very_Late = nullptr;
+				d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
+				d_local_code_shift_chips[1] = 0.0;
+				d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
+				d_prompt_data_shift = &d_local_code_shift_chips[1];
+			}
+			else
+			{
+				d_Very_Early = nullptr;
+				d_Early = &d_correlator_outs[d_trk_parameters.medll_taps - d_trk_parameters.medll_el_taps];
+				d_Prompt = &d_correlator_outs[d_trk_parameters.medll_taps];
+				d_Late = &d_correlator_outs[d_trk_parameters.medll_taps + d_trk_parameters.medll_el_taps];
+				d_Very_Late = nullptr;
+				for(int i=0; i<=d_trk_parameters.medll_taps; i++)
+				{
+					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = -static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = +static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+				}
+				d_prompt_data_shift = &d_local_code_shift_chips[d_trk_parameters.medll_taps];
+			}
         }
 
     d_multicorrelator_cpu.init(static_cast<int>(2 * d_trk_parameters.vector_length), d_n_correlator_taps);
@@ -822,6 +855,7 @@ void dll_pll_veml_tracking::start_tracking()
 
     d_multicorrelator_cpu.set_local_code_and_taps(d_code_samples_per_chip * d_code_length_chips, d_tracking_code.data(), d_local_code_shift_chips.data());
     std::fill_n(d_correlator_outs.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
+    std::fill_n(d_correlator_outs_accu.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
 
     d_carrier_lock_fail_counter = 0;
     d_code_lock_fail_counter = 0;
@@ -833,6 +867,7 @@ void dll_pll_veml_tracking::start_tracking()
     d_carrier_lock_test = 1.0;
     d_CN0_SNV_dB_Hz = 0.0;
     d_EVM = 0.0;
+    d_SCB = 0.0;
 
     if (d_veml)
         {
@@ -843,8 +878,19 @@ void dll_pll_veml_tracking::start_tracking()
         }
     else
         {
-            d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
-            d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
+			if (!d_trk_parameters.medll_open)
+			{
+				d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
+				d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_chips * static_cast<float>(d_code_samples_per_chip);
+			}
+			else
+			{
+				for(int i=1; i<=d_trk_parameters.medll_taps; i++)
+				{
+					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = -static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = +static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+				}
+			}
         }
 
     d_current_correlation_time_s = d_code_period;
@@ -1041,6 +1087,51 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
 	d_EVM = tmp_sum / d_trk_parameters.cn0_samples
 			/ (Prompt_I_ref * Prompt_I_ref + Prompt_Q_ref * Prompt_Q_ref);
 	d_EVM = sqrt(d_EVM);
+	
+	// SCB( Sline zero point)
+	if (d_trk_parameters.medll_open && d_trk_parameters.medll_taps>1 && !d_veml)
+	{
+		gr_complex tmp_E;
+		gr_complex tmp_L;
+		double tmp_x[d_n_correlator_taps-2];
+		double tmp_y[d_n_correlator_taps-2];
+		for(int i=0; i<d_n_correlator_taps-2; i++)
+		{
+			tmp_E = d_correlator_outs_accu[i];
+			tmp_L = d_correlator_outs_accu[i+2];
+			tmp_x[i] = double(d_local_code_shift_chips[i+1]);
+			tmp_y[i] = dll_nc_e_minus_l_normalized(tmp_E, tmp_L, d_trk_parameters.spc, d_trk_parameters.slope, d_trk_parameters.y_intercept);
+		}
+		bool tmp_exist = false;
+		int tmp_cnt = 0;
+		double tmp_sum = 0;
+		for(int i=0; i<d_n_correlator_taps-3; i++){
+			if( (tmp_y[i] * tmp_y[i+1]) <= 0){
+				tmp_exist = true;
+				tmp_cnt++;
+				if(tmp_y[i]==0 && tmp_y[i+1]==0){
+					tmp_sum += (tmp_x[i] + tmp_x[i+1]) / 2;
+				}
+				else if(tmp_y[i]==0){
+					tmp_sum += tmp_x[i];
+				}
+				else if(tmp_y[i+1]==0){
+					tmp_sum += tmp_x[i+1];
+				}
+				else{
+					tmp_sum += (tmp_y[i+1]*tmp_x[i] - tmp_y[i]*tmp_x[i+1]) / (tmp_y[i+1]-tmp_y[i]);
+				}
+			}
+		}
+		if(tmp_exist){
+			d_SCB = tmp_sum / double(tmp_cnt);
+		}
+		else{
+			d_SCB = 0;
+		}
+	}
+	
+	
     
     return true;
 }
@@ -1288,6 +1379,10 @@ void dll_pll_veml_tracking::save_correlation_results()
                             d_VE_accu += *d_Very_Early;
                             d_VL_accu += *d_Very_Late;
                         }
+					for(int i=0; i<d_n_correlator_taps; i++)
+					{
+						d_correlator_outs_accu[i] += d_correlator_outs[i];
+					}
                     d_E_accu += *d_Early;
                     d_P_accu += *d_Prompt;
                     d_L_accu += *d_Late;
@@ -1299,6 +1394,10 @@ void dll_pll_veml_tracking::save_correlation_results()
                             d_VE_accu -= *d_Very_Early;
                             d_VL_accu -= *d_Very_Late;
                         }
+                    for(int i=0; i<d_n_correlator_taps; i++)
+					{
+						d_correlator_outs_accu[i] += d_correlator_outs[i];
+					}
                     d_E_accu -= *d_Early;
                     d_P_accu -= *d_Prompt;
                     d_L_accu -= *d_Late;
@@ -1314,6 +1413,10 @@ void dll_pll_veml_tracking::save_correlation_results()
                     d_VE_accu += *d_Very_Early;
                     d_VL_accu += *d_Very_Late;
                 }
+            for(int i=0; i<d_n_correlator_taps; i++)
+			{
+				d_correlator_outs_accu[i] += d_correlator_outs[i];
+			}
             d_E_accu += *d_Early;
             d_P_accu += *d_Prompt;
             d_L_accu += *d_Late;
@@ -1489,6 +1592,9 @@ void dll_pll_veml_tracking::log_data()
                     // EVM
                     tmp_float = static_cast<float>(d_EVM);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
+                    // SCB
+                    tmp_float = static_cast<float>(d_SCB);
+					d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                 }
             catch (const std::ifstream::failure &e)
                 {
@@ -1503,7 +1609,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     // READ DUMP FILE
     std::ifstream::pos_type size;
     const int32_t number_of_double_vars = 1;
-    const int32_t number_of_float_vars = 22;
+    const int32_t number_of_float_vars = 23;
     const int32_t epoch_size_bytes = sizeof(uint64_t) + sizeof(double) * number_of_double_vars +
                                      sizeof(float) * number_of_float_vars + sizeof(uint32_t);
     std::ifstream dump_file;
@@ -1560,6 +1666,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     auto acq_code_phase_samples = std::vector<float>(num_epoch);
     auto acq_carrier_doppler_hz = std::vector<float>(num_epoch);
     auto EVM = std::vector<float>(num_epoch);
+    auto SCB = std::vector<float>(num_epoch);
     try
         {
             if (dump_file.is_open())
@@ -1591,6 +1698,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
                             dump_file.read(reinterpret_cast<char *>(&acq_code_phase_samples[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&acq_carrier_doppler_hz[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&EVM[i]), sizeof(float));
+                            dump_file.read(reinterpret_cast<char *>(&SCB[i]), sizeof(float));
                         }
                 }
             dump_file.close();
@@ -1712,6 +1820,10 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             matvar = Mat_VarCreate("EVM", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), EVM.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
+            // SCB
+            matvar = Mat_VarCreate("SCB", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), SCB.data(), 0);
+			Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+			Mat_VarFree(matvar);
         }
     Mat_Close(matfp);
     return 0;
@@ -1841,6 +1953,10 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         d_VE_accu = *d_Very_Early;
                         d_VL_accu = *d_Very_Late;
                     }
+                for(int i=0; i<d_n_correlator_taps; i++)
+				{
+					d_correlator_outs_accu[i] = d_correlator_outs[i];
+				}
                 d_E_accu = *d_Early;
                 d_P_accu = *d_Prompt;
                 d_L_accu = *d_Late;
@@ -1922,6 +2038,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                             }
                         if (next_state)
                             {  // reset extended correlator
+                        		std::fill_n(d_correlator_outs_accu.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
                                 d_VE_accu = gr_complex(0.0, 0.0);
                                 d_E_accu = gr_complex(0.0, 0.0);
                                 d_P_accu = gr_complex(0.0, 0.0);
@@ -1963,9 +2080,21 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                             }
                                         else
                                             {
-                                                d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_narrow_chips * static_cast<float>(d_code_samples_per_chip);
-                                                d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_narrow_chips * static_cast<float>(d_code_samples_per_chip);
-                                                d_trk_parameters.spc = d_trk_parameters.early_late_space_narrow_chips;
+												if (!d_trk_parameters.medll_open)
+												{
+													d_local_code_shift_chips[0] = -d_trk_parameters.early_late_space_narrow_chips * static_cast<float>(d_code_samples_per_chip);
+													d_local_code_shift_chips[2] = d_trk_parameters.early_late_space_narrow_chips * static_cast<float>(d_code_samples_per_chip);
+													d_trk_parameters.spc = d_trk_parameters.early_late_space_narrow_chips;
+												}
+												else
+												{
+													for(int i=1; i<=d_trk_parameters.medll_taps; i++)
+													{
+														d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = -static_cast<float>(i) * d_trk_parameters.early_late_space_narrow_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+														d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = +static_cast<float>(i) * d_trk_parameters.early_late_space_narrow_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+													}
+													d_trk_parameters.spc = d_trk_parameters.early_late_space_narrow_chips;
+												}
                                             }
                                     }
                                 else
@@ -2005,6 +2134,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                         current_synchro_data.Flag_valid_symbol_output = true;
                         current_synchro_data.EVM = d_EVM;
+                        current_synchro_data.SCB = d_SCB;
                         d_P_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
@@ -2058,10 +2188,12 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 current_synchro_data.correlation_length_ms = d_correlation_length_ms;
                                 current_synchro_data.Flag_valid_symbol_output = true;
                                 current_synchro_data.EVM = d_EVM;
+                                current_synchro_data.SCB = d_SCB;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
                             }
 
                         // reset extended correlator
+                        std::fill_n(d_correlator_outs_accu.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
                         d_VE_accu = gr_complex(0.0, 0.0);
                         d_E_accu = gr_complex(0.0, 0.0);
                         d_P_accu = gr_complex(0.0, 0.0);

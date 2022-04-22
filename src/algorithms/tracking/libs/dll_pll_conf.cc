@@ -123,4 +123,9 @@ void Dll_Pll_Conf::SetFromConfiguration(const ConfigurationInterface *configurat
         }
     carrier_lock_test_smoother_samples = configuration->property(role + ".carrier_lock_test_smoother_samples", carrier_lock_test_smoother_samples);
     carrier_lock_test_smoother_alpha = configuration->property(role + ".carrier_lock_test_smoother_alpha", carrier_lock_test_smoother_alpha);
+    
+    // MEDLL
+    medll_open = configuration->property(role + ".medll_open", medll_open);
+    medll_taps = configuration->property(role + ".medll_taps", medll_taps);
+    medll_el_taps = configuration->property(role + ".medll_el_taps", medll_el_taps);
 }

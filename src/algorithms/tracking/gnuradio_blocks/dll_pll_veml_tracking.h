@@ -104,6 +104,7 @@ private:
     volk_gnsssdr::vector<float> d_data_code;
     volk_gnsssdr::vector<float> d_local_code_shift_chips;
     volk_gnsssdr::vector<gr_complex> d_correlator_outs;
+    volk_gnsssdr::vector<gr_complex> d_correlator_outs_accu;
     volk_gnsssdr::vector<gr_complex> d_Prompt_Data;
     volk_gnsssdr::vector<gr_complex> d_Prompt_buffer;
 
@@ -206,6 +207,7 @@ private:
     
     // Indicators
     double d_EVM;
+    double d_SCB;
 };
 
 

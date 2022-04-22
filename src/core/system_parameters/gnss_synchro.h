@@ -82,6 +82,7 @@ public:
      
     // Indicators
     double EVM{};					//!< Set by Tracking processing block
+    double SCB{};					//!< Set by Tracking processing block
     
     /// Copy constructor
     Gnss_Synchro(const Gnss_Synchro& other) noexcept
@@ -124,6 +125,7 @@ public:
                 this->Flag_valid_pseudorange = rhs.Flag_valid_pseudorange;
                 this->Flag_PLL_180_deg_phase_locked = rhs.Flag_PLL_180_deg_phase_locked;
                 this->EVM = rhs.EVM;
+                this->SCB = rhs.SCB;
             }
         return *this;
     };
@@ -168,6 +170,7 @@ public:
                 this->Flag_valid_pseudorange = other.Flag_valid_pseudorange;
                 this->Flag_PLL_180_deg_phase_locked = other.Flag_PLL_180_deg_phase_locked;
                 this->EVM = other.EVM;
+                this->SCB = other.SCB;
             }
         return *this;
     };
@@ -217,6 +220,7 @@ public:
         ar& BOOST_SERIALIZATION_NVP(Flag_PLL_180_deg_phase_locked);
         // Indicators
         ar& BOOST_SERIALIZATION_NVP(EVM);
+        ar& BOOST_SERIALIZATION_NVP(SCB);
     }
 };
 
