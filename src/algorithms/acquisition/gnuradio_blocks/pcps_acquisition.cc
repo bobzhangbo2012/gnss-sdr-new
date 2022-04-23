@@ -389,8 +389,8 @@ void pcps_acquisition::send_positive_acquisition()
                << ", sample_stamp " << d_sample_counter
                << ", test statistics value " << d_test_statistics
                << ", test statistics threshold " << d_threshold
-               << ", code phase " << d_gnss_synchro->Acq_delay_samples
-               << ", doppler " << d_gnss_synchro->Acq_doppler_hz
+               << ", code phase " << d_Acq_delay_samples_tmp
+               << ", doppler " << d_Acq_doppler_hz_tmp
                << ", magnitude " << d_mag
                << ", input signal power " << d_input_power
                << ", Assist doppler_center " << d_doppler_center;
@@ -434,8 +434,8 @@ void pcps_acquisition::send_negative_acquisition()
                << ", sample_stamp " << d_sample_counter
                << ", test statistics value " << d_test_statistics
                << ", test statistics threshold " << d_threshold
-               << ", code phase " << d_gnss_synchro->Acq_delay_samples
-               << ", doppler " << d_gnss_synchro->Acq_doppler_hz
+               << ", code phase " << d_Acq_delay_samples_tmp
+               << ", doppler " << d_Acq_doppler_hz_tmp
                << ", magnitude " << d_mag
                << ", input signal power " << d_input_power;
     d_positive_acq = 0;
@@ -487,12 +487,12 @@ void pcps_acquisition::dump_results(int32_t effective_fft_size)
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            auto aux = static_cast<float>(d_gnss_synchro->Acq_doppler_hz);
+            auto aux = static_cast<float>(d_Acq_doppler_hz_tmp);
             matvar = Mat_VarCreate("acq_doppler_hz", MAT_C_SINGLE, MAT_T_SINGLE, 1, dims.data(), &aux, 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
 
-            aux = static_cast<float>(d_gnss_synchro->Acq_delay_samples);
+            aux = static_cast<float>(d_Acq_delay_samples_tmp);
             matvar = Mat_VarCreate("acq_delay_samples", MAT_C_SINGLE, MAT_T_SINGLE, 1, dims.data(), &aux, 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
