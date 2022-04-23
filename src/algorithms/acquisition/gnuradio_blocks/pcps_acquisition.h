@@ -283,6 +283,12 @@ private:
     bool d_step_repeat;
     bool d_use_CFAR_algorithm_flag;
     bool d_dump;
+    
+    // tmp value for reacq
+    double d_Acq_delay_samples_tmp;
+    double d_Acq_doppler_hz_tmp;
+    uint64_t d_Acq_samplestamp_samples_tmp;
+    uint32_t d_Acq_doppler_step_tmp;
 };
 
 
