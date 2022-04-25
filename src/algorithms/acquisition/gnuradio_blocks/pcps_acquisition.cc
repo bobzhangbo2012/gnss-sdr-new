@@ -261,6 +261,7 @@ void pcps_acquisition::init()
     d_gnss_synchro->Acq_delay_samples = 0.0;
     d_gnss_synchro->Acq_doppler_hz = 0.0;
     d_gnss_synchro->Acq_samplestamp_samples = 0ULL;
+    d_gnss_synchro->Acq_test_statistics = 0.0;
     d_Acq_delay_samples_tmp = 0.0;
     d_Acq_doppler_hz_tmp = 0.0;
     d_Acq_samplestamp_samples_tmp = 0;
@@ -358,12 +359,14 @@ void pcps_acquisition::send_positive_acquisition()
 				d_gnss_synchro->Acq_delay_samples = d_Acq_delay_samples_tmp;
 				d_gnss_synchro->Acq_doppler_hz = d_Acq_doppler_hz_tmp;
 				d_gnss_synchro->Acq_samplestamp_samples = d_Acq_samplestamp_samples_tmp;
+				d_gnss_synchro->Acq_test_statistics = d_test_statistics;
 			}
 		else
 			{
 				d_gnss_synchro->Acq_delay_samples = d_Acq_delay_samples_tmp;
 				d_gnss_synchro->Acq_doppler_hz = d_Acq_doppler_hz_tmp;
 				d_gnss_synchro->Acq_samplestamp_samples = d_Acq_samplestamp_samples_tmp;
+				d_gnss_synchro->Acq_test_statistics = d_test_statistics;
 			}
 	}
 	else
@@ -374,6 +377,7 @@ void pcps_acquisition::send_positive_acquisition()
 				d_gnss_synchro->Acq_doppler_hz = d_Acq_doppler_hz_tmp;
 				d_gnss_synchro->Acq_samplestamp_samples = d_Acq_samplestamp_samples_tmp;
 				d_gnss_synchro->Acq_doppler_step = d_Acq_doppler_step_tmp;
+				d_gnss_synchro->Acq_test_statistics = d_test_statistics;
 			}
 		else
 			{
@@ -381,6 +385,7 @@ void pcps_acquisition::send_positive_acquisition()
 				d_gnss_synchro->Acq_doppler_hz = d_Acq_doppler_hz_tmp;
 				d_gnss_synchro->Acq_samplestamp_samples = d_Acq_samplestamp_samples_tmp;
 				d_gnss_synchro->Acq_doppler_step = d_Acq_doppler_step_tmp;
+				d_gnss_synchro->Acq_test_statistics = d_test_statistics;
 			}
 	}
 	
@@ -717,7 +722,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
                             volk_32f_x2_add_32f(d_magnitude_grid[doppler_index].data(), d_magnitude_grid[doppler_index].data(), d_tmp_buffer.data(), effective_fft_size);
                         }
                     // Record results to file if required
-                    if (d_dump and d_channel == d_dump_channel)
+                    if (d_dump)
                         {
                             memcpy(d_grid.colptr(doppler_index), d_magnitude_grid[doppler_index].data(), sizeof(float) * effective_fft_size);
                         }
@@ -775,7 +780,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
                             volk_32f_x2_add_32f(d_magnitude_grid[doppler_index].data(), d_magnitude_grid[doppler_index].data(), d_tmp_buffer.data(), effective_fft_size);
                         }
                     // Record results to file if required
-                    if (d_dump and d_channel == d_dump_channel)
+                    if (d_dump)
                         {
                             memcpy(d_narrow_grid.colptr(doppler_index), d_magnitude_grid[doppler_index].data(), sizeof(float) * effective_fft_size);
                         }
@@ -907,7 +912,7 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
     if ((d_num_noncoherent_integrations_counter == d_acq_parameters.max_dwells) or (d_positive_acq == 1) or (d_acq_parameters.bit_transition_flag))
         {
             // Record results to file if required
-            if (d_dump and d_channel == d_dump_channel)
+            if (d_dump and (d_positive_acq == 1))
                 {
                     pcps_acquisition::dump_results(effective_fft_size);
                 }

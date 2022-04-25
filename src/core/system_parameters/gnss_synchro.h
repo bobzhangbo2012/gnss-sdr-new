@@ -81,8 +81,11 @@ public:
     bool Flag_PLL_180_deg_phase_locked{};  //!< Set by Telemetry Decoder processing block
      
     // Indicators
-    double EVM{};					//!< Set by Tracking processing block
-    double SCB{};					//!< Set by Tracking processing block
+    double EVM{};							//!< Set by Tracking processing block
+    double SCB{};							//!< Set by Tracking processing block
+    double Acq_test_statistics{};        	//!< Set by Acquisition processing block
+    double Carr_phase_error_hz{};			//!< Set by Tracking processing block
+    double Code_error_chips{};				//!< Set by Tracking processing block
     
     /// Copy constructor
     Gnss_Synchro(const Gnss_Synchro& other) noexcept
@@ -126,6 +129,9 @@ public:
                 this->Flag_PLL_180_deg_phase_locked = rhs.Flag_PLL_180_deg_phase_locked;
                 this->EVM = rhs.EVM;
                 this->SCB = rhs.SCB;
+                this->Acq_test_statistics = rhs.Acq_test_statistics;
+                this->Carr_phase_error_hz = rhs.Carr_phase_error_hz;
+                this->Code_error_chips = rhs.Code_error_chips;
             }
         return *this;
     };
@@ -171,6 +177,9 @@ public:
                 this->Flag_PLL_180_deg_phase_locked = other.Flag_PLL_180_deg_phase_locked;
                 this->EVM = other.EVM;
                 this->SCB = other.SCB;
+                this->Acq_test_statistics = other.Acq_test_statistics;
+                this->Carr_phase_error_hz = other.Carr_phase_error_hz;
+                this->Code_error_chips = other.Code_error_chips;
             }
         return *this;
     };
@@ -221,6 +230,9 @@ public:
         // Indicators
         ar& BOOST_SERIALIZATION_NVP(EVM);
         ar& BOOST_SERIALIZATION_NVP(SCB);
+        ar& BOOST_SERIALIZATION_NVP(Acq_test_statistics);
+        ar& BOOST_SERIALIZATION_NVP(Carr_phase_error_hz);
+        ar& BOOST_SERIALIZATION_NVP(Code_error_chips);
     }
 };
 

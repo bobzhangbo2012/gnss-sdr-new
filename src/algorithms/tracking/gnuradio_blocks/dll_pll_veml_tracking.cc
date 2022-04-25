@@ -532,8 +532,8 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
 				d_Very_Late = nullptr;
 				for(int i=0; i<=d_trk_parameters.medll_taps; i++)
 				{
-					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = -static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
-					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = +static_cast<float>(i) * d_trk_parameters.early_late_space_chips / d_trk_parameters.medll_el_taps * static_cast<float>(d_code_samples_per_chip);
+					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = -static_cast<float>(i) * d_trk_parameters.early_late_space_chips / static_cast<float>(d_trk_parameters.medll_el_taps) * static_cast<float>(d_code_samples_per_chip);
+					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = +static_cast<float>(i) * d_trk_parameters.early_late_space_chips / static_cast<float>(d_trk_parameters.medll_el_taps) * static_cast<float>(d_code_samples_per_chip);
 				}
 				d_prompt_data_shift = &d_local_code_shift_chips[d_trk_parameters.medll_taps];
 			}
@@ -2135,6 +2135,8 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.Flag_valid_symbol_output = true;
                         current_synchro_data.EVM = d_EVM;
                         current_synchro_data.SCB = d_SCB;
+                        current_synchro_data.Carr_phase_error_hz = d_carr_phase_error_hz;
+                        current_synchro_data.Code_error_chips = d_code_error_chips;
                         d_P_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
@@ -2189,6 +2191,8 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 current_synchro_data.Flag_valid_symbol_output = true;
                                 current_synchro_data.EVM = d_EVM;
                                 current_synchro_data.SCB = d_SCB;
+                                current_synchro_data.Carr_phase_error_hz = d_carr_phase_error_hz;
+								current_synchro_data.Code_error_chips = d_code_error_chips;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
                             }
 
