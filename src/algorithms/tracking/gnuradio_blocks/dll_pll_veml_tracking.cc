@@ -2137,6 +2137,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.SCB = d_SCB;
                         current_synchro_data.Carr_phase_error_hz = d_carr_phase_error_hz;
                         current_synchro_data.Code_error_chips = d_code_error_chips;
+                        current_synchro_data.Carrier_lock_test = d_carrier_lock_test;
                         d_P_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
@@ -2193,6 +2194,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 current_synchro_data.SCB = d_SCB;
                                 current_synchro_data.Carr_phase_error_hz = d_carr_phase_error_hz;
 								current_synchro_data.Code_error_chips = d_code_error_chips;
+								current_synchro_data.Carrier_lock_test = d_carrier_lock_test;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
                             }
 

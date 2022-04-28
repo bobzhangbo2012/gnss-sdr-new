@@ -86,6 +86,7 @@ public:
     double Acq_test_statistics{};        	//!< Set by Acquisition processing block
     double Carr_phase_error_hz{};			//!< Set by Tracking processing block
     double Code_error_chips{};				//!< Set by Tracking processing block
+    double Carrier_lock_test{};				//!< Set by Tracking processing block
     
     /// Copy constructor
     Gnss_Synchro(const Gnss_Synchro& other) noexcept
@@ -132,6 +133,7 @@ public:
                 this->Acq_test_statistics = rhs.Acq_test_statistics;
                 this->Carr_phase_error_hz = rhs.Carr_phase_error_hz;
                 this->Code_error_chips = rhs.Code_error_chips;
+                this->Carrier_lock_test = rhs.Carrier_lock_test;
             }
         return *this;
     };
@@ -180,6 +182,7 @@ public:
                 this->Acq_test_statistics = other.Acq_test_statistics;
                 this->Carr_phase_error_hz = other.Carr_phase_error_hz;
                 this->Code_error_chips = other.Code_error_chips;
+                this->Carrier_lock_test = other.Carrier_lock_test;
             }
         return *this;
     };
@@ -233,6 +236,7 @@ public:
         ar& BOOST_SERIALIZATION_NVP(Acq_test_statistics);
         ar& BOOST_SERIALIZATION_NVP(Carr_phase_error_hz);
         ar& BOOST_SERIALIZATION_NVP(Code_error_chips);
+        ar& BOOST_SERIALIZATION_NVP(Carrier_lock_test);
     }
 };
 

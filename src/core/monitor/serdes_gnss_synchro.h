@@ -120,6 +120,7 @@ public:
                 obs->set_acq_test_statistics(gs.Acq_test_statistics);
                 obs->set_carr_phase_error_hz(gs.Carr_phase_error_hz);
                 obs->set_code_error_chips(gs.Code_error_chips);
+                obs->set_carrier_lock_test(gs.Carrier_lock_test);
             }
         observables.SerializeToString(&data);
         return data;
@@ -171,6 +172,7 @@ public:
                 gs.Acq_test_statistics = gs_read.acq_test_statistics();
                 gs.Carr_phase_error_hz = gs_read.carr_phase_error_hz();
                 gs.Code_error_chips = gs_read.code_error_chips();
+                gs.Carrier_lock_test = gs_read.carrier_lock_test();
 
                 vgs.push_back(gs);
             }
