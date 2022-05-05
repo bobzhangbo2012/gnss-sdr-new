@@ -156,6 +156,8 @@ private:
     gr_complex d_L_accu;
     gr_complex d_VL_accu;
     gr_complex d_P_data_accu;
+    gr_complex d_E_data_accu;
+    gr_complex d_L_data_accu;
 
     std::string d_secondary_code_string;
     std::string d_data_secondary_code_string;

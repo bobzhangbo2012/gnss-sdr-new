@@ -87,6 +87,10 @@ public:
     double Carr_phase_error_hz{};			//!< Set by Tracking processing block
     double Code_error_chips{};				//!< Set by Tracking processing block
     double Carrier_lock_test{};				//!< Set by Tracking processing block
+    double Early_I{};						//!< Set by Tracking processing block
+    double Early_Q{};						//!< Set by Tracking processing block
+    double Late_I{};						//!< Set by Tracking processing block
+    double Late_Q{};						//!< Set by Tracking processing block
     
     /// Copy constructor
     Gnss_Synchro(const Gnss_Synchro& other) noexcept
@@ -134,6 +138,10 @@ public:
                 this->Carr_phase_error_hz = rhs.Carr_phase_error_hz;
                 this->Code_error_chips = rhs.Code_error_chips;
                 this->Carrier_lock_test = rhs.Carrier_lock_test;
+                this->Early_I = rhs.Early_I;
+				this->Early_Q = rhs.Early_Q;
+				this->Late_I = rhs.Late_I;
+				this->Late_Q = rhs.Late_Q;
             }
         return *this;
     };
@@ -183,6 +191,10 @@ public:
                 this->Carr_phase_error_hz = other.Carr_phase_error_hz;
                 this->Code_error_chips = other.Code_error_chips;
                 this->Carrier_lock_test = other.Carrier_lock_test;
+                this->Early_I = other.Early_I;
+                this->Early_Q = other.Early_Q;
+                this->Late_I = other.Late_I;
+                this->Late_Q = other.Late_Q;
             }
         return *this;
     };
@@ -237,6 +249,10 @@ public:
         ar& BOOST_SERIALIZATION_NVP(Carr_phase_error_hz);
         ar& BOOST_SERIALIZATION_NVP(Code_error_chips);
         ar& BOOST_SERIALIZATION_NVP(Carrier_lock_test);
+        ar& BOOST_SERIALIZATION_NVP(Early_I);
+        ar& BOOST_SERIALIZATION_NVP(Early_Q);
+        ar& BOOST_SERIALIZATION_NVP(Late_I);
+        ar& BOOST_SERIALIZATION_NVP(Late_Q);
     }
 };
 

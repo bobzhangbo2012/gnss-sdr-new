@@ -1432,10 +1432,14 @@ void dll_pll_veml_tracking::save_correlation_results()
                             if (d_data_secondary_code_string[d_current_data_symbol] == '0')
                                 {
                                     d_P_data_accu += d_Prompt_Data[0];
+                                    d_E_data_accu += *d_Early;
+                                    d_L_data_accu += *d_Late;
                                 }
                             else
                                 {
                                     d_P_data_accu -= d_Prompt_Data[0];
+                                    d_E_data_accu -= *d_Early;
+									d_L_data_accu -= *d_Late;
                                 }
                         }
                     else
@@ -1443,10 +1447,14 @@ void dll_pll_veml_tracking::save_correlation_results()
                             if (d_data_secondary_code_string[d_current_data_symbol] == '0')
                                 {
                                     d_P_data_accu += *d_Prompt;
+                                    d_E_data_accu += *d_Early;
+									d_L_data_accu += *d_Late;
                                 }
                             else
                                 {
                                     d_P_data_accu -= *d_Prompt;
+                                    d_E_data_accu -= *d_Early;
+                                    d_L_data_accu -= *d_Late;
                                 }
                         }
 
@@ -1459,10 +1467,14 @@ void dll_pll_veml_tracking::save_correlation_results()
                     if (d_trk_parameters.track_pilot)
                         {
                             d_P_data_accu += d_Prompt_Data[0];
+                            d_E_data_accu += *d_Early;
+							d_L_data_accu += *d_Late;
                         }
                     else
                         {
                             d_P_data_accu += *d_Prompt;
+                            d_E_data_accu += *d_Early;
+							d_L_data_accu += *d_Late;
                             // std::cout << "s[" << d_current_data_symbol << "]=" << (int)((*d_Prompt).real() > 0) << '\n';
                         }
                     d_current_data_symbol++;
@@ -1474,10 +1486,14 @@ void dll_pll_veml_tracking::save_correlation_results()
             if (d_trk_parameters.track_pilot)
                 {
                     d_P_data_accu = d_Prompt_Data[0];
+                    d_E_data_accu = *d_Early;
+					d_L_data_accu = *d_Late;
                 }
             else
                 {
                     d_P_data_accu = *d_Prompt;
+                    d_E_data_accu = *d_Early;
+					d_L_data_accu = *d_Late;
                 }
         }
 
@@ -2043,6 +2059,8 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                 d_E_accu = gr_complex(0.0, 0.0);
                                 d_P_accu = gr_complex(0.0, 0.0);
                                 d_P_data_accu = gr_complex(0.0, 0.0);
+                                d_E_data_accu = gr_complex(0.0, 0.0);
+                                d_L_data_accu = gr_complex(0.0, 0.0);
                                 d_L_accu = gr_complex(0.0, 0.0);
                                 d_VL_accu = gr_complex(0.0, 0.0);
                                 d_Prompt_circular_buffer.clear();
@@ -2121,11 +2139,19 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                             {
                                 current_synchro_data.Prompt_I = static_cast<double>(d_P_data_accu.imag());
                                 current_synchro_data.Prompt_Q = static_cast<double>(d_P_data_accu.real());
+                                current_synchro_data.Early_I = static_cast<double>(d_E_data_accu.imag());
+								current_synchro_data.Early_Q = static_cast<double>(d_E_data_accu.real());
+								current_synchro_data.Late_I = static_cast<double>(d_L_data_accu.imag());
+								current_synchro_data.Late_Q = static_cast<double>(d_L_data_accu.real());
                             }
                         else
                             {
                                 current_synchro_data.Prompt_I = static_cast<double>(d_P_data_accu.real());
                                 current_synchro_data.Prompt_Q = static_cast<double>(d_P_data_accu.imag());
+                                current_synchro_data.Early_I = static_cast<double>(d_E_data_accu.real());
+								current_synchro_data.Early_Q = static_cast<double>(d_E_data_accu.imag());
+								current_synchro_data.Late_I = static_cast<double>(d_L_data_accu.real());
+								current_synchro_data.Late_Q = static_cast<double>(d_L_data_accu.imag());
                             }
                         current_synchro_data.Code_phase_samples = d_rem_code_phase_samples;
                         current_synchro_data.Carrier_phase_rads = d_acc_carrier_phase_rad;
@@ -2139,6 +2165,8 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         current_synchro_data.Code_error_chips = d_code_error_chips;
                         current_synchro_data.Carrier_lock_test = d_carrier_lock_test;
                         d_P_data_accu = gr_complex(0.0, 0.0);
+                        d_E_data_accu = gr_complex(0.0, 0.0);
+                        d_L_data_accu = gr_complex(0.0, 0.0);
                     }
                 d_extend_correlation_symbols_count++;
                 if (d_extend_correlation_symbols_count == (d_trk_parameters.extend_correlation_symbols - 1))
@@ -2178,11 +2206,19 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                                     {
                                         current_synchro_data.Prompt_I = static_cast<double>(d_P_data_accu.imag());
                                         current_synchro_data.Prompt_Q = static_cast<double>(d_P_data_accu.real());
+                                        current_synchro_data.Early_I = static_cast<double>(d_E_data_accu.imag());
+										current_synchro_data.Early_Q = static_cast<double>(d_E_data_accu.real());
+										current_synchro_data.Late_I = static_cast<double>(d_L_data_accu.imag());
+										current_synchro_data.Late_Q = static_cast<double>(d_L_data_accu.real());
                                     }
                                 else
                                     {
                                         current_synchro_data.Prompt_I = static_cast<double>(d_P_data_accu.real());
                                         current_synchro_data.Prompt_Q = static_cast<double>(d_P_data_accu.imag());
+                                        current_synchro_data.Early_I = static_cast<double>(d_E_data_accu.real());
+										current_synchro_data.Early_Q = static_cast<double>(d_E_data_accu.imag());
+										current_synchro_data.Late_I = static_cast<double>(d_L_data_accu.real());
+										current_synchro_data.Late_Q = static_cast<double>(d_L_data_accu.imag());
                                     }
                                 current_synchro_data.Code_phase_samples = d_rem_code_phase_samples;
                                 current_synchro_data.Carrier_phase_rads = d_acc_carrier_phase_rad;
@@ -2196,6 +2232,8 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
 								current_synchro_data.Code_error_chips = d_code_error_chips;
 								current_synchro_data.Carrier_lock_test = d_carrier_lock_test;
                                 d_P_data_accu = gr_complex(0.0, 0.0);
+                                d_E_data_accu = gr_complex(0.0, 0.0);
+                                d_L_data_accu = gr_complex(0.0, 0.0);
                             }
 
                         // reset extended correlator

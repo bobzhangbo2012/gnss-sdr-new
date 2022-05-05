@@ -121,6 +121,10 @@ public:
                 obs->set_carr_phase_error_hz(gs.Carr_phase_error_hz);
                 obs->set_code_error_chips(gs.Code_error_chips);
                 obs->set_carrier_lock_test(gs.Carrier_lock_test);
+                obs->set_early_i(gs.Early_I);
+                obs->set_early_q(gs.Early_Q);
+                obs->set_late_i(gs.Late_I);
+                obs->set_late_q(gs.Late_Q);
             }
         observables.SerializeToString(&data);
         return data;
@@ -173,6 +177,10 @@ public:
                 gs.Carr_phase_error_hz = gs_read.carr_phase_error_hz();
                 gs.Code_error_chips = gs_read.code_error_chips();
                 gs.Carrier_lock_test = gs_read.carrier_lock_test();
+                gs.Early_I = gs_read.early_i();
+                gs.Early_Q = gs_read.early_q();
+                gs.Late_I = gs_read.late_i();
+                gs.Late_Q = gs_read.late_q();
 
                 vgs.push_back(gs);
             }

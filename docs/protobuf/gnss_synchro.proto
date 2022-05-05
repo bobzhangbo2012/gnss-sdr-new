@@ -44,6 +44,10 @@ message GnssSynchro {
    double carr_phase_error_hz = 30;
    double code_error_chips = 31;
    double carrier_lock_test = 32;
+   double early_i = 33;
+   double early_q = 34;
+   double late_i = 35;
+   double late_q = 36;
 }
 
 /* Observables represents a collection of GnssSynchro annotations */
