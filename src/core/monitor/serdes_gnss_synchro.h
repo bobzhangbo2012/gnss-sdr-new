@@ -125,6 +125,7 @@ public:
                 obs->set_early_q(gs.Early_Q);
                 obs->set_late_i(gs.Late_I);
                 obs->set_late_q(gs.Late_Q);
+                obs->set_scb_r(gs.SCB_r);
             }
         observables.SerializeToString(&data);
         return data;
@@ -181,6 +182,7 @@ public:
                 gs.Early_Q = gs_read.early_q();
                 gs.Late_I = gs_read.late_i();
                 gs.Late_Q = gs_read.late_q();
+                gs.SCB_r = gs_read.scb_r();
 
                 vgs.push_back(gs);
             }

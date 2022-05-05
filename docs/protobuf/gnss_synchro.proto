@@ -48,6 +48,7 @@ message GnssSynchro {
    double early_q = 34;
    double late_i = 35;
    double late_q = 36;
+   double scb_r = 37;
 }
 
 /* Observables represents a collection of GnssSynchro annotations */

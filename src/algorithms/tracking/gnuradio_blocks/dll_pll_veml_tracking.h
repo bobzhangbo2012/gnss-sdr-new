@@ -210,6 +210,7 @@ private:
     // Indicators
     double d_EVM;
     double d_SCB;
+    double d_SCB_r;
 };
 
 

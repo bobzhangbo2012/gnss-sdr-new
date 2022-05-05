@@ -91,6 +91,7 @@ public:
     double Early_Q{};						//!< Set by Tracking processing block
     double Late_I{};						//!< Set by Tracking processing block
     double Late_Q{};						//!< Set by Tracking processing block
+    double SCB_r{};							//!< Set by Tracking processing block
     
     /// Copy constructor
     Gnss_Synchro(const Gnss_Synchro& other) noexcept
@@ -142,6 +143,7 @@ public:
 				this->Early_Q = rhs.Early_Q;
 				this->Late_I = rhs.Late_I;
 				this->Late_Q = rhs.Late_Q;
+				this->SCB_r = rhs.SCB_r;
             }
         return *this;
     };
@@ -195,6 +197,7 @@ public:
                 this->Early_Q = other.Early_Q;
                 this->Late_I = other.Late_I;
                 this->Late_Q = other.Late_Q;
+                this->SCB_r = other.SCB_r;
             }
         return *this;
     };
@@ -253,6 +256,7 @@ public:
         ar& BOOST_SERIALIZATION_NVP(Early_Q);
         ar& BOOST_SERIALIZATION_NVP(Late_I);
         ar& BOOST_SERIALIZATION_NVP(Late_Q);
+        ar& BOOST_SERIALIZATION_NVP(SCB_r);
     }
 };
 
