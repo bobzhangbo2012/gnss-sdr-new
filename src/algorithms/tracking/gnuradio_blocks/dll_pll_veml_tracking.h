@@ -210,7 +210,9 @@ private:
     // Indicators
     double d_EVM;
     double d_SCB;
-    double d_SCB_r;
+    double d_SCB_r; // relative, =E / F
+    // E = sum((Xi - Xmean)*(Yi - Ymean)) 
+    // F = sqrt(sum((Xi - Xmean)*(Xi - Xmean))) * sqrt(sum((Yi - Ymean)*(Yi - Ymean))) 
 };
 
 

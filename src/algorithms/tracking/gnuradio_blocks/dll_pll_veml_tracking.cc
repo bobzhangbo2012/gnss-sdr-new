@@ -1139,7 +1139,8 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
 			D += tmp_y[i];
 		}
 		float a, b, temp = 0;
-		if( temp = (n*A - B*B) )
+		temp = (n*A - B*B);
+		if(temp)
 		{
 			a = (n*C - B*D) / temp;
 			b = (A*D - B*C) / temp;
@@ -1581,6 +1582,12 @@ void dll_pll_veml_tracking::log_data()
             tmp_P = std::abs<float>(d_P_accu);
             tmp_L = std::abs<float>(d_L_accu);
             
+            float tmp_correlator_outs[d_n_correlator_taps];
+            for(int i=0; i<d_n_correlator_taps; i++)
+			{
+            	tmp_correlator_outs[i] = std::abs<float>(d_correlator_outs_accu[i]);
+			}
+            
             try
                 {
                     // Dump correlators output
@@ -1637,6 +1644,11 @@ void dll_pll_veml_tracking::log_data()
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
                     tmp_float = static_cast<float>(d_acq_carrier_doppler_hz);
                     d_dump_file.write(reinterpret_cast<char *>(&tmp_float), sizeof(float));
+                    // correlator_outs
+                    for(int i=0; i<d_n_correlator_taps; i++)
+                    {
+                    	d_dump_file.write(reinterpret_cast<char *>(&tmp_correlator_outs[i]), sizeof(float));
+                    }
                     // indicators
                     // EVM
                     tmp_float = static_cast<float>(d_EVM);
@@ -1660,7 +1672,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     // READ DUMP FILE
     std::ifstream::pos_type size;
     const int32_t number_of_double_vars = 1;
-    const int32_t number_of_float_vars = 24;
+    const int32_t number_of_float_vars = 24 + d_n_correlator_taps;
     const int32_t epoch_size_bytes = sizeof(uint64_t) + sizeof(double) * number_of_double_vars +
                                      sizeof(float) * number_of_float_vars + sizeof(uint32_t);
     std::ifstream dump_file;
@@ -1716,6 +1728,13 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     auto PRN = std::vector<uint32_t>(num_epoch);
     auto acq_code_phase_samples = std::vector<float>(num_epoch);
     auto acq_carrier_doppler_hz = std::vector<float>(num_epoch);
+    
+    std::vector<std::vector<float> > abs_correlator_outs(d_n_correlator_taps);
+	for(int i=0; i<d_n_correlator_taps; i++)
+	{
+		abs_correlator_outs[i].resize(num_epoch);
+	}
+    
     auto EVM = std::vector<float>(num_epoch);
     auto SCB = std::vector<float>(num_epoch);
     auto SCB_r = std::vector<float>(num_epoch);
@@ -1749,6 +1768,12 @@ int32_t dll_pll_veml_tracking::save_matfile() const
                             dump_file.read(reinterpret_cast<char *>(&PRN[i]), sizeof(uint32_t));
                             dump_file.read(reinterpret_cast<char *>(&acq_code_phase_samples[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&acq_carrier_doppler_hz[i]), sizeof(float));
+                            
+                            for(int j=0; j<d_n_correlator_taps; j++)
+                            {
+                            	dump_file.read(reinterpret_cast<char *>(&abs_correlator_outs[j][i]), sizeof(float));
+                            }
+                            
                             dump_file.read(reinterpret_cast<char *>(&EVM[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&SCB[i]), sizeof(float));
                             dump_file.read(reinterpret_cast<char *>(&SCB_r[i]), sizeof(float));
@@ -1867,6 +1892,16 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             matvar = Mat_VarCreate("acq_carrier_doppler_hz", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), acq_carrier_doppler_hz.data(), 0);
             Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
             Mat_VarFree(matvar);
+            
+            // correlator_outs
+            char tmp_name[25];
+            for(int i=0; i<d_n_correlator_taps; i++)
+            {
+            	sprintf(tmp_name,"abs_correlator_outs_%d",i);
+            	matvar = Mat_VarCreate(tmp_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), abs_correlator_outs[i].data(), 0);
+				Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+				Mat_VarFree(matvar);
+            }
 
             // indicators
             // EVM
