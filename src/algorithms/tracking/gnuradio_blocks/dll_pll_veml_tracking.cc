@@ -45,6 +45,7 @@
 #include "gps_sdr_signal_replica.h"
 #include "lock_detectors.h"
 #include "tracking_discriminators.h"
+#include <armadillo>
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>   // for io_signature
 #include <gnuradio/thread/thread.h>  // for scoped_lock
@@ -1430,7 +1431,7 @@ void dll_pll_veml_tracking::save_correlation_results()
                         }
                     for(int i=0; i<d_n_correlator_taps; i++)
 					{
-						d_correlator_outs_accu[i] += d_correlator_outs[i];
+						d_correlator_outs_accu[i] -= d_correlator_outs[i];
 					}
                     d_E_accu -= *d_Early;
                     d_P_accu -= *d_Prompt;
@@ -1582,10 +1583,12 @@ void dll_pll_veml_tracking::log_data()
             tmp_P = std::abs<float>(d_P_accu);
             tmp_L = std::abs<float>(d_L_accu);
             
-            float tmp_correlator_outs[d_n_correlator_taps];
+            float tmp_correlator_outs_I[d_n_correlator_taps];
+            float tmp_correlator_outs_Q[d_n_correlator_taps];
             for(int i=0; i<d_n_correlator_taps; i++)
 			{
-            	tmp_correlator_outs[i] = std::abs<float>(d_correlator_outs_accu[i]);
+            	tmp_correlator_outs_I[i] = d_correlator_outs_accu[i].real();
+            	tmp_correlator_outs_Q[i] = d_correlator_outs_accu[i].imag();
 			}
             
             try
@@ -1652,7 +1655,8 @@ void dll_pll_veml_tracking::log_data()
                     // correlator_outs
                     for(int i=0; i<d_n_correlator_taps; i++)
                     {
-                    	d_dump_file.write(reinterpret_cast<char *>(&tmp_correlator_outs[i]), sizeof(float));
+                    	d_dump_file.write(reinterpret_cast<char *>(&tmp_correlator_outs_I[i]), sizeof(float));
+                    	d_dump_file.write(reinterpret_cast<char *>(&tmp_correlator_outs_Q[i]), sizeof(float));
                     }
                     // indicators
                     // EVM
@@ -1677,7 +1681,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     // READ DUMP FILE
     std::ifstream::pos_type size;
     const int32_t number_of_double_vars = 1;
-    const int32_t number_of_float_vars = 26 + d_n_correlator_taps;
+    const int32_t number_of_float_vars = 26 + 2 * d_n_correlator_taps;
     const int32_t epoch_size_bytes = sizeof(uint64_t) + sizeof(double) * number_of_double_vars +
                                      sizeof(float) * number_of_float_vars + sizeof(uint32_t);
     std::ifstream dump_file;
@@ -1735,12 +1739,10 @@ int32_t dll_pll_veml_tracking::save_matfile() const
     auto PRN = std::vector<uint32_t>(num_epoch);
     auto acq_code_phase_samples = std::vector<float>(num_epoch);
     auto acq_carrier_doppler_hz = std::vector<float>(num_epoch);
-    
-    std::vector<std::vector<float> > abs_correlator_outs(d_n_correlator_taps);
-	for(int i=0; i<d_n_correlator_taps; i++)
-	{
-		abs_correlator_outs[i].resize(num_epoch);
-	}
+
+    float tmp_correlator_outs;
+    arma::fmat mat_correlator_outs_I = arma::fmat(d_n_correlator_taps, num_epoch, arma::fill::zeros);
+	arma::fmat mat_correlator_outs_Q = arma::fmat(d_n_correlator_taps, num_epoch, arma::fill::zeros);
     
     auto EVM = std::vector<float>(num_epoch);
     auto SCB = std::vector<float>(num_epoch);
@@ -1780,7 +1782,10 @@ int32_t dll_pll_veml_tracking::save_matfile() const
                             
                             for(int j=0; j<d_n_correlator_taps; j++)
                             {
-                            	dump_file.read(reinterpret_cast<char *>(&abs_correlator_outs[j][i]), sizeof(float));
+                            	dump_file.read(reinterpret_cast<char *>(&tmp_correlator_outs), sizeof(float));
+                            	mat_correlator_outs_I(j,i) = tmp_correlator_outs;
+                            	dump_file.read(reinterpret_cast<char *>(&tmp_correlator_outs), sizeof(float));
+                            	mat_correlator_outs_Q(j,i) = tmp_correlator_outs;
                             }
                             
                             dump_file.read(reinterpret_cast<char *>(&EVM[i]), sizeof(float));
@@ -1795,7 +1800,7 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             std::cerr << "Problem reading dump file:" << e.what() << '\n';
             return 1;
         }
-
+    
     // WRITE MAT FILE
     mat_t *matfp;
     matvar_t *matvar;
@@ -1911,14 +1916,17 @@ int32_t dll_pll_veml_tracking::save_matfile() const
             Mat_VarFree(matvar);
             
             // correlator_outs
-            char tmp_name[25];
-            for(int i=0; i<d_n_correlator_taps; i++)
-            {
-            	sprintf(tmp_name,"abs_correlator_outs_%d",i);
-            	matvar = Mat_VarCreate(tmp_name, MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), abs_correlator_outs[i].data(), 0);
-				Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
-				Mat_VarFree(matvar);
-            }
+            dims[0] = static_cast<size_t>(d_n_correlator_taps);
+            
+            matvar = Mat_VarCreate("correlator_outs_I", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), mat_correlator_outs_I.memptr(), 0);
+			Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+			Mat_VarFree(matvar);
+			
+			matvar = Mat_VarCreate("correlator_outs_Q", MAT_C_SINGLE, MAT_T_SINGLE, 2, dims.data(), mat_correlator_outs_Q.memptr(), 0);
+			Mat_VarWrite(matfp, matvar, MAT_COMPRESSION_ZLIB);  // or MAT_COMPRESSION_NONE
+			Mat_VarFree(matvar);
+			
+			dims[0] = static_cast<size_t>(1);
 
             // indicators
             // EVM
