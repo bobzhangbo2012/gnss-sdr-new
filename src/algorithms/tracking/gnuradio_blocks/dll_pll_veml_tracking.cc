@@ -184,7 +184,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_secondary = false;
                     d_trk_parameters.track_pilot = false;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+                    {
+                    	d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+                    }
+                    else
+                    {
+                    	d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    }
                     d_trk_parameters.y_intercept = 1.0;
                     // symbol integration: 20 trk symbols (20 ms) = 1 tlm bit
                     // set the bit transition pattern in secondary code to obtain bit synchronization
@@ -206,8 +213,15 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_secondary = false;
                     d_trk_parameters.track_pilot = false;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
-                    d_trk_parameters.y_intercept = 1.0;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
+					d_trk_parameters.y_intercept = 1.0;
                 }
             else if (d_signal_type == "L5")
                 {
@@ -221,7 +235,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_code_length_chips = static_cast<int32_t>(GPS_L5I_CODE_LENGTH_CHIPS);
                     d_secondary = true;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     if (d_trk_parameters.track_pilot)
                         {
@@ -299,7 +320,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_code_length_chips = static_cast<int32_t>(GALILEO_E5A_CODE_LENGTH_CHIPS);
                     d_secondary = true;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     if (d_trk_parameters.track_pilot)
                         {
@@ -330,7 +358,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_code_length_chips = static_cast<int32_t>(GALILEO_E5B_CODE_LENGTH_CHIPS);
                     d_secondary = true;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     if (d_trk_parameters.track_pilot)
                         {
@@ -360,7 +395,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_code_samples_per_chip = 1;
                     d_code_length_chips = static_cast<int32_t>(GALILEO_E6_B_CODE_LENGTH_CHIPS);
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     if (d_trk_parameters.track_pilot)
                         {
@@ -403,7 +445,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_secondary = true;
                     d_trk_parameters.track_pilot = false;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     // synchronize and remove data secondary code
                     d_secondary_code_length = static_cast<uint32_t>(BEIDOU_B1I_SECONDARY_CODE_LENGTH);
@@ -424,7 +473,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
                     d_secondary = false;
                     d_trk_parameters.track_pilot = false;
                     d_trk_parameters.slope = 1.0;
-                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    if(d_trk_parameters.medll_open)
+					{
+						d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+					}
+					else
+					{
+						d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+					}
                     d_trk_parameters.y_intercept = 1.0;
                     d_secondary_code_length = static_cast<uint32_t>(BEIDOU_B3I_SECONDARY_CODE_LENGTH);
                     d_secondary_code_string = BEIDOU_B3I_SECONDARY_CODE_STR;
@@ -459,9 +515,27 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
     
     if(d_veml && d_trk_parameters.medll_open)
     {
-    	LOG(WARNING) << "veml open, so medll close\n";
-		std::cout << "veml open, so medll close\n";
-		d_trk_parameters.medll_open = false;
+    	d_trk_parameters.medll_open = false;
+    	std::cout << "Channel " << d_channel << " veml open, so medll close\n";
+    	LOG(INFO) << "Channel " << d_channel << " veml open, so medll close";
+    }
+    
+    if(d_trk_parameters.medll_open && d_trk_parameters.medll_asym)
+    {
+    	if(d_trk_parameters.medll_el_taps > d_trk_parameters.medll_half_taps || d_trk_parameters.medll_el_narrow_taps > d_trk_parameters.medll_half_taps)
+		{
+			d_trk_parameters.medll_asym = false;
+			std::cout << "Channel " << d_channel << " asym turn false ("
+					  << " half_taps:" << d_trk_parameters.medll_half_taps
+					  << " el_taps:" << d_trk_parameters.medll_el_taps
+					  << " el_narrow_taps:" << d_trk_parameters.medll_el_narrow_taps
+					  << " )\n";
+			LOG(INFO) << "Channel " << d_channel << " asym turn false ("
+					  << " half_taps:" << d_trk_parameters.medll_half_taps
+					  << " el_taps:" << d_trk_parameters.medll_el_taps
+					  << " el_narrow_taps:" << d_trk_parameters.medll_el_narrow_taps
+					  << " )";
+		}
     }
 
     // Initial code frequency basis of NCO
@@ -474,6 +548,7 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
     // Initialization of local code replica
     // Get space for a vector with the sinboc(1,1) replica sampled 2x/chip
     d_tracking_code.resize(2 * d_code_length_chips, 0.0);
+    
     // correlator outputs (scalar)
     if (d_veml)
         {
@@ -489,7 +564,14 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
 			}
 			else
 			{
-				d_n_correlator_taps = 4 * d_trk_parameters.medll_taps + 3;
+				if(d_trk_parameters.medll_asym)
+				{
+					d_n_correlator_taps = 3 * d_trk_parameters.medll_half_taps + 1;
+				}
+				else
+				{
+					d_n_correlator_taps = 4 * d_trk_parameters.medll_half_taps + 1;
+				}		
 			}
         }
 
@@ -528,23 +610,26 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
 			else
 			{
 				d_Very_Early = nullptr;
-				d_Early = &d_correlator_outs[d_trk_parameters.medll_taps];
-				d_Prompt = &d_correlator_outs[2 * d_trk_parameters.medll_taps + 1];
-				d_Late = &d_correlator_outs[3 * d_trk_parameters.medll_taps + 2];
+				d_Early = &d_correlator_outs[2 * d_trk_parameters.medll_half_taps - d_trk_parameters.medll_el_taps];
+				d_Prompt = &d_correlator_outs[2 * d_trk_parameters.medll_half_taps];
+				d_Late = &d_correlator_outs[2 * d_trk_parameters.medll_half_taps + d_trk_parameters.medll_el_taps];
 				d_Very_Late = nullptr;
-				d_local_code_shift_chips[2 * d_trk_parameters.medll_taps + 1] = 0.0;
-				for(int i=0; i<=d_trk_parameters.medll_taps; i++)
+				d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps] = 0.0;
+				for(int i=1; i<=d_trk_parameters.medll_half_taps; i++)
 				{
-					// E left
-					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = (-d_trk_parameters.early_late_space_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// E right
-					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = (-d_trk_parameters.early_late_space_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// L left
-					d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 - i] = (d_trk_parameters.early_late_space_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// L right
-					d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 + i] = (d_trk_parameters.early_late_space_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
+					// 0 left
+					d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps - i] = - static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					// 0 right
+					d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps + i] = static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					// -0.5 left
+					d_local_code_shift_chips[d_trk_parameters.medll_half_taps - i] = -0.5 - static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					if(!d_trk_parameters.medll_asym)
+					{
+						// 0.5 right
+						d_local_code_shift_chips[3 * d_trk_parameters.medll_half_taps + i] = 0.5 + static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					}
 				}
-				d_prompt_data_shift = &d_local_code_shift_chips[2 * d_trk_parameters.medll_taps + 1];
+				d_prompt_data_shift = &d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps];
 			}
         }
 
@@ -895,16 +980,19 @@ void dll_pll_veml_tracking::start_tracking()
 			}
 			else
 			{
-				for(int i=0; i<=d_trk_parameters.medll_taps; i++)
+				for(int i=1; i<=d_trk_parameters.medll_half_taps; i++)
 				{
-					// E left
-					d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = (-d_trk_parameters.early_late_space_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// E right
-					d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = (-d_trk_parameters.early_late_space_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// L left
-					d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 - i] = (d_trk_parameters.early_late_space_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-					// L right
-					d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 + i] = (d_trk_parameters.early_late_space_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
+					// 0 left
+					d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps - i] = - static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					// 0 right
+					d_local_code_shift_chips[2 * d_trk_parameters.medll_half_taps + i] = static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					// -0.5 left
+					d_local_code_shift_chips[d_trk_parameters.medll_half_taps - i] = -0.5 - static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					if(!d_trk_parameters.medll_asym)
+					{
+						// 0.5 right
+						d_local_code_shift_chips[3 * d_trk_parameters.medll_half_taps + i] = 0.5 + static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps)) * static_cast<float>(d_code_samples_per_chip);
+					}
 				}
 			}
         }
@@ -1066,10 +1154,14 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
         }
     if (d_carrier_lock_fail_counter > d_trk_parameters.max_carrier_lock_fail or d_code_lock_fail_counter > d_trk_parameters.max_code_lock_fail)
         {
-            std::cout << "Loss of lock in channel " << d_channel << "!\n";
-            LOG(INFO) << "Loss of lock in channel " << d_channel
-                      << " (carrier_lock_fail_counter:" << d_carrier_lock_fail_counter
-                      << " code_lock_fail_counter : " << d_code_lock_fail_counter << ")";
+            std::cout << "Loss of lock in channel " << d_channel <<" ("
+            		  << " carrier_lock_fail_counter:" << d_carrier_lock_fail_counter
+					  << " code_lock_fail_counter:" << d_code_lock_fail_counter
+            		  << " )\n";
+            LOG(INFO) << "Loss of lock in channel " << d_channel <<" ("
+            		  << " carrier_lock_fail_counter:" << d_carrier_lock_fail_counter
+					  << " code_lock_fail_counter:" << d_code_lock_fail_counter
+					  << " )";
             this->message_port_pub(pmt::mp("events"), pmt::from_long(3));  // 3 -> loss of lock
             d_carrier_lock_fail_counter = 0;
             d_code_lock_fail_counter = 0;
@@ -1105,25 +1197,33 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
 	d_EVM = sqrt(d_EVM);
 	
 	// SCB( Sline zero point)
-	if (d_trk_parameters.medll_open && d_trk_parameters.medll_taps>=1 && !d_veml)
+	if (d_trk_parameters.medll_open)
 	{
-		int n = d_trk_parameters.medll_taps * 2 + 1;
+		int n = d_trk_parameters.medll_half_taps + 1;
+		if(!d_trk_parameters.medll_asym)
+		{
+			n = n + d_trk_parameters.medll_half_taps;
+		}
 		gr_complex tmp_E;
 		gr_complex tmp_L;
 		double tmp_x[n];
 		double tmp_y[n];
-		for(int i=0; i<=d_trk_parameters.medll_taps; i++)
+		for(int i=0; i<=d_trk_parameters.medll_half_taps; i++)
 		{
 			//left
-			tmp_E = d_correlator_outs_accu[d_trk_parameters.medll_taps - i];
-			tmp_L = d_correlator_outs_accu[3 * d_trk_parameters.medll_taps + 2 - i];
-			tmp_x[d_trk_parameters.medll_taps - i] = -double(i) * d_trk_parameters.medll_space_chips;
-			tmp_y[d_trk_parameters.medll_taps - i] = dll_nc_e_minus_l_normalized(tmp_E, tmp_L, d_trk_parameters.spc, d_trk_parameters.slope, d_trk_parameters.y_intercept);
-			//right
-			tmp_E = d_correlator_outs_accu[d_trk_parameters.medll_taps + i];
-			tmp_L = d_correlator_outs_accu[3 * d_trk_parameters.medll_taps + 2 + i];
-			tmp_x[d_trk_parameters.medll_taps + i] = double(i) * d_trk_parameters.medll_space_chips;
-			tmp_y[d_trk_parameters.medll_taps + i] = dll_nc_e_minus_l_normalized(tmp_E, tmp_L, d_trk_parameters.spc, d_trk_parameters.slope, d_trk_parameters.y_intercept);
+			tmp_E = d_correlator_outs_accu[d_trk_parameters.medll_half_taps - i];
+			tmp_L = d_correlator_outs_accu[3 * d_trk_parameters.medll_half_taps - i];
+			tmp_x[d_trk_parameters.medll_half_taps - i] = - static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps));
+			tmp_y[d_trk_parameters.medll_half_taps - i] = dll_nc_e_minus_l_normalized(tmp_E, tmp_L, 0.5, d_trk_parameters.slope, d_trk_parameters.y_intercept);
+			
+			if(!d_trk_parameters.medll_asym)
+			{
+				//right
+				tmp_E = d_correlator_outs_accu[d_trk_parameters.medll_half_taps + i];
+				tmp_L = d_correlator_outs_accu[3 * d_trk_parameters.medll_half_taps + i];
+				tmp_x[d_trk_parameters.medll_half_taps + i] = static_cast<float>(i) * (0.5 / static_cast<float>(d_trk_parameters.medll_half_taps));
+				tmp_y[d_trk_parameters.medll_half_taps + i] = dll_nc_e_minus_l_normalized(tmp_E, tmp_L, 0.5, d_trk_parameters.slope, d_trk_parameters.y_intercept);
+			}
 		}
 		// The least square method fits a line
 		float A = 0.0;
@@ -2079,7 +2179,14 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                 d_E_accu = *d_Early;
                 d_P_accu = *d_Prompt;
                 d_L_accu = *d_Late;
-                d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                if(d_trk_parameters.medll_open)
+				{
+					d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_taps);
+				}
+				else
+				{
+					d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+				}
                 // if (std::string(d_trk_parameters.signal) == "E1")
                 //    {
                 //        d_trk_parameters.slope = -CalculateSlopeAbs(&SinBocCorrelationFunction<1, 1>, d_trk_parameters.spc);
@@ -2209,18 +2316,9 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
 												}
 												else
 												{
-													for(int i=0; i<=d_trk_parameters.medll_taps; i++)
-													{
-														// E left
-														d_local_code_shift_chips[d_trk_parameters.medll_taps - i] = (-d_trk_parameters.early_late_space_narrow_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-														// E right
-														d_local_code_shift_chips[d_trk_parameters.medll_taps + i] = (-d_trk_parameters.early_late_space_narrow_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-														// L left
-														d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 - i] = (d_trk_parameters.early_late_space_narrow_chips - static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-														// L right
-														d_local_code_shift_chips[3 * d_trk_parameters.medll_taps + 2 + i] = (d_trk_parameters.early_late_space_narrow_chips + static_cast<float>(i) * d_trk_parameters.medll_space_chips) * static_cast<float>(d_code_samples_per_chip);
-													}
-													d_trk_parameters.spc = d_trk_parameters.early_late_space_narrow_chips;
+													d_Early = &d_correlator_outs[2 * d_trk_parameters.medll_half_taps - d_trk_parameters.medll_el_narrow_taps];
+													d_Late = &d_correlator_outs[2 * d_trk_parameters.medll_half_taps + d_trk_parameters.medll_el_narrow_taps];
+													d_trk_parameters.spc = 0.5 / static_cast<float>(d_trk_parameters.medll_half_taps) * static_cast<float>(d_trk_parameters.medll_el_narrow_taps);
 												}
                                             }
                                     }
