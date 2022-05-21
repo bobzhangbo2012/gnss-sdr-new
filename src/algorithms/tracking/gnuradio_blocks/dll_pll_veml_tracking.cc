@@ -459,9 +459,9 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_)
     
     if(d_veml && d_trk_parameters.medll_open)
     {
-    	LOG(WARNING) << "veml open, so medll close\n";
-		std::cout << "veml open, so medll close\n";
-		d_trk_parameters.medll_open = false;
+    	d_trk_parameters.medll_open = false;
+    	std::cout << "Channel " << d_channel << " veml open, so medll close\n";
+    	LOG(INFO) << "Channel " << d_channel << " veml open, so medll close";
     }
 
     // Initial code frequency basis of NCO
