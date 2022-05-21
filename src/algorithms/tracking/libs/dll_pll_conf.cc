@@ -126,8 +126,6 @@ void Dll_Pll_Conf::SetFromConfiguration(const ConfigurationInterface *configurat
     
     // MEDLL
     medll_open = configuration->property(role + ".medll_open", medll_open);
-    medll_asym = configuration->property(role + ".medll_asym", medll_asym);
-    medll_half_taps = configuration->property(role + ".medll_half_taps", medll_half_taps);
-    medll_el_taps = configuration->property(role + ".medll_el_taps", medll_el_taps);
-    medll_el_narrow_taps = configuration->property(role + ".medll_el_narrow_taps", medll_el_narrow_taps);
+    medll_taps = configuration->property(role + ".medll_taps", medll_taps);
+    medll_space_chips = configuration->property(role + ".medll_space_chips", medll_space_chips);
 }
