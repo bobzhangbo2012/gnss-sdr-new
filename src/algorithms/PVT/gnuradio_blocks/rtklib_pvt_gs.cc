@@ -2111,7 +2111,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                     // old_time_debug = d_gnss_observables_map.cbegin()->second.RX_time * 1000.0;
                     uint32_t current_RX_time_ms = 0;
                     // #### solve PVT and store the corrected observable set
-                    if (d_internal_pvt_solver->get_PVT(d_gnss_observables_map, false))
+                    //if (d_internal_pvt_solver->get_PVT(d_gnss_observables_map, false))
                         {
                             const double Rx_clock_offset_s = d_internal_pvt_solver->get_time_offset_s();
 
