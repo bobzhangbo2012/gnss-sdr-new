@@ -2105,7 +2105,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
 
             // ############ 2 COMPUTE THE PVT ################################
             bool flag_pvt_valid = false;
-            if (d_gnss_observables_map.empty() == false)
+            //if (d_gnss_observables_map.empty() == false)
                 {
                     // LOG(INFO) << "diff raw obs time: " << d_gnss_observables_map.cbegin()->second.RX_time * 1000.0 - old_time_debug;
                     // old_time_debug = d_gnss_observables_map.cbegin()->second.RX_time * 1000.0;
@@ -2222,7 +2222,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                         }
 
 
-                    if (flag_pvt_valid == true)
+                    //if (flag_pvt_valid == true)
                         {
                             // experimental VTL tests
                             // send tracking command
@@ -2236,12 +2236,12 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                             initialize_and_apply_carrier_phase_offset();
 
                             const double Rx_clock_offset_s = d_user_pvt_solver->get_time_offset_s();
-                            if (d_enable_rx_clock_correction == true and fabs(Rx_clock_offset_s) > 0.000001)  // 1us !!
+                            //if (d_enable_rx_clock_correction == true and fabs(Rx_clock_offset_s) > 0.000001)  // 1us !!
                                 {
                                     LOG(INFO) << "Warning: Rx clock offset at interpolated RX time: " << Rx_clock_offset_s * 1000.0 << "[ms]"
                                               << " at RX time: " << static_cast<uint32_t>(d_rx_time * 1000.0) << " [ms]";
                                 }
-                            else
+                            //else
                                 {
                                     DLOG(INFO) << "Rx clock offset at interpolated RX time: " << Rx_clock_offset_s * 1000.0 << "[s]"
                                                << " at RX time: " << static_cast<uint32_t>(d_rx_time * 1000.0) << " [ms]";
