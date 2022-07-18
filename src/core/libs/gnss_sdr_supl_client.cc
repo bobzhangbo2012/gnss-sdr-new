@@ -414,6 +414,11 @@ bool Gnss_Sdr_Supl_Client::load_gal_ephemeris_xml(const std::string& file_name)
             gal_ephemeris_map.clear();
             xml >> boost::serialization::make_nvp("GNSS-SDR_gal_ephemeris_map", this->gal_ephemeris_map);
             LOG(INFO) << "Loaded Ephemeris map data with " << this->gal_ephemeris_map.size() << " satellites";
+            // Convert to full GPS week number
+            for (auto& gal_eph_iter : this->gal_ephemeris_map)
+                {
+                    gal_eph_iter.second.WN -= 1024;
+                }
         }
     catch (std::exception& e)
         {
@@ -834,7 +839,7 @@ bool Gnss_Sdr_Supl_Client::load_gal_almanac_xml(const std::string& file_name)
         }
     catch (std::exception& e)
         {
-            // Maybe the file is from https://www.gsc-europa.eu/product-almanacs ?
+            // Maybe the file is from https://www.gsc-europa.eu/gsc-products/almanac ?
             return this->read_gal_almanac_from_gsa(file_name);
         }
     LOG(INFO) << "Loaded Galileo almanac map data with " << this->gal_almanac_map.size() << " satellites";

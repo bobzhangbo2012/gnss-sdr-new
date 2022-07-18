@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
 #include <matio.h>
+#include <pmt/pmt.h>
 #include <algorithm>  // for std::min
 #include <array>
 #include <cmath>      // for round
@@ -111,7 +112,6 @@ hybrid_observables_gs::hybrid_observables_gs(const Obs_Conf &conf_)
     d_mapStringValues["B1"] = evBDS_B1;
     d_mapStringValues["B2"] = evBDS_B2;
     d_mapStringValues["B3"] = evBDS_B3;
-
 
     d_SourceTagTimestamps = std::vector<std::queue<GnssTime>>(d_nchannels_out);
 
@@ -225,6 +225,25 @@ void hybrid_observables_gs::msg_handler_pvt_to_observables(const pmt::pmt_t &msg
                         }
 
                     LOG(INFO) << "Corrected new RX Time offset: " << static_cast<int>(round(new_rx_clock_offset_s * 1000.0)) << "[ms]";
+                }
+            if (pmt::any_ref(msg).type().hash_code() == d_int_type_hash_code)
+                {
+                    const auto command_from_pvt = wht::any_cast<int>(pmt::any_ref(msg));
+                    switch (command_from_pvt)
+                        {
+                        case 1:  // reset TOW
+                            d_T_rx_TOW_ms = 0;
+                            d_last_rx_clock_round20ms_error = 0;
+                            d_T_rx_TOW_set = false;
+                            for (uint32_t n = 0; n < d_nchannels_out; n++)
+                                {
+                                    d_gnss_synchro_history->clear(n);
+                                }
+                            LOG(INFO) << "Received reset observables TOW command from PVT";
+                            break;
+                        default:
+                            break;
+                        }
                 }
         }
     catch (const wht::bad_any_cast &e)
@@ -703,7 +722,7 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
                         {
                             if (pmt::any_ref(it.value).type().hash_code() == typeid(const std::shared_ptr<GnssTime>).hash_code())
                                 {
-                                    const auto timetag = boost::any_cast<const std::shared_ptr<GnssTime>>(pmt::any_ref(it.value));
+                                    const auto timetag = wht::any_cast<const std::shared_ptr<GnssTime>>(pmt::any_ref(it.value));
                                     // std::cout << "[Time ch ] timetag: " << timetag->rx_time << "\n";
                                     d_TimeChannelTagTimestamps.push(*timetag);
                                 }
@@ -712,7 +731,7 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
                                     std::cout << "hash code not match\n";
                                 }
                         }
-                    catch (const boost::bad_any_cast &e)
+                    catch (const wht::bad_any_cast &e)
                         {
                             std::cout << "msg Bad any_cast: " << e.what();
                         }
@@ -725,7 +744,7 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
     // Push the tracking observables into buffers to allow the observable interpolation at the desired Rx clock
     for (uint32_t n = 0; n < d_nchannels_out; n++)
         {
-            //**************** time tags ****************
+            // *************** time tags ****************
             //            std::vector<gr::tag_t> tags_vec;
             //            this->get_tags_in_range(tags_vec, n, this->nitems_read(n), this->nitems_read(n) + ninput_items[n]);
             //            for (std::vector<gr::tag_t>::iterator it = tags_vec.begin(); it != tags_vec.end(); ++it)
@@ -734,7 +753,7 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
             //                        {
             //                            if (pmt::any_ref(it->value).type().hash_code() == typeid(const std::shared_ptr<GnssTime>).hash_code())
             //                                {
-            //                                    const std::shared_ptr<GnssTime> timetag = boost::any_cast<const std::shared_ptr<GnssTime>>(pmt::any_ref(it->value));
+            //                                    const std::shared_ptr<GnssTime> timetag = wht::any_cast<const std::shared_ptr<GnssTime>>(pmt::any_ref(it->value));
             //                                    //std::cout << "[ch " << n << "] timetag: " << timetag->rx_time << "\n";
             //                                    d_SourceTagTimestamps.at(n).push(*timetag);
             //                                }
@@ -743,13 +762,13 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
             //                                    std::cout << "hash code not match\n";
             //                                }
             //                        }
-            //                    catch (const boost::bad_any_cast &e)
+            //                    catch (const wht::bad_any_cast &e)
             //                        {
             //                            std::cout << "msg Bad any_cast: " << e.what();
             //                        }
             //                }
 
-            //************* end time tags **************
+            // ************ end time tags **************
             for (int32_t m = 0; m < ninput_items[n]; m++)
                 {
                     // Push the valid tracking Gnss_Synchros to their corresponding deque
@@ -794,7 +813,6 @@ int hybrid_observables_gs::general_work(int noutput_items __attribute__((unused)
                         }
                     epoch_data[n] = interpolated_gnss_synchro;
                 }
-
             if (d_T_rx_TOW_set)
                 {
                     update_TOW(epoch_data);

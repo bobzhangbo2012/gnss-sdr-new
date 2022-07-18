@@ -60,6 +60,7 @@ target_link_libraries(telemetry_decoder_gr_blocks
     PRIVATE
         Gflags::gflags
         Glog::glog
+        Gnuradio::pmt
 )
 
 if(GNURADIO_USES_STD_POINTERS)
@@ -104,6 +105,13 @@ else()
     target_compile_definitions(telemetry_decoder_gr_blocks
         PRIVATE
             -DHAS_GENERIC_LAMBDA=0
+    )
+endif()
+
+if(PMT_USES_BOOST_ANY)
+    target_compile_definitions(telemetry_decoder_gr_blocks
+        PRIVATE
+            -DPMT_USES_BOOST_ANY=1
     )
 endif()
 
