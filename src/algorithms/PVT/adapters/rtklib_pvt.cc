@@ -857,6 +857,10 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
     // Source timetag
     pvt_output_parameters.log_source_timetag = configuration->property(role + ".log_timetag", pvt_output_parameters.log_source_timetag);
     pvt_output_parameters.log_source_timetag_file = configuration->property(role + ".log_source_timetag_file", pvt_output_parameters.log_source_timetag_file);
+    
+    // date change RXtime
+    pvt_output_parameters.date_change_rxtime = configuration->property(role + ".date_change_rxtime", pvt_output_parameters.date_change_rxtime);
+    pvt_output_parameters.date_change_rxtime_base = configuration->property(role + ".date_change_rxtime_base", pvt_output_parameters.date_change_rxtime_base);
 
     // make PVT object
     pvt_ = rtklib_make_pvt_gs(in_streams_, pvt_output_parameters, rtk);

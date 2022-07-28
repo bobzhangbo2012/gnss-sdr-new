@@ -42,6 +42,8 @@ public:
     bool enable_reed_solomon{false};  // for INAV message in Galileo E1B
     bool dump_crc_stats{false};       // telemetry CRC statistics
     bool enable_navdata_monitor{false};
+    bool date_change_WN{false};       // change date( week number ) or not
+    int32_t WN_new{0};                // new WN data
 };
 
 

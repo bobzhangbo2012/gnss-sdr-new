@@ -115,6 +115,9 @@ private:
     bool d_remove_dat;
     bool d_enable_navdata_monitor;
     bool d_dump_crc_stats;
+    
+    bool d_date_change_WN;
+    int32_t d_WN_new;
 };
 
 

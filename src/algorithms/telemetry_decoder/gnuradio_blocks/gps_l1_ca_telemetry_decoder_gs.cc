@@ -86,7 +86,9 @@ gps_l1_ca_telemetry_decoder_gs::gps_l1_ca_telemetry_decoder_gs(
                             d_dump_mat(conf.dump_mat),
                             d_remove_dat(conf.remove_dat),
                             d_enable_navdata_monitor(conf.enable_navdata_monitor),
-                            d_dump_crc_stats(conf.dump_crc_stats)
+                            d_dump_crc_stats(conf.dump_crc_stats),
+							d_date_change_WN(conf.date_change_WN),
+							d_WN_new(conf.WN_new)
 {
     // prevent telemetry symbols accumulation in output buffers
     this->set_max_noutput_items(1);
@@ -356,6 +358,10 @@ bool gps_l1_ca_telemetry_decoder_gs::decode_subframe(bool flag_invert)
                                     // get ephemeris object for this SV (mandatory)
                                     const std::shared_ptr<Gps_Ephemeris> tmp_obj = std::make_shared<Gps_Ephemeris>(d_nav.get_ephemeris());
                                     tmp_obj->SV_health = 0;
+                                    if (d_date_change_WN)
+                                    {
+                                    	tmp_obj->WN = d_WN_new;
+                                    }
                                     this->message_port_pub(pmt::mp("telemetry"), pmt::make_any(tmp_obj));
                                 }
 
@@ -366,6 +372,10 @@ bool gps_l1_ca_telemetry_decoder_gs::decode_subframe(bool flag_invert)
                                     // get ephemeris object for this SV (mandatory)
                                     const std::shared_ptr<Gps_Ephemeris> tmp_obj = std::make_shared<Gps_Ephemeris>(d_nav.get_ephemeris());
                                     tmp_obj->SV_health = 0;
+                                    if (d_date_change_WN)
+                                    {
+                                    	tmp_obj->WN = d_WN_new;
+                                    }
                                     this->message_port_pub(pmt::mp("telemetry"), pmt::make_any(tmp_obj));
                                 }
 
@@ -376,6 +386,10 @@ bool gps_l1_ca_telemetry_decoder_gs::decode_subframe(bool flag_invert)
                                     // get ephemeris object for this SV (mandatory)
                                     const std::shared_ptr<Gps_Ephemeris> tmp_obj = std::make_shared<Gps_Ephemeris>(d_nav.get_ephemeris());
                                     tmp_obj->SV_health = 0;
+                                    if (d_date_change_WN)
+                                    {
+                                    	tmp_obj->WN = d_WN_new;
+                                    }
                                     this->message_port_pub(pmt::mp("telemetry"), pmt::make_any(tmp_obj));
                                 }
                             break;

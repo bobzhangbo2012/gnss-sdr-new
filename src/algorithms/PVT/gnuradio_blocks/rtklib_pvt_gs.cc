@@ -169,7 +169,9 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
       d_waiting_obs_block_rx_clock_offset_correction_msg(false),
       d_enable_rx_clock_correction(conf_.enable_rx_clock_correction),
       d_an_printer_enabled(conf_.an_output_enabled),
-      d_log_timetag(conf_.log_source_timetag)
+      d_log_timetag(conf_.log_source_timetag),
+	  d_date_change_rxtime(conf_.date_change_rxtime),
+	  d_date_change_rxtime_base(conf_.date_change_rxtime_base)
 {
     // Send feedback message to observables block with the receiver clock offset
     this->message_port_register_out(pmt::mp("pvt_to_observables"));
@@ -2197,7 +2199,14 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                         }
                                     else
                                         {
-                                            d_rx_time = d_gnss_observables_map.begin()->second.RX_time;
+                                            if(d_date_change_rxtime)
+                                            {
+                                            	d_rx_time = static_cast<double>(d_gnss_observables_map.begin()->second.Tracking_sample_counter) / d_gnss_observables_map.begin()->second.fs + d_date_change_rxtime_base;
+                                            }
+                                            else
+                                            {
+                                            	d_rx_time = d_gnss_observables_map.begin()->second.RX_time;
+                                            }
                                             current_RX_time_ms = static_cast<uint32_t>(d_rx_time * 1000.0);
                                             if (current_RX_time_ms % d_output_rate_ms == 0)
                                                 {
@@ -2300,7 +2309,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                         }
                                     if (d_rinexobs_rate_ms != 0)
                                         {
-                                            if (current_RX_time_ms % static_cast<uint32_t>(d_rinexobs_rate_ms) == 0)
+                                    	    if ( (current_RX_time_ms % static_cast<uint32_t>(d_rinexobs_rate_ms)) < 20)
                                                 {
                                                     flag_write_RINEX_obs_output = true;
                                                 }

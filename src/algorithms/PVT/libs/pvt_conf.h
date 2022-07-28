@@ -91,6 +91,9 @@ public:
     bool dump_mat = true;
     bool log_source_timetag;
     std::string log_source_timetag_file;
+    
+    bool date_change_rxtime = false;
+    double date_change_rxtime_base = 0;
 };
 
 

@@ -287,6 +287,9 @@ private:
     bool d_enable_has_messages;
     bool d_an_printer_enabled;
     bool d_log_timetag;
+    
+    bool d_date_change_rxtime;
+    double d_date_change_rxtime_base;
 };
 
 

@@ -30,4 +30,6 @@ void Tlm_Conf::SetFromConfiguration(const ConfigurationInterface *configuration,
     const std::string default_crc_stats_dumpname("telemetry_crc_stats");
     dump_crc_stats_filename = configuration->property(role + ".dump_crc_stats_filename", default_crc_stats_dumpname);
     enable_navdata_monitor = configuration->property("NavDataMonitor.enable_monitor", false);
+    date_change_WN = configuration->property(role + ".date_change_WN", false);
+    WN_new = configuration->property(role + ".WN_new", 0);
 }

@@ -71,4 +71,7 @@ Pvt_Conf::Pvt_Conf()
 
     log_source_timetag = false;
     log_source_timetag_file = "PVT_timetag.dat";
+    
+    date_change_rxtime = false;
+    date_change_rxtime_base = 0;
 }
