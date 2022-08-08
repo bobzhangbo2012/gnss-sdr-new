@@ -2199,14 +2199,7 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                         }
                                     else
                                         {
-                                            if(d_date_change_rxtime)
-                                            {
-                                            	d_rx_time = static_cast<double>(d_gnss_observables_map.begin()->second.Tracking_sample_counter) / d_gnss_observables_map.begin()->second.fs + d_date_change_rxtime_base;
-                                            }
-                                            else
-                                            {
-                                            	d_rx_time = d_gnss_observables_map.begin()->second.RX_time;
-                                            }
+                                            d_rx_time = d_gnss_observables_map.begin()->second.RX_time;
                                             current_RX_time_ms = static_cast<uint32_t>(d_rx_time * 1000.0);
                                             if (current_RX_time_ms % d_output_rate_ms == 0)
                                                 {
@@ -2367,6 +2360,13 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                     if (d_rinex_output_enabled)
                                         {
                                             d_rp->print_rinex_annotation(d_user_pvt_solver.get(), d_gnss_observables_map, d_rx_time, d_type_of_rx, flag_write_RINEX_obs_output);
+                                            if(d_date_change_rxtime)
+                                            {
+                                            	double tmp_rx_time = d_rx_time;
+                                            	d_rx_time = static_cast<double>(d_gnss_observables_map.begin()->second.Tracking_sample_counter) / d_gnss_observables_map.begin()->second.fs + d_date_change_rxtime_base;
+                                            	d_rp->print_rinex_annotation(d_user_pvt_solver.get(), d_gnss_observables_map, d_rx_time, d_type_of_rx, flag_write_RINEX_obs_output);
+                                            	d_rx_time = tmp_rx_time;
+                                            }
                                         }
                                     if (d_rtcm_enabled)
                                         {
