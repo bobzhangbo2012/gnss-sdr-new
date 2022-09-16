@@ -1,7 +1,7 @@
 # GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-FileCopyrightText: 2010-2022 C. Fernandez-Prades cfernandez(at)cttc.es
 # SPDX-License-Identifier: BSD-3-Clause
 
 
@@ -84,6 +84,11 @@ if(ENABLE_UHD)
     set(OPT_DRIVER_HEADERS ${OPT_DRIVER_HEADERS} uhd_signal_source.h)
 endif()
 
+if(ENABLE_ZMQ)
+    list(APPEND OPT_DRIVER_SOURCES zmq_signal_source.cc)
+    list(APPEND OPT_DRIVER_HEADERS zmq_signal_source.h)
+endif()
+
 
 set(SIGNAL_SOURCE_ADAPTER_SOURCES
     signal_source_base.cc
@@ -146,7 +151,7 @@ endif()
 
 target_include_directories(signal_source_adapters
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/core/interfaces
+        ${GNSSSDR_SOURCE_DIR}/src/core/interfaces
 )
 
 if(ENABLE_FPGA OR ENABLE_AD9361)
@@ -189,6 +194,13 @@ if(ENABLE_UHD)
         PUBLIC
             Gnuradio::uhd
             Uhd::uhd  # for uhd/config.hpp in gnuradio/uhd/usrp_source.h
+    )
+endif()
+
+if(ENABLE_ZMQ)
+    target_link_libraries(signal_source_adapters
+        PUBLIC
+            Gnuradio::zeromq
     )
 endif()
 

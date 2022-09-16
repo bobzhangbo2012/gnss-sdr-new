@@ -16,7 +16,7 @@
  * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+ * Copyright (C) 2010-2022  (see AUTHORS file for a list of contributors)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * -----------------------------------------------------------------------------
@@ -72,8 +72,8 @@
 #include "gnss_sdr_make_unique.h"
 #include "gnss_sdr_string_literals.h"
 #include "gps_l1_ca_dll_pll_tracking.h"
+#include "gps_l1_ca_gaussian_tracking.h"
 #include "gps_l1_ca_kf_tracking.h"
-#include "gps_l1_ca_kf_vtl_tracking.h"
 #include "gps_l1_ca_pcps_acquisition.h"
 #include "gps_l1_ca_pcps_acquisition_fine_doppler.h"
 #include "gps_l1_ca_pcps_assisted_acquisition.h"
@@ -169,6 +169,10 @@
 
 #if FLEXIBAND_DRIVER
 #include "flexiband_signal_source.h"
+#endif
+
+#if ZEROMQ_DRIVER
+#include "zmq_signal_source.h"
 #endif
 
 #if CUDA_GPU_ACCEL
@@ -799,6 +803,16 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                 }
 #endif
 
+#if ZEROMQ_DRIVER
+            else if (implementation == "ZMQ_Signal_Source")
+                {
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<ZmqSignalSource>(configuration, role, in_streams,
+                        out_streams, queue);
+                    block = std::move(block_);
+                }
+#endif
+
+
             // DATA TYPE ADAPTER -----------------------------------------------------------
             else if (implementation == "Byte_To_Short")
                 {
@@ -1065,15 +1079,15 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                         out_streams);
                     block = std::move(block_);
                 }
-            else if (implementation == "GPS_L1_CA_KF_Tracking")
+            else if (implementation == "GPS_L1_CA_Gaussian_Tracking")
                 {
-                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<GpsL1CaKfTracking>(configuration, role, in_streams,
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<GpsL1CaGaussianTracking>(configuration, role, in_streams,
                         out_streams);
                     block = std::move(block_);
                 }
-            else if (implementation == "GPS_L1_CA_KF_VTL_Tracking")
+            else if (implementation == "GPS_L1_CA_KF_Tracking")
                 {
-                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<GpsL1CaKfVtlTracking>(configuration, role, in_streams,
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<GpsL1CaKfTracking>(configuration, role, in_streams,
                         out_streams);
                     block = std::move(block_);
                 }
@@ -1521,15 +1535,15 @@ std::unique_ptr<TrackingInterface> GNSSBlockFactory::GetTrkBlock(
                 out_streams);
             block = std::move(block_);
         }
-    else if (implementation == "GPS_L1_CA_KF_Tracking")
+    else if (implementation == "GPS_L1_CA_Gaussian_Tracking")
         {
-            std::unique_ptr<TrackingInterface> block_ = std::make_unique<GpsL1CaKfTracking>(configuration, role, in_streams,
+            std::unique_ptr<TrackingInterface> block_ = std::make_unique<GpsL1CaGaussianTracking>(configuration, role, in_streams,
                 out_streams);
             block = std::move(block_);
         }
-    else if (implementation == "GPS_L1_CA_KF_VTL_Tracking")
+    else if (implementation == "GPS_L1_CA_KF_Tracking")
         {
-            std::unique_ptr<TrackingInterface> block_ = std::make_unique<GpsL1CaKfVtlTracking>(configuration, role, in_streams,
+            std::unique_ptr<TrackingInterface> block_ = std::make_unique<GpsL1CaKfTracking>(configuration, role, in_streams,
                 out_streams);
             block = std::move(block_);
         }

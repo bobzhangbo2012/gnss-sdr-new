@@ -28,12 +28,17 @@
 #include "rtklib_rtkpos.h"             // for rtkfree, rtkinit
 #include <glog/logging.h>              // for LOG
 #include <iostream>                    // for std::cout
+#if USE_STD_COMMON_FACTOR
+#include <numeric>
+namespace bc = std;
+#else
 #if USE_OLD_BOOST_MATH_COMMON_FACTOR
 #include <boost/math/common_factor_rt.hpp>
 namespace bc = boost::math;
 #else
 #include <boost/integer/common_factor_rt.hpp>
 namespace bc = boost::integer;
+#endif
 #endif
 
 using namespace std::string_literals;
@@ -198,6 +203,7 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
      *    104   |  Galileo E1B + Galileo E5a + Galileo E6B
      *    105   |  Galileo E1B + Galileo E5b + Galileo E6B
      *    106   |  GPS L1 C/A + Galileo E1B + Galileo E6B
+     *    107   |  GPS L1 C/A + Galileo E6B
      *    Skipped previous values to avoid overlapping
      *    500   |  BeiDou B1I
      *    501   |  BeiDou B1I + GPS L1 C/A
@@ -394,6 +400,10 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
     if ((gps_1C_count != 0) && (gps_2S_count == 0) && (gps_L5_count == 0) && (gal_1B_count != 0) && (gal_E5a_count == 0) && (gal_E5b_count == 0) && (gal_E6_count != 0) && (glo_1G_count == 0) && (glo_2G_count == 0) && (bds_B1_count == 0) && (bds_B3_count == 0))
         {
             pvt_output_parameters.type_of_receiver = 106;  // GPS L1 C/A + Galileo E1B + Galileo E6B
+        }
+    if ((gps_1C_count != 0) && (gps_2S_count == 0) && (gps_L5_count == 0) && (gal_1B_count == 0) && (gal_E5a_count == 0) && (gal_E5b_count == 0) && (gal_E6_count != 0) && (glo_1G_count == 0) && (glo_2G_count == 0) && (bds_B1_count == 0) && (bds_B3_count == 0))
+        {
+            pvt_output_parameters.type_of_receiver = 107;  // GPS L1 C/A + Galileo E6B
         }
     // BeiDou B1I Receiver
     if ((gps_1C_count == 0) && (gps_2S_count == 0) && (gps_L5_count == 0) && (gal_1B_count == 0) && (gal_E5a_count == 0) && (gal_E5b_count == 0) && (gal_E6_count == 0) && (glo_1G_count == 0) && (glo_2G_count == 0) && (bds_B1_count != 0) && (bds_B3_count == 0))
@@ -862,10 +872,12 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
     // Set maximum clock offset allowed if pvt_output_parameters.enable_rx_clock_correction = false
     pvt_output_parameters.max_obs_block_rx_clock_offset_ms = configuration->property(role + ".max_clock_offset_ms", pvt_output_parameters.max_obs_block_rx_clock_offset_ms);
 
-
     // Source timetag
     pvt_output_parameters.log_source_timetag = configuration->property(role + ".log_timetag", pvt_output_parameters.log_source_timetag);
     pvt_output_parameters.log_source_timetag_file = configuration->property(role + ".log_source_timetag_file", pvt_output_parameters.log_source_timetag_file);
+
+    // Use E6 for PVT
+    pvt_output_parameters.use_e6_for_pvt = configuration->property(role + ".use_e6_for_pvt", pvt_output_parameters.use_e6_for_pvt);
 
     // make PVT object
     pvt_ = rtklib_make_pvt_gs(in_streams_, pvt_output_parameters, rtk);

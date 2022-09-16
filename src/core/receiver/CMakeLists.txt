@@ -1,7 +1,7 @@
 # GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-FileCopyrightText: 2010-2022 C. Fernandez-Prades cfernandez(at)cttc.es
 # SPDX-License-Identifier: BSD-3-Clause
 
 
@@ -29,14 +29,14 @@ list(SORT GNSS_RECEIVER_HEADERS)
 list(SORT GNSS_RECEIVER_SOURCES)
 
 set(GNSS_RECEIVER_INTERFACE_HEADERS
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/acquisition_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/channel_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/configuration_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/gnss_block_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/observables_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/pvt_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/telemetry_decoder_interface.h
-    ${CMAKE_SOURCE_DIR}/src/core/interfaces/tracking_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/acquisition_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/channel_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/configuration_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/gnss_block_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/observables_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/pvt_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/telemetry_decoder_interface.h
+    ${GNSSSDR_SOURCE_DIR}/src/core/interfaces/tracking_interface.h
 )
 
 list(SORT GNSS_RECEIVER_INTERFACE_HEADERS)
@@ -110,6 +110,10 @@ endif()
 
 if(ENABLE_ARRAY)
     target_compile_definitions(core_receiver PRIVATE -DRAW_ARRAY_DRIVER=1)
+endif()
+
+if(ENABLE_ZMQ)
+    target_compile_definitions(core_receiver PRIVATE -DZEROMQ_DRIVER=1)
 endif()
 
 if(ENABLE_FLEXIBAND)
@@ -252,6 +256,6 @@ if(ENABLE_CLANG_TIDY)
 endif()
 
 set_property(TARGET core_receiver APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/core/receiver>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/core/interfaces>
+    $<BUILD_INTERFACE:${GNSSSDR_SOURCE_DIR}/src/core/receiver>
+    $<BUILD_INTERFACE:${GNSSSDR_SOURCE_DIR}/src/core/interfaces>
 )

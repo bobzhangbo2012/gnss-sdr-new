@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: install dependencies
-      run: sudo apt-get update && sudo apt-get install ninja-build libboost-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-thread-dev libboost-chrono-dev libboost-serialization-dev liblog4cpp5-dev gnuradio-dev gr-osmosdr libpugixml-dev libpcap-dev libblas-dev liblapack-dev libarmadillo-dev libgflags-dev libgoogle-glog-dev libgnutls-openssl-dev libmatio-dev googletest protobuf-compiler libprotobuf-dev python3-mako
+      run: sudo apt-get update && sudo apt-get install ninja-build libboost-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-thread-dev libboost-chrono-dev libboost-serialization-dev liblog4cpp5-dev gnuradio-dev gr-osmosdr libpugixml-dev libpcap-dev libblas-dev liblapack-dev libarmadillo-dev libgflags-dev libgoogle-glog-dev libgnutls-openssl-dev libmatio-dev googletest protobuf-compiler libprotobuf-dev python3-mako liborc-0.4-dev
     - name: configure
       run: cd build && cmake -GNinja ..
     - name: build
@@ -180,6 +180,16 @@ jobs:
       run: cd build && sudo xcodebuild -configuration Release -target install
     - name: test
       run: cd build && ctest -C Release --exclude-regex volk_gnsssdr_32fc_32f_rotator_dotprodxnpuppet_32fc
+
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: install dependencies
+      run: sudo apt install shellcheck
+    - name: check scripts
+      run: shellcheck src/utils/scripts/*
 
 
   REUSE-compliance:

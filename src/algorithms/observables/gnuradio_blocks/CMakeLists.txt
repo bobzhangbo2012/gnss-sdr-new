@@ -20,7 +20,7 @@ endif()
 
 target_include_directories(obs_gr_blocks
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/algorithms/libs
+        ${GNSSSDR_SOURCE_DIR}/src/algorithms/libs
 )
 
 target_link_libraries(obs_gr_blocks
@@ -37,17 +37,9 @@ target_link_libraries(obs_gr_blocks
         Gnuradio::pmt
 )
 
-if(GNURADIO_USES_SPDLOG)
-    target_link_libraries(obs_gr_blocks
-        PUBLIC
-            fmt::fmt
-            spdlog::spdlog
-    )
-endif()
-
 target_include_directories(obs_gr_blocks
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/core/interfaces
+        ${GNSSSDR_SOURCE_DIR}/src/core/interfaces
 )
 
 if(GNURADIO_USES_STD_POINTERS)

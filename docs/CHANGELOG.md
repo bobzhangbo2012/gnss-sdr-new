@@ -36,6 +36,8 @@ All notable changes to GNSS-SDR will be documented in this file.
   and IGM05 (SSR Code Bias). Please note that the content of the HAS messages is
   **not** applied to the computed PVT solution. In the Galileo E6B-only
   receiver, HAS messages are decoded and reported.
+- Added a `ZMQ_Signal_Source` for working with streams of samples published via
+  [ZeroMQ](https://zeromq.org/).
 
 ### Improvements in Maintainability:
 
@@ -56,23 +58,33 @@ All notable changes to GNSS-SDR will be documented in this file.
 - Fixed running time error if the binary is built with the
   `-Wp,-D_GLIBCXX_ASSERTIONS` compiler option. This is added by default in some
   GNU/Linux distributions.
+- Fixed linking against libunwind when the glog library is built locally.
+- The configuration options at building time `-DENABLE_OWN_GLOG`,
+  `-DENABLE_OWN_ARMADILLO`, and `-DENABLE_OWN_GNSSTK` can now be switched `ON`
+  and `OFF` without the need to start from an empty buiding folder.
+- Improved CMake handling of the spdlog library used by GNU Radio >= 3.10.
 
 ### Improvements in Usability:
 
 - Fixed large GLONASS velocity errors and the extended correlator when using the
   `GLONASS_L1_CA_DLL_PLL_C_Aid_Tracking` and
   `GLONASS_L2_CA_DLL_PLL_C_Aid_Tracking` implementations.
-- Added a over-the-wire sample format (that is, the format used between the
-  device and the UHD) configuration parameter for the `UHD_Signal_Source`, thus
-  allowing to select the `sc8` format instead of the default `sc16`. This would
-  reduce the dynamic range and increase quantization noise, but also reduce the
-  load on the data link and thus allow more bandwidth.
+- The `UHD_Signal_Source` learned a new parameter `otw_format` for setting the
+  [over-the-wire data format](https://files.ettus.com/manual/page_configuration.html#config_stream_args_otw_format)
+  (that is, the format used between the device and the UHD) in some devices,
+  thus allowing to select the `sc8` format instead of the default `sc16`. This
+  would reduce the dynamic range and increase quantization noise, but also
+  reduce the load on the data link and thus allow more bandwidth.
+- The `UHD_Signal_Source` learned another two optional parameters:
+  `device_recv_frame_size` and `device_num_recv_frames` for overriding
+  [transport layer defaults](https://files.ettus.com/manual/page_transport.html).
 - Added gain setting and reading for the XTRX board when using the
   `Osmosdr_Signal_Source` implementation of a `SignalSource`.
 - The `Osmosdr_Signal_Source` implementation learned a new parameter `if_bw` to
   manually set the bandwidth of the bandpass filter on the radio frontend.
 - The new configuration parameter `Channels_XX.RF_channel_ID` allows to specify
   the signal source per channel group.
+- Allowed the CMake project to be a sub-project.
 
 See the definitions of concepts and metrics at
 https://gnss-sdr.org/design-forces/

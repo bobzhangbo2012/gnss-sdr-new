@@ -69,22 +69,14 @@ target_link_libraries(signal_source_libs
 
 target_include_directories(signal_source_libs
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/core/receiver
-        ${CMAKE_SOURCE_DIR}/src/core/interfaces
-        ${CMAKE_SOURCE_DIR}/src/algorithms/libs
+        ${GNSSSDR_SOURCE_DIR}/src/core/receiver
+        ${GNSSSDR_SOURCE_DIR}/src/core/interfaces
+        ${GNSSSDR_SOURCE_DIR}/src/algorithms/libs
 )
 
 if(GNURADIO_USES_STD_POINTERS)
     target_compile_definitions(signal_source_libs
         PUBLIC -DGNURADIO_USES_STD_POINTERS=1
-    )
-endif()
-
-if(GNURADIO_USES_SPDLOG)
-    target_link_libraries(signal_source_libs
-        PUBLIC
-            fmt::fmt
-            spdlog::spdlog
     )
 endif()
 

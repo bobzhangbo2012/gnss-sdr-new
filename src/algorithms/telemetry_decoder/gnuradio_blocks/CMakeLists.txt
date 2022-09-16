@@ -69,22 +69,14 @@ if(GNURADIO_USES_STD_POINTERS)
     )
 endif()
 
-if(GNURADIO_USES_SPDLOG)
-    target_link_libraries(telemetry_decoder_gr_blocks
-        PUBLIC
-            fmt::fmt
-            spdlog::spdlog
-    )
-endif()
-
 target_include_directories(telemetry_decoder_gr_blocks
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/core/interfaces
+        ${GNSSSDR_SOURCE_DIR}/src/core/interfaces
 )
 
 target_include_directories(telemetry_decoder_gr_blocks
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/src/algorithms/libs  # for gnss_sdr_make_unique.h
+        ${GNSSSDR_SOURCE_DIR}/src/algorithms/libs  # for gnss_sdr_make_unique.h
 )
 
 if(has_rotl)

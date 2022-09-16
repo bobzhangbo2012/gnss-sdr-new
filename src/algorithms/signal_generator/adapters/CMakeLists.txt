@@ -34,21 +34,13 @@ target_link_libraries(signal_generator_adapters
 
 target_include_directories(signal_generator_adapters
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/src/core/interfaces
-        ${CMAKE_SOURCE_DIR}/src/core/receiver
+        ${GNSSSDR_SOURCE_DIR}/src/core/interfaces
+        ${GNSSSDR_SOURCE_DIR}/src/core/receiver
 )
 
 if(GNURADIO_USES_STD_POINTERS)
     target_compile_definitions(signal_generator_adapters
         PUBLIC -DGNURADIO_USES_STD_POINTERS=1
-    )
-endif()
-
-if(GNURADIO_USES_SPDLOG)
-    target_link_libraries(signal_generator_adapters
-        PUBLIC
-            fmt::fmt
-            spdlog::spdlog
     )
 endif()
 
